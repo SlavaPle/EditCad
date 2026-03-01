@@ -1,0 +1,10 @@
+---
+description: UI default language and localization (i18n)
+alwaysApply: true
+---
+
+# UI Language and Localization
+
+- **Default language**: The application UI is in **English** by default. All user-facing strings (labels, buttons, placeholders, titles) must be written in English in the source locale file and used via i18n keys.
+- **Localization**: Use **i18n** (e.g. react-i18next / i18next) for all UI text. Do not hardcode user-visible strings in components; use translation keys and locale files under `src/locales/` (e.g. `en.json`, `ru.json`). Add new languages by adding a new locale file and registering it in the i18n config.
+- **Adding strings**: When adding new UI text, add the key to the default (English) locale first, then to other locale files if they exist. Keep keys namespaced or grouped by feature (e.g. `toolbar.loadModel`, `panel.transform.scale`).

@@ -1,0 +1,59 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.main {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.viewport {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+
+.sidePanel {
+  width: 280px;
+  min-width: 200px;
+  background: #1e293b;
+  border-left: 1px solid #334155;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidePanelLeft {
+  border-left: none;
+  border-right: 1px solid #334155;
+}
+
+.panelHeader {
+  padding: 10px 12px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border-bottom: 1px solid #334155;
+  background: #0f172a;
+}
+
+.panelContent {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.panelSection {
+  margin-bottom: 16px;
+}
+
+.panelSectionTitle {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  margin-bottom: 8px;
+}

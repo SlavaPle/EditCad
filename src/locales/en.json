@@ -1,0 +1,24 @@
+{
+  "app": {
+    "title": "EditCad"
+  },
+  "toolbar": {
+    "loadModel": "Load model",
+    "exportStl": "Export STL",
+    "reset": "Reset"
+  },
+  "leftPanel": {
+    "header": "Model & load",
+    "file": "File",
+    "dropHint": "Drag STL here or click \"Load model\" in the toolbar."
+  },
+  "rightPanel": {
+    "header": "Transform & material",
+    "scale": "Scale",
+    "scaleHint": "X / Y / Z — after loading a model.",
+    "rotation": "Rotation",
+    "rotationHint": "Axis angles — after loading a model.",
+    "colorTexture": "Color & texture",
+    "colorTextureHint": "Color and texture — after loading."
+  }
+}
