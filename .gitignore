@@ -28,5 +28,11 @@ Thumbs.db
 # TypeScript / Vite
 *.tsbuildinfo
 
+# Markdown (wszystkie pliki .md w dedykowanej folderze)
+docs/
+
+# Cursor rules (pliki .mdc nie śledzone w git)
+*.mdc
+
 # Optional: keep .cursor if you want (uncomment to ignore)
 # .cursor/
