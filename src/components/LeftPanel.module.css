@@ -38,3 +38,13 @@
   color: #64748b;
   font-size: 0.875rem;
 }
+
+.dropZone {
+  min-height: 80px;
+}
+
+.error {
+  color: #f87171;
+  font-size: 0.8125rem;
+  margin-top: 8px;
+}

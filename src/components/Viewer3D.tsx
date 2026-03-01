@@ -1,9 +1,14 @@
+import type { BufferGeometry } from 'three'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Grid, Environment } from '@react-three/drei'
 import { SceneContent } from './Viewer3D/SceneContent'
 import styles from './Viewer3D.module.css'
 
-export function Viewer3D() {
+export interface Viewer3DProps {
+  model?: BufferGeometry | null
+}
+
+export function Viewer3D({ model }: Viewer3DProps) {
   return (
     <div className={styles.viewer}>
       <Canvas
@@ -11,7 +16,7 @@ export function Viewer3D() {
         camera={{ position: [5, 5, 5], fov: 50 }}
         gl={{ antialias: true }}
       >
-        <SceneContent />
+        <SceneContent model={model} />
         <OrbitControls makeDefault enableDamping dampingFactor={0.05} />
         <Grid
           args={[20, 20]}

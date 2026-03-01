@@ -3,6 +3,7 @@ import styles from './Toolbar.module.css'
 
 interface ToolbarProps {
   onReset?: () => void
+  onLoadModelClick?: () => void
 }
 
 const LANGUAGES = [
@@ -10,12 +11,11 @@ const LANGUAGES = [
   { code: 'ru', label: 'Русский' },
 ] as const
 
-export function Toolbar({ onReset }: ToolbarProps) {
+export function Toolbar({ onReset, onLoadModelClick }: ToolbarProps) {
   const { t, i18n } = useTranslation()
 
   const handleLoad = () => {
-    // Placeholder — ModelLoader will handle upload
-    console.log('Load model')
+    onLoadModelClick?.()
   }
 
   const handleExport = () => {
