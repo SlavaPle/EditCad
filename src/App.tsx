@@ -13,24 +13,21 @@ function App() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const modelLoaderRef = useRef<ModelLoaderHandle>(null)
 
-  const handleReset = () => {
-    setModel(null)
-    setLoadError(null)
-    setModelKey((k) => k + 1)
-  }
-
   const handleModelLoad = (geometry: BufferGeometry) => {
     setModel(geometry)
     setLoadError(null)
   }
 
   const handleLoadModelClick = () => {
+    setModel(null)
+    setLoadError(null)
+    setModelKey((k) => k + 1)
     modelLoaderRef.current?.openFileDialog()
   }
 
   return (
     <div className={styles.app}>
-      <Toolbar onReset={handleReset} onLoadModelClick={handleLoadModelClick} />
+      <Toolbar onLoadModelClick={handleLoadModelClick} />
       <div className={styles.main}>
         <LeftPanel
           modelLoaderRef={modelLoaderRef}

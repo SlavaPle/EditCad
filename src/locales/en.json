@@ -5,7 +5,13 @@
   "toolbar": {
     "loadModel": "Load model",
     "exportStl": "Export STL",
-    "reset": "Reset"
+    "reset": "Reset",
+    "open": "Open",
+    "save": "Save",
+    "settings": "Settings",
+    "tabFile": "File",
+    "tabEdit": "Edit",
+    "editConstrain": "Constraints"
   },
   "leftPanel": {
     "header": "Model & load",

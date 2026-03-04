@@ -5,7 +5,13 @@
   "toolbar": {
     "loadModel": "Загрузить модель",
     "exportStl": "Экспорт STL",
-    "reset": "Сбросить"
+    "reset": "Сбросить",
+    "open": "Открыть",
+    "save": "Сохранить",
+    "settings": "Настройки",
+    "tabFile": "File",
+    "tabEdit": "Edit",
+    "editConstrain": "Сопряжения"
   },
   "leftPanel": {
     "header": "Модель и загрузка",
