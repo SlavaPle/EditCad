@@ -1,11 +1,42 @@
 .toolbar {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  align-items: stretch;
   background: #0f172a;
   border-bottom: 1px solid #334155;
   flex-shrink: 0;
+}
+
+/* Левая колонка с названием приложения, как отдельное поле */
+.toolbarTitle {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-right: 1px solid #334155;
+}
+
+/* Правая часть: сверху иконки, снизу вкладки */
+.toolbarRight {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+/* Содержимое над вкладками (иконки + язык) */
+.toolbarContent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+/* Ряд вкладок под правой частью */
+.tabsRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px 8px;
+  border-top: 1px solid #334155;
 }
 
 .toolbarGroup {
@@ -58,6 +89,65 @@
   font-size: 1rem;
   margin-right: 16px;
   color: #f1f5f9;
+}
+
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tab {
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #cbd5f5;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.tab:hover {
+  background: #1e293b;
+  border-color: #475569;
+}
+
+.tabActive {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #f9fafb;
+}
+
+.iconBtn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  background: #1e293b;
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  padding: 0;
+}
+
+.iconBtn:hover {
+  background: #334155;
+  border-color: #64748b;
+}
+
+.iconBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.icon {
+  width: 16px;
+  height: 16px;
+  display: block;
 }
 
 .langSelect {

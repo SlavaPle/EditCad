@@ -5,7 +5,13 @@
   "toolbar": {
     "loadModel": "Load model",
     "exportStl": "Export STL",
-    "reset": "Reset"
+    "reset": "Reset",
+    "open": "Open",
+    "save": "Save",
+    "settings": "Settings",
+    "tabFile": "File",
+    "tabEdit": "Edit",
+    "editConstrain": "Constraints"
   },
   "leftPanel": {
     "header": "Model & load",
@@ -16,6 +22,12 @@
   },
   "rightPanel": {
     "header": "Transform & material",
+    "selection": {
+      "title": "Selection",
+      "facePlane": "Planes (coplanar faces)",
+      "edgeLine": "Edges / lines",
+      "hint": "Shift+click adds to the current selection. Click empty space or the grid to clear."
+    },
     "scale": "Scale",
     "scaleHint": "X / Y / Z — after loading a model.",
     "rotation": "Rotation",

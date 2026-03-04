@@ -5,19 +5,16 @@ import { Viewer3D } from './components/Viewer3D'
 import { LeftPanel } from './components/LeftPanel'
 import { RightPanel } from './components/RightPanel'
 import type { ModelLoaderHandle } from './components/ModelLoader'
+import type { ModelSelectionInteractionMode } from './features/model-selection/types'
 import styles from './App.module.css'
 
 function App() {
   const [model, setModel] = useState<BufferGeometry | null>(null)
   const [modelKey, setModelKey] = useState(0)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [selectionInteractionMode, setSelectionInteractionMode] =
+    useState<ModelSelectionInteractionMode>('facePlane')
   const modelLoaderRef = useRef<ModelLoaderHandle>(null)
-
-  const handleReset = () => {
-    setModel(null)
-    setLoadError(null)
-    setModelKey((k) => k + 1)
-  }
 
   const handleModelLoad = (geometry: BufferGeometry) => {
     setModel(geometry)
@@ -25,12 +22,15 @@ function App() {
   }
 
   const handleLoadModelClick = () => {
+    setModel(null)
+    setLoadError(null)
+    setModelKey((k) => k + 1)
     modelLoaderRef.current?.openFileDialog()
   }
 
   return (
     <div className={styles.app}>
-      <Toolbar onReset={handleReset} onLoadModelClick={handleLoadModelClick} />
+      <Toolbar onLoadModelClick={handleLoadModelClick} />
       <div className={styles.main}>
         <LeftPanel
           modelLoaderRef={modelLoaderRef}
@@ -40,9 +40,12 @@ function App() {
           hasModel={!!model}
         />
         <div className={styles.viewport}>
-          <Viewer3D key={modelKey} model={model} />
+          <Viewer3D key={modelKey} model={model} interactionMode={selectionInteractionMode} />
         </div>
-        <RightPanel />
+        <RightPanel
+          selectionInteractionMode={selectionInteractionMode}
+          onSelectionInteractionModeChange={setSelectionInteractionMode}
+        />
       </div>
     </div>
   )
