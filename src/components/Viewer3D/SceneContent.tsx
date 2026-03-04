@@ -1,12 +1,17 @@
+import type { Dispatch, SetStateAction } from 'react'
 import type { BufferGeometry } from 'three'
 import { Bounds } from '@react-three/drei'
+import { SelectableModel } from './SelectableModel'
+import type { SelectionState } from '../../lib/selection'
 
 interface SceneContentProps {
   model?: BufferGeometry | null
+  selection: SelectionState
+  onSelectionChange: Dispatch<SetStateAction<SelectionState>>
 }
 
-// Oświetlenie i załadowany model (STL → BufferGeometry); Bounds dopasowuje kamerę do modelu
-export function SceneContent({ model }: SceneContentProps) {
+// Oświetlenie i interaktywny model (STL → BufferGeometry); Bounds dopasowuje kamerę do modelu
+export function SceneContent({ model, selection, onSelectionChange }: SceneContentProps) {
   return (
     <>
       <ambientLight intensity={0.4} />
@@ -14,9 +19,7 @@ export function SceneContent({ model }: SceneContentProps) {
       <directionalLight position={[-5, 5, -5]} intensity={0.3} />
       {model && (
         <Bounds fit observe margin={1.2}>
-          <mesh geometry={model}>
-            <meshStandardMaterial color="#94a3b8" />
-          </mesh>
+          <SelectableModel model={model} selection={selection} onSelectionChange={onSelectionChange} />
         </Bounds>
       )}
     </>

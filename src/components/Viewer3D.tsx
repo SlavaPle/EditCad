@@ -1,22 +1,27 @@
+import { useState } from 'react'
 import type { BufferGeometry } from 'three'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Grid, Environment } from '@react-three/drei'
 import { SceneContent } from './Viewer3D/SceneContent'
 import styles from './Viewer3D.module.css'
+import { createEmptySelection, type SelectionState } from '../lib/selection'
 
 export interface Viewer3DProps {
   model?: BufferGeometry | null
 }
 
 export function Viewer3D({ model }: Viewer3DProps) {
+  const [selection, setSelection] = useState<SelectionState>(createEmptySelection())
+
   return (
     <div className={styles.viewer}>
       <Canvas
         className={styles.canvas}
         camera={{ position: [5, 5, 5], fov: 50 }}
         gl={{ antialias: true }}
+        onPointerMissed={() => setSelection(createEmptySelection())}
       >
-        <SceneContent model={model} />
+        <SceneContent model={model} selection={selection} onSelectionChange={setSelection} />
         <OrbitControls makeDefault enableDamping dampingFactor={0.05} />
         <Grid
           args={[20, 20]}
@@ -29,6 +34,7 @@ export function Viewer3D({ model }: Viewer3DProps) {
           fadeDistance={25}
           fadeStrength={1}
           infiniteGrid
+          onPointerDown={() => setSelection(createEmptySelection())}
         />
         <Environment preset="studio" />
       </Canvas>
