@@ -1,15 +1,47 @@
-import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
-import { BufferAttribute, BufferGeometry, Color, Mesh, Points, Vector3 } from 'three'
+import { BufferAttribute, BufferGeometry, Color, DoubleSide, Mesh, Points, Vector3 } from 'three'
 import type { ThreeEvent } from '@react-three/fiber'
 import { selectEdge, selectFaces, selectVertex, type SelectionState } from '../../lib/selection'
 import { getCoplanarConnectedFaces } from '../../features/model-selection/facePlaneSelection'
-import {
-  edgePickToleranceFromGeometry,
-  pickClosestTriangleEdge,
-} from '../../features/model-selection/edgeLineSelection'
+import { edgePickToleranceFromGeometry } from '../../features/model-selection/edgeLineSelection'
+import { pickClosestCreasedTriangleEdge } from '../../features/model-selection/edgeCreaseSelection'
 import { pickClosestTriangleVertex } from '../../features/model-selection/vertexPointSelection'
 import type { ModelSelectionInteractionMode } from '../../features/model-selection/types'
+import { FatLineSegments } from './FatLineSegments'
+
+const PREVIEW_COLOR_HEX = '#22c55e'
+const EDGE_LINE_WIDTH_PX = 5
+
+type HoverState =
+  | { type: 'none' }
+  | { type: 'faces'; indices: readonly number[] }
+  | { type: 'edge'; a: number; b: number }
+  | { type: 'vertex'; index: number }
+
+function sameHover(a: HoverState, b: HoverState): boolean {
+  if (a.type !== b.type) return false
+  if (a.type === 'none') return true
+  if (a.type === 'vertex' && b.type === 'vertex') return a.index === b.index
+  if (a.type === 'edge' && b.type === 'edge') return a.a === b.a && a.b === b.b
+  if (a.type === 'faces' && b.type === 'faces') {
+    if (a.indices.length !== b.indices.length) return false
+    const sa = [...a.indices].sort((x, y) => x - y)
+    const sb = [...b.indices].sort((x, y) => x - y)
+    return sa.every((v, i) => v === sb[i])
+  }
+  return false
+}
+
+function triangleIndicesForFace(geometry: BufferGeometry, faceIndex: number): [number, number, number] {
+  const index = geometry.getIndex()
+  if (index) {
+    const base = faceIndex * 3
+    return [index.getX(base), index.getX(base + 1), index.getX(base + 2)]
+  }
+  const ia = faceIndex * 3
+  return [ia, ia + 1, ia + 2]
+}
 
 interface SelectableModelProps {
   model: BufferGeometry
@@ -18,7 +50,7 @@ interface SelectableModelProps {
   interactionMode: ModelSelectionInteractionMode
 }
 
-// Komponent siatki: płaszczyzny, krawędzie trójkąta lub wierzchołki przy trafieniu promienia
+// Komponent siatki: tryby płaszczyzna / krawędź / wierzchołek; podgląd hover (zielony), zatwierdzone (pomarańczowy)
 export function SelectableModel({
   model,
   selection,
@@ -27,9 +59,64 @@ export function SelectableModel({
 }: SelectableModelProps) {
   const meshRef = useRef<Mesh>(null)
   const vertexPointsRef = useRef<Points>(null)
+  const vertexHoverPointsRef = useRef<Points>(null)
+  const hoverFaceOverlayRef = useRef<Mesh>(null)
+
+  const [hover, setHover] = useState<HoverState>({ type: 'none' })
+
   const baseColor = useMemo(() => new Color('#94a3b8'), [])
   const highlightColor = useMemo(() => new Color('#f97316'), [])
   const scratchLocal = useMemo(() => new Vector3(), [])
+
+  useEffect(() => {
+    setHover({ type: 'none' })
+  }, [interactionMode, model])
+
+  const resolveHover = useCallback(
+    (event: ThreeEvent<PointerEvent>): HoverState => {
+      const mesh = meshRef.current
+      if (!mesh) return { type: 'none' }
+
+      if (interactionMode === 'facePlane') {
+        const fi = event.faceIndex
+        if (typeof fi !== 'number') return { type: 'none' }
+        const faces = getCoplanarConnectedFaces(model, fi)
+        return { type: 'faces', indices: faces }
+      }
+
+      if (typeof event.faceIndex !== 'number') return { type: 'none' }
+      mesh.worldToLocal(scratchLocal.copy(event.point))
+
+      if (interactionMode === 'vertex') {
+        const tol = edgePickToleranceFromGeometry(model, 0.03)
+        const v = pickClosestTriangleVertex(model, event.faceIndex, scratchLocal, tol)
+        if (v === null) return { type: 'none' }
+        return { type: 'vertex', index: v }
+      }
+
+      if (interactionMode === 'edgeLine') {
+        const tol = edgePickToleranceFromGeometry(model)
+        const e = pickClosestCreasedTriangleEdge(model, event.faceIndex, scratchLocal, tol)
+        if (!e) return { type: 'none' }
+        return { type: 'edge', a: e.a, b: e.b }
+      }
+
+      return { type: 'none' }
+    },
+    [interactionMode, model, scratchLocal],
+  )
+
+  const handlePointerMove = useCallback(
+    (event: ThreeEvent<PointerEvent>) => {
+      const next = resolveHover(event)
+      setHover((prev) => (sameHover(prev, next) ? prev : next))
+    },
+    [resolveHover],
+  )
+
+  const handlePointerOut = useCallback(() => {
+    setHover({ type: 'none' })
+  }, [])
 
   useEffect(() => {
     const position = model.getAttribute('position')
@@ -92,7 +179,7 @@ export function SelectableModel({
     colorAttr.needsUpdate = true
   }, [baseColor, highlightColor, model, selection])
 
-  const edgeHighlightGeometry = useMemo(() => {
+  const edgeHighlightLinePositions = useMemo(() => {
     if (selection.edges.length === 0) return null
     const position = model.getAttribute('position')
     if (!position) return null
@@ -107,17 +194,8 @@ export function SelectableModel({
       arr[w++] = position.getY(e.b)
       arr[w++] = position.getZ(e.b)
     }
-    const geo = new BufferGeometry()
-    geo.setAttribute('position', new BufferAttribute(arr, 3))
-    return geo
+    return arr
   }, [model, selection.edges])
-
-  useEffect(() => {
-    if (!edgeHighlightGeometry) return
-    return () => {
-      edgeHighlightGeometry.dispose()
-    }
-  }, [edgeHighlightGeometry])
 
   const vertexPointsGeometry = useMemo(() => {
     if (selection.vertices.length === 0) return null
@@ -146,11 +224,91 @@ export function SelectableModel({
     }
   }, [vertexPointsGeometry])
 
+  const hoverFaceOverlayGeometry = useMemo(() => {
+    if (hover.type !== 'faces' || hover.indices.length === 0) return null
+    const position = model.getAttribute('position')
+    if (!position) return null
+
+    const arr = new Float32Array(hover.indices.length * 9)
+    let w = 0
+    for (const fi of hover.indices) {
+      const [ia, ib, ic] = triangleIndicesForFace(model, fi)
+      arr[w++] = position.getX(ia)
+      arr[w++] = position.getY(ia)
+      arr[w++] = position.getZ(ia)
+      arr[w++] = position.getX(ib)
+      arr[w++] = position.getY(ib)
+      arr[w++] = position.getZ(ib)
+      arr[w++] = position.getX(ic)
+      arr[w++] = position.getY(ic)
+      arr[w++] = position.getZ(ic)
+    }
+    const geo = new BufferGeometry()
+    geo.setAttribute('position', new BufferAttribute(arr, 3))
+    return geo
+  }, [model, hover])
+
+  useEffect(() => {
+    if (!hoverFaceOverlayGeometry) return
+    return () => {
+      hoverFaceOverlayGeometry.dispose()
+    }
+  }, [hoverFaceOverlayGeometry])
+
+  const hoverEdgeLinePositions = useMemo(() => {
+    if (hover.type !== 'edge') return null
+    const position = model.getAttribute('position')
+    if (!position) return null
+    const { a, b } = hover
+    if (a < 0 || b < 0 || a >= position.count || b >= position.count) return null
+
+    return new Float32Array([
+      position.getX(a),
+      position.getY(a),
+      position.getZ(a),
+      position.getX(b),
+      position.getY(b),
+      position.getZ(b),
+    ])
+  }, [model, hover])
+
+  const hoverVertexGeometry = useMemo(() => {
+    if (hover.type !== 'vertex') return null
+    const position = model.getAttribute('position')
+    if (!position) return null
+    const vi = hover.index
+    if (vi < 0 || vi >= position.count) return null
+
+    const arr = new Float32Array([position.getX(vi), position.getY(vi), position.getZ(vi)])
+    const geo = new BufferGeometry()
+    geo.setAttribute('position', new BufferAttribute(arr, 3))
+    return geo
+  }, [model, hover])
+
+  useEffect(() => {
+    if (!hoverVertexGeometry) return
+    return () => {
+      hoverVertexGeometry.dispose()
+    }
+  }, [hoverVertexGeometry])
+
   useLayoutEffect(() => {
     const pts = vertexPointsRef.current
     if (!pts) return
     pts.raycast = () => {}
   }, [vertexPointsGeometry])
+
+  useLayoutEffect(() => {
+    const pts = vertexHoverPointsRef.current
+    if (!pts) return
+    pts.raycast = () => {}
+  }, [hoverVertexGeometry])
+
+  useLayoutEffect(() => {
+    const m = hoverFaceOverlayRef.current
+    if (!m) return
+    m.raycast = () => {}
+  }, [hoverFaceOverlayGeometry])
 
   const handlePointerDown = (event: ThreeEvent<PointerEvent>) => {
     event.stopPropagation()
@@ -184,7 +342,7 @@ export function SelectableModel({
     }
 
     const tol = edgePickToleranceFromGeometry(model)
-    const edge = pickClosestTriangleEdge(model, faceIndex, scratchLocal, tol)
+    const edge = pickClosestCreasedTriangleEdge(model, faceIndex, scratchLocal, tol)
     if (!edge) return
 
     onSelectionChange((prev) =>
@@ -194,18 +352,61 @@ export function SelectableModel({
 
   return (
     <group>
-      <mesh ref={meshRef} geometry={model} onPointerDown={handlePointerDown}>
+      <mesh
+        ref={meshRef}
+        geometry={model}
+        onPointerMove={handlePointerMove}
+        onPointerOut={handlePointerOut}
+        onPointerDown={handlePointerDown}
+      >
         <meshStandardMaterial vertexColors />
       </mesh>
-      {edgeHighlightGeometry && (
-        <lineSegments geometry={edgeHighlightGeometry}>
-          <lineBasicMaterial color="#f97316" depthTest />
-        </lineSegments>
+      {hoverFaceOverlayGeometry && (
+        <mesh ref={hoverFaceOverlayRef} geometry={hoverFaceOverlayGeometry} renderOrder={8}>
+          <meshBasicMaterial
+            color={PREVIEW_COLOR_HEX}
+            transparent
+            opacity={0.38}
+            side={DoubleSide}
+            depthWrite={false}
+            polygonOffset
+            polygonOffsetFactor={-1}
+            polygonOffsetUnits={-1}
+          />
+        </mesh>
       )}
+      <FatLineSegments
+        positions={edgeHighlightLinePositions}
+        color="#f97316"
+        linewidth={EDGE_LINE_WIDTH_PX}
+        renderOrder={7}
+        raycastDisabled
+      />
+      <FatLineSegments
+        positions={hoverEdgeLinePositions}
+        color={PREVIEW_COLOR_HEX}
+        linewidth={EDGE_LINE_WIDTH_PX}
+        renderOrder={9}
+        raycastDisabled
+        depthWrite={false}
+      />
       {vertexPointsGeometry && (
         <points ref={vertexPointsRef} geometry={vertexPointsGeometry} renderOrder={10}>
           <pointsMaterial
             color="#f97316"
+            size={10}
+            sizeAttenuation={false}
+            depthTest
+            depthWrite={false}
+            transparent
+            opacity={1}
+          />
+        </points>
+      )}
+      {hoverVertexGeometry && (
+        <points ref={vertexHoverPointsRef} geometry={hoverVertexGeometry} renderOrder={11}>
+          <pointsMaterial
+            color={PREVIEW_COLOR_HEX}
             size={10}
             sizeAttenuation={false}
             depthTest

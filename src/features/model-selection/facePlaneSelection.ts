@@ -195,3 +195,13 @@ export function getCoplanarConnectedFaces(geometry: BufferGeometry, seedFaceInde
 
   return result
 }
+
+// Czy dwie ściany leżą w tej samej płaszczyźnie (jak sąsiedzi w getCoplanarConnectedFaces)
+export function areFacesCoplanar(geometry: BufferGeometry, faceI: number, faceJ: number): boolean {
+  if (faceI === faceJ) return true
+  const faces = getFaceVertices(geometry)
+  const baseNormal = new Vector3()
+  const tmpNormal = new Vector3()
+  const { normal, constant } = computeFacePlane(geometry, faces, faceI, baseNormal)
+  return isCoplanarNeighbor(geometry, faces, normal, constant, faceJ, tmpNormal)
+}

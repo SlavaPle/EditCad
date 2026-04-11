@@ -2,7 +2,7 @@ import { Vector3, type BufferGeometry } from 'three'
 import type { EdgeSelection } from '../../lib/selection'
 
 // Kwadrat odległości punktu P do odcinka AB w R^3
-function distSqPointToSegment(
+export function distSqPointToSegment(
   px: number,
   py: number,
   pz: number,
