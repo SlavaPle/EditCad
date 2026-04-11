@@ -26,6 +26,7 @@
       "title": "Selection",
       "facePlane": "Planes (coplanar faces)",
       "edgeLine": "Edges / lines",
+      "vertex": "Vertices",
       "hint": "Shift+click adds to the current selection. Click empty space or the grid to clear."
     },
     "scale": "Scale",

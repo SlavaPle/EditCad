@@ -40,6 +40,16 @@ export function RightPanel({
               />
               <span>{t('rightPanel.selection.edgeLine')}</span>
             </label>
+            <label className={styles.radioRow}>
+              <input
+                type="radio"
+                name="selectionInteraction"
+                value="vertex"
+                checked={selectionInteractionMode === 'vertex'}
+                onChange={() => onSelectionInteractionModeChange('vertex')}
+              />
+              <span>{t('rightPanel.selection.vertex')}</span>
+            </label>
           </fieldset>
           <p className={styles.selectionHint}>{t('rightPanel.selection.hint')}</p>
         </div>
