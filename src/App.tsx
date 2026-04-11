@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { BufferGeometry } from 'three'
 import { Toolbar } from './components/Toolbar'
 import { Viewer3D } from './components/Viewer3D'
@@ -6,13 +6,19 @@ import { LeftPanel } from './components/LeftPanel'
 import { RightPanel } from './components/RightPanel'
 import type { ModelLoaderHandle } from './components/ModelLoader'
 import { DEFAULT_MODEL_SELECTION_PROXIMITY_FILTER } from './features/model-selection/types'
+import { createEmptySelection, type SelectionState } from './lib/selection'
 import styles from './App.module.css'
 
 function App() {
   const [model, setModel] = useState<BufferGeometry | null>(null)
   const [modelKey, setModelKey] = useState(0)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [selection, setSelection] = useState<SelectionState>(createEmptySelection())
   const modelLoaderRef = useRef<ModelLoaderHandle>(null)
+
+  useEffect(() => {
+    setSelection(createEmptySelection())
+  }, [model, modelKey])
 
   const handleModelLoad = (geometry: BufferGeometry) => {
     setModel(geometry)
@@ -41,10 +47,12 @@ function App() {
           <Viewer3D
             key={modelKey}
             model={model}
+            selection={selection}
+            onSelectionChange={setSelection}
             selectionProximityFilter={DEFAULT_MODEL_SELECTION_PROXIMITY_FILTER}
           />
         </div>
-        <RightPanel />
+        <RightPanel selection={selection} />
       </div>
     </div>
   )

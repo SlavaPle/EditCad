@@ -298,23 +298,20 @@ export function SelectableModel({
     const pick = resolveProximityPick(model, faceIndex, scratchLocal, selectionProximityFilter)
     if (pick.type === 'none') return
 
+    const shiftHeld = event.shiftKey || event.nativeEvent.shiftKey
+    const mode: 'add' | 'replace' = shiftHeld ? 'add' : 'replace'
+
     if (pick.type === 'faces') {
-      onSelectionChange((prev) =>
-        selectFaces(prev, pick.indices, event.shiftKey ? 'add' : 'replace'),
-      )
+      onSelectionChange((prev) => selectFaces(prev, pick.indices, mode))
       return
     }
 
     if (pick.type === 'vertex') {
-      onSelectionChange((prev) =>
-        selectVertex(prev, pick.index, event.shiftKey ? 'add' : 'replace'),
-      )
+      onSelectionChange((prev) => selectVertex(prev, pick.index, mode))
       return
     }
 
-    onSelectionChange((prev) =>
-      selectEdge(prev, pick.a, pick.b, event.shiftKey ? 'add' : 'replace'),
-    )
+    onSelectionChange((prev) => selectEdge(prev, pick.a, pick.b, mode))
   }
 
   return (

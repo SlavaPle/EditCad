@@ -6,6 +6,7 @@ import {
   selectFace,
   selectFaces,
   clearSelection,
+  getSelectionListEntries,
   isVertexSelected,
   isEdgeSelected,
   isFaceSelected,
@@ -24,6 +25,24 @@ describe('selection module', () => {
     const s0 = createEmptySelection()
     const s1 = selectVertex(s0, 5)
     expect(s1.vertices).toEqual([5])
+    expect(s1.edges).toEqual([])
+    expect(s1.faces).toEqual([])
+  })
+
+  it('replace mode clears vertices, edges and faces not in the new pick', () => {
+    let s: SelectionState = createEmptySelection()
+    s = selectFaces(s, [1, 2], 'replace')
+    s = selectVertex(s, 9, 'replace')
+    expect(s.vertices).toEqual([9])
+    expect(s.edges).toEqual([])
+    expect(s.faces).toEqual([])
+    s = selectFaces(s, [3, 4], 'replace')
+    expect(s.vertices).toEqual([])
+    expect(s.faces.sort()).toEqual([3, 4])
+    s = selectEdge(s, 1, 2, 'replace')
+    expect(s.faces).toEqual([])
+    expect(s.vertices).toEqual([])
+    expect(s.edges).toHaveLength(1)
   })
 
   it('adds vertices in add mode without duplicates', () => {
@@ -103,6 +122,19 @@ describe('selection module', () => {
 
     s = clearSelection(s, 'face')
     expect(s.faces).toEqual([])
+  })
+
+  it('builds list entries in vertex / edge / face order', () => {
+    let s = createEmptySelection()
+    s = selectVertex(s, 2, 'add')
+    s = selectEdge(s, 0, 1, 'add')
+    s = selectFace(s, 7, 'add')
+    const entries = getSelectionListEntries(s)
+    expect(entries).toEqual([
+      { kind: 'vertex', index: 2 },
+      { kind: 'edge', a: 0, b: 1 },
+      { kind: 'face', index: 7 },
+    ])
   })
 
   it('selects multiple faces at once with selectFaces', () => {

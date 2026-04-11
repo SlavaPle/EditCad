@@ -24,7 +24,14 @@
     "header": "Transform & material",
     "picking": {
       "title": "Selection",
-      "hint": "Click near a vertex, a creased edge, or a face. Shift+click adds to the selection. Click empty space or the grid to clear."
+      "hint": "Click near a vertex, a creased edge, or a face. A normal click replaces the entire selection; Shift+click adds. Click empty space or the grid (without Shift) to clear."
+    },
+    "selectionList": {
+      "title": "Selected items",
+      "empty": "Nothing selected.",
+      "vertex": "Vertex {{index}}",
+      "edge": "Edge {{a}} — {{b}}",
+      "face": "Face {{index}}"
     },
     "scale": "Scale",
     "scaleHint": "X / Y / Z — after loading a model.",

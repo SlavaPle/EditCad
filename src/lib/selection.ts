@@ -17,6 +17,26 @@ export interface SelectionState {
   faces: number[]
 }
 
+/** Wpis listy zaznaczeń (UI) — ta sama kolejność co w SelectionState */
+export type SelectionListEntry =
+  | { kind: 'vertex'; index: number }
+  | { kind: 'edge'; a: number; b: number }
+  | { kind: 'face'; index: number }
+
+export function getSelectionListEntries(state: SelectionState): SelectionListEntry[] {
+  const out: SelectionListEntry[] = []
+  for (const index of state.vertices) {
+    out.push({ kind: 'vertex', index })
+  }
+  for (const e of state.edges) {
+    out.push({ kind: 'edge', a: e.a, b: e.b })
+  }
+  for (const index of state.faces) {
+    out.push({ kind: 'face', index })
+  }
+  return out
+}
+
 // Reprezentuje brak zaznaczenia
 export function createEmptySelection(): SelectionState {
   return {
@@ -44,7 +64,7 @@ function updateVertexSelection(
   const exists = state.vertices.includes(index)
 
   if (mode === 'replace') {
-    return { ...state, vertices: [index] }
+    return { vertices: [index], edges: [], faces: [] }
   }
 
   if (mode === 'add') {
@@ -71,7 +91,7 @@ function updateEdgeSelection(
   const exists = state.edges.some((e) => edgesEqual(e, edge))
 
   if (mode === 'replace') {
-    return { ...state, edges: [edge] }
+    return { vertices: [], edges: [edge], faces: [] }
   }
 
   if (mode === 'add') {
@@ -96,7 +116,7 @@ function updateFaceSelection(
   const exists = state.faces.includes(index)
 
   if (mode === 'replace') {
-    return { ...state, faces: [index] }
+    return { vertices: [], edges: [], faces: [index] }
   }
 
   if (mode === 'add') {
@@ -150,7 +170,7 @@ export function selectFaces(
 
   if (mode === 'replace') {
     const unique = Array.from(new Set(indices))
-    return { ...state, faces: unique }
+    return { vertices: [], edges: [], faces: unique }
   }
 
   if (mode === 'add') {

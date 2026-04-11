@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import type { Dispatch, SetStateAction } from 'react'
 import type { BufferGeometry } from 'three'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Grid, Environment } from '@react-three/drei'
@@ -9,28 +9,33 @@ import type { ModelSelectionProximityFilter } from '../features/model-selection/
 
 export interface Viewer3DProps {
   model?: BufferGeometry | null
+  selection: SelectionState
+  onSelectionChange: Dispatch<SetStateAction<SelectionState>>
   selectionProximityFilter: ModelSelectionProximityFilter
 }
 
-export function Viewer3D({ model, selectionProximityFilter }: Viewer3DProps) {
-  const [selection, setSelection] = useState<SelectionState>(createEmptySelection())
-
-  useEffect(() => {
-    setSelection(createEmptySelection())
-  }, [model, selectionProximityFilter])
-
+export function Viewer3D({
+  model,
+  selection,
+  onSelectionChange,
+  selectionProximityFilter,
+}: Viewer3DProps) {
   return (
     <div className={styles.viewer}>
       <Canvas
         className={styles.canvas}
         camera={{ position: [5, 5, 5], fov: 50 }}
         gl={{ antialias: true }}
-        onPointerMissed={() => setSelection(createEmptySelection())}
+        onPointerMissed={(ev) => {
+          if (!ev.shiftKey) {
+            onSelectionChange(createEmptySelection())
+          }
+        }}
       >
         <SceneContent
           model={model}
           selection={selection}
-          onSelectionChange={setSelection}
+          onSelectionChange={onSelectionChange}
           selectionProximityFilter={selectionProximityFilter}
         />
         <OrbitControls makeDefault enableDamping dampingFactor={0.05} />
@@ -45,7 +50,12 @@ export function Viewer3D({ model, selectionProximityFilter }: Viewer3DProps) {
           fadeDistance={25}
           fadeStrength={1}
           infiniteGrid
-          onPointerDown={() => setSelection(createEmptySelection())}
+          onPointerDown={(e) => {
+            const shiftHeld = e.shiftKey || e.nativeEvent.shiftKey
+            if (!shiftHeld) {
+              onSelectionChange(createEmptySelection())
+            }
+          }}
         />
         <Environment preset="studio" />
       </Canvas>
