@@ -3,11 +3,8 @@ import type { Dispatch, SetStateAction } from 'react'
 import { BufferAttribute, BufferGeometry, Color, DoubleSide, Mesh, Points, Vector3 } from 'three'
 import type { ThreeEvent } from '@react-three/fiber'
 import { selectEdge, selectFaces, selectVertex, type SelectionState } from '../../lib/selection'
-import { getCoplanarConnectedFaces } from '../../features/model-selection/facePlaneSelection'
-import { edgePickToleranceFromGeometry } from '../../features/model-selection/edgeLineSelection'
-import { pickClosestCreasedTriangleEdge } from '../../features/model-selection/edgeCreaseSelection'
-import { pickClosestTriangleVertex } from '../../features/model-selection/vertexPointSelection'
-import type { ModelSelectionInteractionMode } from '../../features/model-selection/types'
+import { resolveProximityPick } from '../../features/model-selection/proximityPick'
+import type { ModelSelectionProximityFilter } from '../../features/model-selection/types'
 import { FatLineSegments } from './FatLineSegments'
 
 const PREVIEW_COLOR_HEX = '#22c55e'
@@ -47,15 +44,15 @@ interface SelectableModelProps {
   model: BufferGeometry
   selection: SelectionState
   onSelectionChange: Dispatch<SetStateAction<SelectionState>>
-  interactionMode: ModelSelectionInteractionMode
+  selectionProximityFilter: ModelSelectionProximityFilter
 }
 
-// Komponent siatki: tryby płaszczyzna / krawędź / wierzchołek; podgląd hover (zielony), zatwierdzone (pomarańczowy)
+// Komponent siatki: wykrywanie wierzchołka / strykowej krawędzi / płaszczyzny w promieniu; podgląd (zielony), zatwierdzone (pomarańczowy)
 export function SelectableModel({
   model,
   selection,
   onSelectionChange,
-  interactionMode,
+  selectionProximityFilter,
 }: SelectableModelProps) {
   const meshRef = useRef<Mesh>(null)
   const vertexPointsRef = useRef<Points>(null)
@@ -70,40 +67,19 @@ export function SelectableModel({
 
   useEffect(() => {
     setHover({ type: 'none' })
-  }, [interactionMode, model])
+  }, [selectionProximityFilter, model])
 
   const resolveHover = useCallback(
     (event: ThreeEvent<PointerEvent>): HoverState => {
       const mesh = meshRef.current
       if (!mesh) return { type: 'none' }
 
-      if (interactionMode === 'facePlane') {
-        const fi = event.faceIndex
-        if (typeof fi !== 'number') return { type: 'none' }
-        const faces = getCoplanarConnectedFaces(model, fi)
-        return { type: 'faces', indices: faces }
-      }
-
-      if (typeof event.faceIndex !== 'number') return { type: 'none' }
+      const fi = event.faceIndex
+      if (typeof fi !== 'number') return { type: 'none' }
       mesh.worldToLocal(scratchLocal.copy(event.point))
-
-      if (interactionMode === 'vertex') {
-        const tol = edgePickToleranceFromGeometry(model, 0.03)
-        const v = pickClosestTriangleVertex(model, event.faceIndex, scratchLocal, tol)
-        if (v === null) return { type: 'none' }
-        return { type: 'vertex', index: v }
-      }
-
-      if (interactionMode === 'edgeLine') {
-        const tol = edgePickToleranceFromGeometry(model)
-        const e = pickClosestCreasedTriangleEdge(model, event.faceIndex, scratchLocal, tol)
-        if (!e) return { type: 'none' }
-        return { type: 'edge', a: e.a, b: e.b }
-      }
-
-      return { type: 'none' }
+      return resolveProximityPick(model, fi, scratchLocal, selectionProximityFilter)
     },
-    [interactionMode, model, scratchLocal],
+    [model, scratchLocal, selectionProximityFilter],
   )
 
   const handlePointerMove = useCallback(
@@ -315,38 +291,29 @@ export function SelectableModel({
     const mesh = meshRef.current
     if (!mesh) return
 
-    if (interactionMode === 'facePlane') {
-      const { faceIndex } = event
-      if (typeof faceIndex === 'number') {
-        const faces = getCoplanarConnectedFaces(model, faceIndex)
-        onSelectionChange((prev) =>
-          selectFaces(prev, faces, event.shiftKey ? 'add' : 'replace'),
-        )
-      }
-      return
-    }
-
     const { faceIndex } = event
     if (typeof faceIndex !== 'number') return
 
     mesh.worldToLocal(scratchLocal.copy(event.point))
+    const pick = resolveProximityPick(model, faceIndex, scratchLocal, selectionProximityFilter)
+    if (pick.type === 'none') return
 
-    if (interactionMode === 'vertex') {
-      const tol = edgePickToleranceFromGeometry(model, 0.03)
-      const vertexIndex = pickClosestTriangleVertex(model, faceIndex, scratchLocal, tol)
-      if (vertexIndex === null) return
+    if (pick.type === 'faces') {
       onSelectionChange((prev) =>
-        selectVertex(prev, vertexIndex, event.shiftKey ? 'add' : 'replace'),
+        selectFaces(prev, pick.indices, event.shiftKey ? 'add' : 'replace'),
       )
       return
     }
 
-    const tol = edgePickToleranceFromGeometry(model)
-    const edge = pickClosestCreasedTriangleEdge(model, faceIndex, scratchLocal, tol)
-    if (!edge) return
+    if (pick.type === 'vertex') {
+      onSelectionChange((prev) =>
+        selectVertex(prev, pick.index, event.shiftKey ? 'add' : 'replace'),
+      )
+      return
+    }
 
     onSelectionChange((prev) =>
-      selectEdge(prev, edge.a, edge.b, event.shiftKey ? 'add' : 'replace'),
+      selectEdge(prev, pick.a, pick.b, event.shiftKey ? 'add' : 'replace'),
     )
   }
 

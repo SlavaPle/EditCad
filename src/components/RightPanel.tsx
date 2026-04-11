@@ -1,16 +1,7 @@
 import { useTranslation } from 'react-i18next'
-import type { ModelSelectionInteractionMode } from '../features/model-selection/types'
 import styles from './RightPanel.module.css'
 
-export interface RightPanelProps {
-  selectionInteractionMode: ModelSelectionInteractionMode
-  onSelectionInteractionModeChange: (mode: ModelSelectionInteractionMode) => void
-}
-
-export function RightPanel({
-  selectionInteractionMode,
-  onSelectionInteractionModeChange,
-}: RightPanelProps) {
+export function RightPanel() {
   const { t } = useTranslation()
 
   return (
@@ -18,40 +9,8 @@ export function RightPanel({
       <div className={styles.header}>{t('rightPanel.header')}</div>
       <div className={styles.content}>
         <div className={styles.section}>
-          <div className={styles.sectionTitle}>{t('rightPanel.selection.title')}</div>
-          <fieldset className={styles.selectionFieldset}>
-            <label className={styles.radioRow}>
-              <input
-                type="radio"
-                name="selectionInteraction"
-                value="facePlane"
-                checked={selectionInteractionMode === 'facePlane'}
-                onChange={() => onSelectionInteractionModeChange('facePlane')}
-              />
-              <span>{t('rightPanel.selection.facePlane')}</span>
-            </label>
-            <label className={styles.radioRow}>
-              <input
-                type="radio"
-                name="selectionInteraction"
-                value="edgeLine"
-                checked={selectionInteractionMode === 'edgeLine'}
-                onChange={() => onSelectionInteractionModeChange('edgeLine')}
-              />
-              <span>{t('rightPanel.selection.edgeLine')}</span>
-            </label>
-            <label className={styles.radioRow}>
-              <input
-                type="radio"
-                name="selectionInteraction"
-                value="vertex"
-                checked={selectionInteractionMode === 'vertex'}
-                onChange={() => onSelectionInteractionModeChange('vertex')}
-              />
-              <span>{t('rightPanel.selection.vertex')}</span>
-            </label>
-          </fieldset>
-          <p className={styles.selectionHint}>{t('rightPanel.selection.hint')}</p>
+          <div className={styles.sectionTitle}>{t('rightPanel.picking.title')}</div>
+          <p className={styles.selectionHint}>{t('rightPanel.picking.hint')}</p>
         </div>
         <div className={styles.section}>
           <div className={styles.sectionTitle}>{t('rightPanel.scale')}</div>

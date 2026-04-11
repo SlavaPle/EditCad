@@ -39,26 +39,6 @@
   font-size: 0.875rem;
 }
 
-.selectionFieldset {
-  border: none;
-  margin: 0;
-  padding: 0;
-}
-
-.radioRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-  font-size: 0.875rem;
-  color: #e2e8f0;
-  cursor: pointer;
-}
-
-.radioRow input {
-  accent-color: #f97316;
-}
-
 .selectionHint {
   margin: 4px 0 0;
   font-size: 0.75rem;

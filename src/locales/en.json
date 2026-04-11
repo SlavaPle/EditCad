@@ -22,12 +22,9 @@
   },
   "rightPanel": {
     "header": "Transform & material",
-    "selection": {
+    "picking": {
       "title": "Selection",
-      "facePlane": "Planes (coplanar faces)",
-      "edgeLine": "Edges / lines",
-      "vertex": "Vertices",
-      "hint": "Shift+click adds to the current selection. Click empty space or the grid to clear."
+      "hint": "Click near a vertex, a creased edge, or a face. Shift+click adds to the selection. Click empty space or the grid to clear."
     },
     "scale": "Scale",
     "scaleHint": "X / Y / Z — after loading a model.",

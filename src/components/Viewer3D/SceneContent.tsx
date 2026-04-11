@@ -3,13 +3,13 @@ import type { BufferGeometry } from 'three'
 import { Bounds } from '@react-three/drei'
 import { SelectableModel } from './SelectableModel'
 import type { SelectionState } from '../../lib/selection'
-import type { ModelSelectionInteractionMode } from '../../features/model-selection/types'
+import type { ModelSelectionProximityFilter } from '../../features/model-selection/types'
 
 interface SceneContentProps {
   model?: BufferGeometry | null
   selection: SelectionState
   onSelectionChange: Dispatch<SetStateAction<SelectionState>>
-  interactionMode: ModelSelectionInteractionMode
+  selectionProximityFilter: ModelSelectionProximityFilter
 }
 
 // Oświetlenie i interaktywny model (STL → BufferGeometry); Bounds dopasowuje kamerę do modelu
@@ -17,7 +17,7 @@ export function SceneContent({
   model,
   selection,
   onSelectionChange,
-  interactionMode,
+  selectionProximityFilter,
 }: SceneContentProps) {
   return (
     <>
@@ -30,7 +30,7 @@ export function SceneContent({
             model={model}
             selection={selection}
             onSelectionChange={onSelectionChange}
-            interactionMode={interactionMode}
+            selectionProximityFilter={selectionProximityFilter}
           />
         </Bounds>
       )}

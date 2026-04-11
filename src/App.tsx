@@ -5,15 +5,13 @@ import { Viewer3D } from './components/Viewer3D'
 import { LeftPanel } from './components/LeftPanel'
 import { RightPanel } from './components/RightPanel'
 import type { ModelLoaderHandle } from './components/ModelLoader'
-import type { ModelSelectionInteractionMode } from './features/model-selection/types'
+import { DEFAULT_MODEL_SELECTION_PROXIMITY_FILTER } from './features/model-selection/types'
 import styles from './App.module.css'
 
 function App() {
   const [model, setModel] = useState<BufferGeometry | null>(null)
   const [modelKey, setModelKey] = useState(0)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [selectionInteractionMode, setSelectionInteractionMode] =
-    useState<ModelSelectionInteractionMode>('facePlane')
   const modelLoaderRef = useRef<ModelLoaderHandle>(null)
 
   const handleModelLoad = (geometry: BufferGeometry) => {
@@ -40,12 +38,13 @@ function App() {
           hasModel={!!model}
         />
         <div className={styles.viewport}>
-          <Viewer3D key={modelKey} model={model} interactionMode={selectionInteractionMode} />
+          <Viewer3D
+            key={modelKey}
+            model={model}
+            selectionProximityFilter={DEFAULT_MODEL_SELECTION_PROXIMITY_FILTER}
+          />
         </div>
-        <RightPanel
-          selectionInteractionMode={selectionInteractionMode}
-          onSelectionInteractionModeChange={setSelectionInteractionMode}
-        />
+        <RightPanel />
       </div>
     </div>
   )
