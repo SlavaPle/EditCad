@@ -24,7 +24,7 @@
     "header": "Transform & material",
     "picking": {
       "title": "Selection",
-      "hint": "Click near a vertex, a creased edge, or a face. A normal click replaces the entire selection; Shift+click adds. Click empty space or the grid (without Shift) to clear."
+      "hint": "Click near a vertex, a creased edge, or a face. A normal click replaces the entire selection; Shift+click adds. Left-click empty space or the grid (without Shift) to clear. Orbit the view with the middle mouse button (press the wheel and drag)."
     },
     "selectionList": {
       "title": "Selected items",

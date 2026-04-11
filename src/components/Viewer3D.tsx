@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { BufferGeometry } from 'three'
+import { MOUSE } from 'three'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Grid, Environment } from '@react-three/drei'
 import { SceneContent } from './Viewer3D/SceneContent'
@@ -27,9 +28,9 @@ export function Viewer3D({
         camera={{ position: [5, 5, 5], fov: 50 }}
         gl={{ antialias: true }}
         onPointerMissed={(ev) => {
-          if (!ev.shiftKey) {
-            onSelectionChange(createEmptySelection())
-          }
+          // Tylko LKM czyści zaznaczenie; obrót widoku (śPM) nie dotyka selekcji
+          if (ev.shiftKey || ev.button !== 0) return
+          onSelectionChange(createEmptySelection())
         }}
       >
         <SceneContent
@@ -38,7 +39,17 @@ export function Viewer3D({
           onSelectionChange={onSelectionChange}
           selectionProximityFilter={selectionProximityFilter}
         />
-        <OrbitControls makeDefault enableDamping dampingFactor={0.05} />
+        <OrbitControls
+          makeDefault
+          enableDamping
+          dampingFactor={0.05}
+          mouseButtons={{
+            // Wartość spoza ROTATE/DOLLY/PAN — brak orbitu na LKM (wybór elementów)
+            LEFT: -1 as unknown as (typeof MOUSE)['ROTATE'],
+            MIDDLE: MOUSE.ROTATE,
+            RIGHT: MOUSE.PAN,
+          }}
+        />
         <Grid
           args={[20, 20]}
           cellSize={1}
@@ -52,7 +63,8 @@ export function Viewer3D({
           infiniteGrid
           onPointerDown={(e) => {
             const shiftHeld = e.shiftKey || e.nativeEvent.shiftKey
-            if (!shiftHeld) {
+            // Tylko LKM na siatce czyści zaznaczenie
+            if (!shiftHeld && e.nativeEvent.button === 0) {
               onSelectionChange(createEmptySelection())
             }
           }}

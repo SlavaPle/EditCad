@@ -287,6 +287,9 @@ export function SelectableModel({
   }, [hoverFaceOverlayGeometry])
 
   const handlePointerDown = (event: ThreeEvent<PointerEvent>) => {
+    // ŚPM / PPM zostawiamy pod kątem OrbitControls (obrót / pan); wybór tylko LKM
+    if (event.nativeEvent.button !== 0) return
+
     event.stopPropagation()
     const mesh = meshRef.current
     if (!mesh) return
