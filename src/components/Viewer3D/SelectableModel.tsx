@@ -2,7 +2,16 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { Dispatch, SetStateAction } from 'react'
 import { BufferAttribute, BufferGeometry, Color, DoubleSide, Mesh, Points, Vector3 } from 'three'
 import type { ThreeEvent } from '@react-three/fiber'
-import { selectEdge, selectFaces, selectVertex, type SelectionState } from '../../lib/selection'
+import {
+  createEmptySelection,
+  selectEdge,
+  selectFaces,
+  selectVertex,
+  selectionIsOnlyEdge,
+  selectionIsOnlyFaceSet,
+  selectionIsOnlyVertex,
+  type SelectionState,
+} from '../../lib/selection'
 import { resolveProximityPick } from '../../features/model-selection/proximityPick'
 import type { ModelSelectionProximityFilter } from '../../features/model-selection/types'
 import { FatLineSegments } from './FatLineSegments'
@@ -302,7 +311,24 @@ export function SelectableModel({
     if (pick.type === 'none') return
 
     const shiftHeld = event.shiftKey || event.nativeEvent.shiftKey
-    const mode: 'add' | 'replace' = shiftHeld ? 'add' : 'replace'
+    // Shift: toggle — jeśli element jest na liście, usuń; w przeciwnym razie dodaj
+    const mode: 'replace' | 'toggle' = shiftHeld ? 'toggle' : 'replace'
+
+    // Powtórny LKM na tym samym solo-zaznaczeniu — wyczyść (bez Shift)
+    if (!shiftHeld) {
+      if (pick.type === 'faces' && selectionIsOnlyFaceSet(selection, pick.indices)) {
+        onSelectionChange(createEmptySelection())
+        return
+      }
+      if (pick.type === 'vertex' && selectionIsOnlyVertex(selection, pick.index)) {
+        onSelectionChange(createEmptySelection())
+        return
+      }
+      if (pick.type === 'edge' && selectionIsOnlyEdge(selection, pick.a, pick.b)) {
+        onSelectionChange(createEmptySelection())
+        return
+      }
+    }
 
     if (pick.type === 'faces') {
       onSelectionChange((prev) => selectFaces(prev, pick.indices, mode))

@@ -10,6 +10,9 @@ import {
   isVertexSelected,
   isEdgeSelected,
   isFaceSelected,
+  selectionIsOnlyVertex,
+  selectionIsOnlyEdge,
+  selectionIsOnlyFaceSet,
   type SelectionState,
 } from './selection'
 
@@ -147,6 +150,24 @@ describe('selection module', () => {
 
     s = selectFaces(s, [2, 4], 'toggle')
     expect(s.faces.sort()).toEqual([1, 3])
+  })
+
+  it('selectionIsOnly* detects solo pick match for repeat-click deselect', () => {
+    let s: SelectionState = createEmptySelection()
+    s = selectVertex(s, 7, 'replace')
+    expect(selectionIsOnlyVertex(s, 7)).toBe(true)
+    expect(selectionIsOnlyVertex(s, 8)).toBe(false)
+
+    s = selectEdge(s, 2, 5, 'replace')
+    expect(selectionIsOnlyEdge(s, 5, 2)).toBe(true)
+    expect(selectionIsOnlyEdge(s, 2, 6)).toBe(false)
+
+    s = selectFaces(s, [10, 20], 'replace')
+    expect(selectionIsOnlyFaceSet(s, [20, 10])).toBe(true)
+    expect(selectionIsOnlyFaceSet(s, [10, 20, 30])).toBe(false)
+
+    s = selectVertex(s, 1, 'add')
+    expect(selectionIsOnlyFaceSet(s, [10, 20])).toBe(false)
   })
 })
 

@@ -55,6 +55,42 @@ function edgesEqual(e1: EdgeSelection, e2: EdgeSelection): boolean {
   return e1.a === e2.a && e1.b === e2.b
 }
 
+/** Czy zbiory indeksów (kolejność obojętna) są identyczne */
+function faceIndexSetsEqual(a: readonly number[], b: readonly number[]): boolean {
+  if (a.length !== b.length) return false
+  const sa = new Set(a)
+  const sb = new Set(b)
+  if (sa.size !== sb.size) return false
+  for (const x of sa) {
+    if (!sb.has(x)) return false
+  }
+  return true
+}
+
+/** Stan to wyłącznie ten wierzchołek (bez krawędzi i ścian) */
+export function selectionIsOnlyVertex(state: SelectionState, index: number): boolean {
+  return (
+    state.vertices.length === 1 &&
+    state.edges.length === 0 &&
+    state.faces.length === 0 &&
+    state.vertices[0] === index
+  )
+}
+
+/** Stan to wyłącznie ta krawędź */
+export function selectionIsOnlyEdge(state: SelectionState, a: number, b: number): boolean {
+  if (state.vertices.length > 0 || state.faces.length > 0) return false
+  if (state.edges.length !== 1) return false
+  return edgesEqual(state.edges[0], normalizeEdge(a, b))
+}
+
+/** Stan to wyłącznie ten zestaw ścian (ta sama zawartość co pick) */
+export function selectionIsOnlyFaceSet(state: SelectionState, indices: readonly number[]): boolean {
+  if (state.vertices.length > 0 || state.edges.length > 0) return false
+  if (indices.length === 0) return false
+  return faceIndexSetsEqual(state.faces, indices)
+}
+
 // Wewnętrzna funkcja do aktualizacji zaznaczenia wierzchołka
 function updateVertexSelection(
   state: SelectionState,
