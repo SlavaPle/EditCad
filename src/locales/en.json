@@ -33,6 +33,21 @@
       "edge": "Edge {{a}} — {{b}}",
       "face": "Face {{index}}"
     },
+    "faceDistance": {
+      "title": "Distance between faces",
+      "hint": "Each CAD face is usually two triangles in STL; one click selects the whole coplanar patch. Select two opposite (parallel) patches: first click, then Shift+click the second. Coordinates are treated as millimetres (typical STL export). Stretching runs along a single axis — the direction between the two planes.",
+      "current": "Current distance: {{value}} mm",
+      "targetLabel": "Target distance",
+      "apply": "Apply stretch",
+      "errors": {
+        "notParallel": "The two faces are not parallel enough. Pick two opposite planar faces.",
+        "tooThin": "The distance between the faces is too small to resize reliably.",
+        "invalidTarget": "Enter a positive distance in millimetres.",
+        "invalidGeometry": "The model or selection is not valid for this operation.",
+        "needSecondPlanarFace": "Only one planar region is selected. Shift+click the opposite face to add the second patch.",
+        "tooManyPlanarGroups": "The selection splits into more than two planar regions. Clear the selection and pick only two opposite faces."
+      }
+    },
     "scale": "Scale",
     "scaleHint": "X / Y / Z — after loading a model.",
     "rotation": "Rotation",

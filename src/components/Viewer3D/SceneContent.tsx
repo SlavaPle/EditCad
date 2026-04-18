@@ -7,6 +7,7 @@ import type { ModelSelectionProximityFilter } from '../../features/model-selecti
 
 interface SceneContentProps {
   model?: BufferGeometry | null
+  geometryRevision: number
   selection: SelectionState
   onSelectionChange: Dispatch<SetStateAction<SelectionState>>
   selectionProximityFilter: ModelSelectionProximityFilter
@@ -15,6 +16,7 @@ interface SceneContentProps {
 // Oświetlenie i interaktywny model (STL → BufferGeometry); Bounds dopasowuje kamerę do modelu
 export function SceneContent({
   model,
+  geometryRevision,
   selection,
   onSelectionChange,
   selectionProximityFilter,
@@ -28,6 +30,7 @@ export function SceneContent({
         <Bounds fit observe margin={1.2}>
           <SelectableModel
             model={model}
+            geometryRevision={geometryRevision}
             selection={selection}
             onSelectionChange={onSelectionChange}
             selectionProximityFilter={selectionProximityFilter}

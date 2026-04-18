@@ -51,6 +51,7 @@ function triangleIndicesForFace(geometry: BufferGeometry, faceIndex: number): [n
 
 interface SelectableModelProps {
   model: BufferGeometry
+  geometryRevision: number
   selection: SelectionState
   onSelectionChange: Dispatch<SetStateAction<SelectionState>>
   selectionProximityFilter: ModelSelectionProximityFilter
@@ -59,6 +60,7 @@ interface SelectableModelProps {
 // Komponent siatki: wykrywanie wierzchołka / strykowej krawędzi / płaszczyzny w promieniu; podgląd (zielony), zatwierdzone (pomarańczowy)
 export function SelectableModel({
   model,
+  geometryRevision,
   selection,
   onSelectionChange,
   selectionProximityFilter,
@@ -162,7 +164,7 @@ export function SelectableModel({
     // Wybrane wierzchołki: tylko warstwa Points — kolor wierzchołka siatki dawałby interpolację na całych trójkątach (artefakty „smugi”).
 
     colorAttr.needsUpdate = true
-  }, [baseColor, highlightColor, model, selection])
+  }, [baseColor, highlightColor, model, geometryRevision, selection])
 
   const edgeHighlightLinePositions = useMemo(() => {
     if (selection.edges.length === 0) return null
@@ -180,7 +182,7 @@ export function SelectableModel({
       arr[w++] = position.getZ(e.b)
     }
     return arr
-  }, [model, selection.edges])
+  }, [model, geometryRevision, selection.edges])
 
   const vertexPointsGeometry = useMemo(() => {
     if (selection.vertices.length === 0) return null
@@ -200,7 +202,7 @@ export function SelectableModel({
     const geo = new BufferGeometry()
     geo.setAttribute('position', new BufferAttribute(arr.subarray(0, w), 3))
     return geo
-  }, [model, selection.vertices])
+  }, [model, geometryRevision, selection.vertices])
 
   useEffect(() => {
     if (!vertexPointsGeometry) return
@@ -231,7 +233,7 @@ export function SelectableModel({
     const geo = new BufferGeometry()
     geo.setAttribute('position', new BufferAttribute(arr, 3))
     return geo
-  }, [model, hover])
+  }, [model, geometryRevision, hover])
 
   useEffect(() => {
     if (!hoverFaceOverlayGeometry) return
@@ -255,7 +257,7 @@ export function SelectableModel({
       position.getY(b),
       position.getZ(b),
     ])
-  }, [model, hover])
+  }, [model, geometryRevision, hover])
 
   const hoverVertexGeometry = useMemo(() => {
     if (hover.type !== 'vertex') return null
@@ -268,7 +270,7 @@ export function SelectableModel({
     const geo = new BufferGeometry()
     geo.setAttribute('position', new BufferAttribute(arr, 3))
     return geo
-  }, [model, hover])
+  }, [model, geometryRevision, hover])
 
   useEffect(() => {
     if (!hoverVertexGeometry) return

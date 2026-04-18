@@ -205,3 +205,57 @@ export function areFacesCoplanar(geometry: BufferGeometry, faceI: number, faceJ:
   const { normal, constant } = computeFacePlane(geometry, faces, faceI, baseNormal)
   return isCoplanarNeighbor(geometry, faces, normal, constant, faceJ, tmpNormal)
 }
+
+/**
+ * Dzieli zaznaczone trójkąty na spójne „łaty” w obrębie zaznaczenia: sąsiedztwo po krawędzi siatki
+ * + współpłaszczyznowość (np. dwa prostokąty CAD = dwie grupy po dwóch trójkątach).
+ */
+export function partitionSelectionIntoCoplanarPatches(
+  geometry: BufferGeometry,
+  selectedFaces: readonly number[],
+): number[][] {
+  const set = new Set<number>()
+  for (const f of selectedFaces) {
+    if (Number.isInteger(f) && f >= 0) {
+      set.add(f)
+    }
+  }
+  if (set.size === 0) {
+    return []
+  }
+
+  const neighbors = getFaceNeighbors(geometry)
+  const visited = new Set<number>()
+  const patches: number[][] = []
+
+  for (const seed of set) {
+    if (visited.has(seed)) {
+      continue
+    }
+    const patch: number[] = []
+    const queue: number[] = [seed]
+    visited.add(seed)
+    while (queue.length > 0) {
+      const f = queue.pop() as number
+      patch.push(f)
+      const nbs = neighbors[f]
+      if (!nbs) {
+        continue
+      }
+      for (const nb of nbs) {
+        if (!set.has(nb) || visited.has(nb)) {
+          continue
+        }
+        if (!areFacesCoplanar(geometry, f, nb)) {
+          continue
+        }
+        visited.add(nb)
+        queue.push(nb)
+      }
+    }
+    patches.push(patch)
+  }
+
+  patches.sort((a, b) => Math.min(...a) - Math.min(...b))
+  return patches
+}

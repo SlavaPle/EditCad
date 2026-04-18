@@ -10,6 +10,8 @@ import type { ModelSelectionProximityFilter } from '../features/model-selection/
 
 export interface Viewer3DProps {
   model?: BufferGeometry | null
+  /** Inkrement po edycji wierzchołków (np. rozciągnięcie między ścianami). */
+  geometryRevision: number
   selection: SelectionState
   onSelectionChange: Dispatch<SetStateAction<SelectionState>>
   selectionProximityFilter: ModelSelectionProximityFilter
@@ -17,6 +19,7 @@ export interface Viewer3DProps {
 
 export function Viewer3D({
   model,
+  geometryRevision,
   selection,
   onSelectionChange,
   selectionProximityFilter,
@@ -35,6 +38,7 @@ export function Viewer3D({
       >
         <SceneContent
           model={model}
+          geometryRevision={geometryRevision}
           selection={selection}
           onSelectionChange={onSelectionChange}
           selectionProximityFilter={selectionProximityFilter}
