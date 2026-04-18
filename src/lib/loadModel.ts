@@ -2,8 +2,13 @@
  * Ładowanie modeli 3D (STL, opcjonalnie STEP/IGES) do BufferGeometry dla Three.js.
  */
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
+import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
+import { replaceWithCreaseNormals } from './geometryCreaseNormals'
 import type { BufferGeometry } from 'three'
 import type { LoadModelResult } from '../types'
+
+/** Tolerancja scalania wierzchołków STL (mm); bez tego rozciąganie rozjeżdża kopie tego samego rogu. */
+const STL_VERTEX_MERGE_TOLERANCE_MM = 1e-4
 
 const STL_EXTENSIONS: readonly string[] = ['.stl']
 const STEP_EXTENSIONS: readonly string[] = ['.stp', '.step']
@@ -33,8 +38,19 @@ async function loadSTLFromFile(file: File): Promise<BufferGeometry> {
   const url = URL.createObjectURL(file)
   try {
     const loader = new STLLoader()
-    const geometry = await loader.loadAsync(url)
-    return geometry
+    const raw = await loader.loadAsync(url)
+    // STL ma normalne per-triangle — mergeVertices traktowałby wspólne rogi jako różne wierzchołki.
+    if (raw.hasAttribute('normal')) {
+      raw.deleteAttribute('normal')
+    }
+    const merged = mergeVertices(raw, STL_VERTEX_MERGE_TOLERANCE_MM)
+    raw.dispose()
+    // Rozciąganie: kluczowe jest scalenie (STL = duplikaty wierzchołków → rozjeżdżają się przy stretch).
+    // replaceWithCreaseNormals — osobno: cieniowanie płaskich płyt bez widocznej przekątnej triangulacji.
+    const withNormals = replaceWithCreaseNormals(merged)
+    withNormals.computeBoundingBox()
+    withNormals.computeBoundingSphere()
+    return withNormals
   } finally {
     URL.revokeObjectURL(url)
   }

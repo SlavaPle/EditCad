@@ -5,6 +5,7 @@
  */
 import { BufferGeometry, Vector3 } from 'three'
 import { partitionSelectionIntoCoplanarPatches } from '../features/model-selection/facePlaneSelection'
+import { replaceWithCreaseNormals } from './geometryCreaseNormals'
 
 /** Minimalna odległość między płaszczyznami grup (mm). */
 const MIN_GAP_MM = 1e-4
@@ -223,7 +224,7 @@ export function applyTwoFaceStretch(
   geometry: BufferGeometry,
   selectedFaces: readonly number[],
   targetMm: number,
-): { ok: true } | { ok: false; error: TwoFaceStretchError } {
+): { ok: true; geometry: BufferGeometry } | { ok: false; error: TwoFaceStretchError } {
   if (!Number.isFinite(targetMm) || targetMm <= 0) {
     return { ok: false, error: 'invalidTarget' }
   }
@@ -285,10 +286,10 @@ export function applyTwoFaceStretch(
   }
 
   pos.needsUpdate = true
-  geometry.computeVertexNormals()
-  geometry.computeBoundingBox()
-  geometry.computeBoundingSphere()
-  clearFaceTopologyCache(geometry)
+  const geo = replaceWithCreaseNormals(geometry)
+  geo.computeBoundingBox()
+  geo.computeBoundingSphere()
+  clearFaceTopologyCache(geo)
 
-  return { ok: true }
+  return { ok: true, geometry: geo }
 }

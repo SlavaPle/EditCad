@@ -29,7 +29,9 @@ function App() {
   }
 
   const handleApplyTwoFaceStretch = useCallback(
-    (targetMm: number): { ok: true } | { ok: false; error: TwoFaceStretchError } => {
+    (
+      targetMm: number,
+    ): { ok: true; geometry: BufferGeometry } | { ok: false; error: TwoFaceStretchError } => {
       if (!model) {
         return { ok: false, error: 'invalidGeometry' }
       }
@@ -39,6 +41,9 @@ function App() {
       }
       const result = applyTwoFaceStretch(model, faces, targetMm)
       if (result.ok) {
+        if (result.geometry !== model) {
+          setModel(result.geometry)
+        }
         setGeometryRevision((n) => n + 1)
       }
       return result

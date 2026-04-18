@@ -1,8 +1,8 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { BufferGeometry } from 'three'
-import { MOUSE } from 'three'
+import { Color, MOUSE, NoToneMapping, SRGBColorSpace } from 'three'
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Grid, Environment } from '@react-three/drei'
+import { OrbitControls, Grid } from '@react-three/drei'
 import { SceneContent } from './Viewer3D/SceneContent'
 import styles from './Viewer3D.module.css'
 import { createEmptySelection, type SelectionState } from '../lib/selection'
@@ -28,8 +28,14 @@ export function Viewer3D({
     <div className={styles.viewer}>
       <Canvas
         className={styles.canvas}
-        camera={{ position: [5, 5, 5], fov: 50 }}
-        gl={{ antialias: true }}
+        camera={{ position: [5, 5, 5], fov: 50, near: 0.01, far: 1_000_000 }}
+        dpr={[1, 2]}
+        gl={{ antialias: true, alpha: false }}
+        onCreated={({ gl, scene }) => {
+          gl.outputColorSpace = SRGBColorSpace
+          gl.toneMapping = NoToneMapping
+          scene.background = new Color('#2d3b52')
+        }}
         onPointerMissed={(ev) => {
           // Tylko LKM czyści zaznaczenie; obrót widoku (śPM) nie dotyka selekcji
           if (ev.shiftKey || ev.button !== 0) return
@@ -73,7 +79,6 @@ export function Viewer3D({
             }
           }}
         />
-        <Environment preset="studio" />
       </Canvas>
     </div>
   )

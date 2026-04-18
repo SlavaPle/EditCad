@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
-import { BufferAttribute, BufferGeometry, Color, DoubleSide, Mesh, Points, Vector3 } from 'three'
+import { BufferAttribute, BufferGeometry, DoubleSide, Mesh, Points, Vector3 } from 'three'
 import type { ThreeEvent } from '@react-three/fiber'
 import {
   createEmptySelection,
@@ -17,6 +17,7 @@ import type { ModelSelectionProximityFilter } from '../../features/model-selecti
 import { FatLineSegments } from './FatLineSegments'
 
 const PREVIEW_COLOR_HEX = '#22c55e'
+const SELECTION_FACE_OVERLAY_HEX = '#f97316'
 const EDGE_LINE_WIDTH_PX = 5
 
 type HoverState =
@@ -69,11 +70,10 @@ export function SelectableModel({
   const vertexPointsRef = useRef<Points>(null)
   const vertexHoverPointsRef = useRef<Points>(null)
   const hoverFaceOverlayRef = useRef<Mesh>(null)
+  const selectedFaceOverlayRef = useRef<Mesh>(null)
 
   const [hover, setHover] = useState<HoverState>({ type: 'none' })
 
-  const baseColor = useMemo(() => new Color('#94a3b8'), [])
-  const highlightColor = useMemo(() => new Color('#f97316'), [])
   const scratchLocal = useMemo(() => new Vector3(), [])
 
   useEffect(() => {
@@ -105,66 +105,45 @@ export function SelectableModel({
     setHover({ type: 'none' })
   }, [])
 
-  useEffect(() => {
+  // Ściany zaznaczone: osobna geometria (kopia trójkątów), nie vertexColors na siatce —
+  // po mergeVertices wspólne wierzchołki interpolują kolor i zacierają krawędzie zaznaczenia.
+
+  const selectedFaceOverlayGeometry = useMemo(() => {
+    if (selection.faces.length === 0) return null
     const position = model.getAttribute('position')
-    if (!position) return
+    if (!position) return null
 
-    const vertexCount = position.count
-    let colorAttr = model.getAttribute('color') as BufferAttribute | null
-
-    if (!colorAttr || colorAttr.count !== vertexCount) {
-      const colors = new Float32Array(vertexCount * 3)
-      for (let i = 0; i < vertexCount; i++) {
-        colors[i * 3 + 0] = baseColor.r
-        colors[i * 3 + 1] = baseColor.g
-        colors[i * 3 + 2] = baseColor.b
+    const arr = new Float32Array(selection.faces.length * 9)
+    let w = 0
+    for (const fi of selection.faces) {
+      if (fi < 0) continue
+      const [ia, ib, ic] = triangleIndicesForFace(model, fi)
+      if (ia < 0 || ib < 0 || ic < 0 || ia >= position.count || ib >= position.count || ic >= position.count) {
+        continue
       }
-      colorAttr = new BufferAttribute(colors, 3)
-      model.setAttribute('color', colorAttr)
+      arr[w++] = position.getX(ia)
+      arr[w++] = position.getY(ia)
+      arr[w++] = position.getZ(ia)
+      arr[w++] = position.getX(ib)
+      arr[w++] = position.getY(ib)
+      arr[w++] = position.getZ(ib)
+      arr[w++] = position.getX(ic)
+      arr[w++] = position.getY(ic)
+      arr[w++] = position.getZ(ic)
     }
+    if (w === 0) return null
 
-    const colors = colorAttr.array as Float32Array
+    const geo = new BufferGeometry()
+    geo.setAttribute('position', new BufferAttribute(arr.subarray(0, w), 3))
+    return geo
+  }, [model, geometryRevision, selection.faces])
 
-    for (let i = 0; i < vertexCount; i++) {
-      colors[i * 3 + 0] = baseColor.r
-      colors[i * 3 + 1] = baseColor.g
-      colors[i * 3 + 2] = baseColor.b
+  useEffect(() => {
+    if (!selectedFaceOverlayGeometry) return
+    return () => {
+      selectedFaceOverlayGeometry.dispose()
     }
-
-    const index = model.getIndex()
-
-    for (const faceIndex of selection.faces) {
-      if (faceIndex < 0) continue
-
-      if (index) {
-        const ia = index.getX(faceIndex * 3)
-        const ib = index.getX(faceIndex * 3 + 1)
-        const ic = index.getX(faceIndex * 3 + 2)
-
-        for (const vi of [ia, ib, ic]) {
-          if (vi < 0 || vi >= vertexCount) continue
-          colors[vi * 3 + 0] = highlightColor.r
-          colors[vi * 3 + 1] = highlightColor.g
-          colors[vi * 3 + 2] = highlightColor.b
-        }
-      } else {
-        const ia = faceIndex * 3
-        const ib = faceIndex * 3 + 1
-        const ic = faceIndex * 3 + 2
-
-        for (const vi of [ia, ib, ic]) {
-          if (vi < 0 || vi >= vertexCount) continue
-          colors[vi * 3 + 0] = highlightColor.r
-          colors[vi * 3 + 1] = highlightColor.g
-          colors[vi * 3 + 2] = highlightColor.b
-        }
-      }
-    }
-
-    // Wybrane wierzchołki: tylko warstwa Points — kolor wierzchołka siatki dawałby interpolację na całych trójkątach (artefakty „smugi”).
-
-    colorAttr.needsUpdate = true
-  }, [baseColor, highlightColor, model, geometryRevision, selection])
+  }, [selectedFaceOverlayGeometry])
 
   const edgeHighlightLinePositions = useMemo(() => {
     if (selection.edges.length === 0) return null
@@ -297,6 +276,12 @@ export function SelectableModel({
     m.raycast = () => {}
   }, [hoverFaceOverlayGeometry])
 
+  useLayoutEffect(() => {
+    const m = selectedFaceOverlayRef.current
+    if (!m) return
+    m.raycast = () => {}
+  }, [selectedFaceOverlayGeometry])
+
   const handlePointerDown = (event: ThreeEvent<PointerEvent>) => {
     // ŚPM / PPM zostawiamy pod kątem OrbitControls (obrót / pan); wybór tylko LKM
     if (event.nativeEvent.button !== 0) return
@@ -354,8 +339,29 @@ export function SelectableModel({
         onPointerOut={handlePointerOut}
         onPointerDown={handlePointerDown}
       >
-        <meshStandardMaterial vertexColors />
+        <meshStandardMaterial
+          color="#e2eaf4"
+          emissive="#6b7f95"
+          emissiveIntensity={0.42}
+          metalness={0}
+          roughness={0.72}
+          envMapIntensity={0}
+        />
       </mesh>
+      {selectedFaceOverlayGeometry && (
+        <mesh ref={selectedFaceOverlayRef} geometry={selectedFaceOverlayGeometry} renderOrder={6}>
+          <meshBasicMaterial
+            color={SELECTION_FACE_OVERLAY_HEX}
+            transparent
+            opacity={0.4}
+            side={DoubleSide}
+            depthWrite={false}
+            polygonOffset
+            polygonOffsetFactor={-1}
+            polygonOffsetUnits={-1}
+          />
+        </mesh>
+      )}
       {hoverFaceOverlayGeometry && (
         <mesh ref={hoverFaceOverlayRef} geometry={hoverFaceOverlayGeometry} renderOrder={8}>
           <meshBasicMaterial
@@ -372,7 +378,7 @@ export function SelectableModel({
       )}
       <FatLineSegments
         positions={edgeHighlightLinePositions}
-        color="#f97316"
+        color={SELECTION_FACE_OVERLAY_HEX}
         linewidth={EDGE_LINE_WIDTH_PX}
         renderOrder={7}
         raycastDisabled

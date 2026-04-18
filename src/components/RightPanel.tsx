@@ -11,7 +11,7 @@ export interface RightPanelProps {
   geometryRevision: number
   onApplyTwoFaceStretch: (
     targetMm: number,
-  ) => { ok: true } | { ok: false; error: TwoFaceStretchError }
+  ) => { ok: true; geometry: BufferGeometry } | { ok: false; error: TwoFaceStretchError }
 }
 
 function parsePositiveMm(raw: string): number | null {

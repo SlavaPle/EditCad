@@ -23,9 +23,10 @@ export function SceneContent({
 }: SceneContentProps) {
   return (
     <>
-      <ambientLight intensity={0.4} />
-      <directionalLight position={[10, 10, 5]} intensity={1} castShadow />
-      <directionalLight position={[-5, 5, -5]} intensity={0.3} />
+      <hemisphereLight args={['#ffffff', '#8fa3b8', 1.35]} />
+      <ambientLight intensity={0.95} />
+      <directionalLight position={[12, 18, 10]} intensity={2.6} />
+      <directionalLight position={[-10, 8, -12]} intensity={1.35} />
       {model && (
         <Bounds fit observe margin={1.2}>
           <SelectableModel
