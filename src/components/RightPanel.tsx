@@ -140,6 +140,12 @@ export function RightPanel({
                     inputMode="decimal"
                     value={targetInput}
                     onChange={(e) => setTargetInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      // Enter = to samo co przycisk „Apply”
+                      if (e.key !== 'Enter') return
+                      e.preventDefault()
+                      handleApply()
+                    }}
                     aria-invalid={applyError === 'invalidTarget'}
                   />
                   <span className={styles.faceDistanceUnit}>mm</span>
