@@ -54,6 +54,11 @@ function App() {
   const [preparedConstraints, setPreparedConstraints] = useState<PreparedElementConstraints>({ mode: 'fixed' })
   const modelLoaderRef = useRef<ModelLoaderHandle>(null)
 
+  const clearAllSelection = useCallback(() => {
+    setSelection(createEmptySelection())
+    setProbableFaces([])
+  }, [])
+
   useEffect(() => {
     setSelection(createEmptySelection())
     setProbableFaces([])
@@ -186,6 +191,7 @@ function App() {
             onSelectionChange={setSelection}
             selectionProximityFilter={DEFAULT_MODEL_SELECTION_PROXIMITY_FILTER}
             onProbableFacesChange={setProbableFaces}
+            onClearSelection={clearAllSelection}
           />
         </div>
         <RightPanel

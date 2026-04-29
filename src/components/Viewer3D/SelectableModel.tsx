@@ -13,7 +13,6 @@ import type { ThreeEvent } from '@react-three/fiber'
 import {
   createEmptySelection,
   selectEdge,
-  selectFaces,
   selectVertex,
   selectionIsOnlyEdge,
   selectionIsOnlyFaceSet,
@@ -179,11 +178,13 @@ export function SelectableModel({
   }, [primaryFaces])
 
   useEffect(() => {
-    if (selection.faces.length === 0) {
+    const hasAnySelection =
+      selection.faces.length > 0 || selection.edges.length > 0 || selection.vertices.length > 0
+    if (!hasAnySelection) {
       setPrimaryFaces([])
       setProbableFaces([])
     }
-  }, [selection.faces.length])
+  }, [selection.faces.length, selection.edges.length, selection.vertices.length])
 
   const resolveHover = useCallback(
     (event: ThreeEvent<PointerEvent>): HoverState => {
@@ -495,7 +496,8 @@ export function SelectableModel({
       return
     }
 
-    setProbableFaces([])
+    const edgeProbableFaces = pick.probableFaceIndices ?? []
+    setProbableFaces(edgeProbableFaces)
     onSelectionChange(selectEdge(currentSelection, pick.a, pick.b, mode))
   }
 

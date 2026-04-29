@@ -14,9 +14,9 @@ describe('resolveFaceSelectionFlow', () => {
     })
 
     expect(result.ignored).toBe(false)
-    expect(result.nextSelection.faces.sort((a, b) => a - b)).toEqual([6, 7])
-    expect(result.nextPrimaryFaces.sort((a, b) => a - b)).toEqual([6, 7])
-    expect(result.nextProbableFaces.sort((a, b) => a - b)).toEqual([2, 3])
+    expect([...result.nextSelection.faces].sort((a, b) => a - b)).toEqual([6, 7])
+    expect([...result.nextPrimaryFaces].sort((a, b) => a - b)).toEqual([6, 7])
+    expect([...result.nextProbableFaces].sort((a, b) => a - b)).toEqual([2, 3])
   })
 
   it('keeps base face and adds second face on shift pick', () => {
@@ -31,8 +31,8 @@ describe('resolveFaceSelectionFlow', () => {
     })
 
     expect(result.ignored).toBe(false)
-    expect(result.nextSelection.faces.sort((a, b) => a - b)).toEqual([2, 3, 6, 7])
-    expect(result.nextPrimaryFaces.sort((a, b) => a - b)).toEqual([6, 7])
+    expect([...result.nextSelection.faces].sort((a, b) => a - b)).toEqual([2, 3, 6, 7])
+    expect([...result.nextPrimaryFaces].sort((a, b) => a - b)).toEqual([6, 7])
     expect(result.nextProbableFaces).toEqual([])
   })
 
@@ -48,7 +48,7 @@ describe('resolveFaceSelectionFlow', () => {
     })
 
     expect(result.ignored).toBe(true)
-    expect(result.nextSelection.faces.sort((a, b) => a - b)).toEqual([6, 7])
-    expect(result.nextProbableFaces.sort((a, b) => a - b)).toEqual([2, 3])
+    expect([...result.nextSelection.faces].sort((a, b) => a - b)).toEqual([6, 7])
+    expect([...result.nextProbableFaces].sort((a, b) => a - b)).toEqual([2, 3])
   })
 })

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BoxGeometry, BufferAttribute, BufferGeometry, Vector3 } from 'three'
+import { BoxGeometry, BufferAttribute, BufferGeometry, Float32BufferAttribute, Uint16BufferAttribute, Vector3 } from 'three'
 import { resolveProximityPick } from './proximityPick'
 import { DEFAULT_MODEL_SELECTION_PROXIMITY_FILTER } from './types'
 
@@ -68,5 +68,35 @@ describe('resolveProximityPick', () => {
     expect(r.indices).toHaveLength(2)
     expect(r.probableIndices).toBeDefined()
     expect(r.probableIndices?.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('dla krawędzi zwraca skrajne przeciwległe ściany gdy są równoległe', () => {
+    const g = new BoxGeometry(2, 2, 2)
+    const r = resolveProximityPick(
+      g,
+      0,
+      new Vector3(1, 1, 0),
+      { facePlane: false, edgeLine: true, vertex: false },
+    )
+    expect(r.type).toBe('edge')
+    if (r.type !== 'edge') return
+    expect(r.probableFaceIndices).toBeDefined()
+    expect((r.probableFaceIndices ?? []).length).toBeGreaterThan(0)
+  })
+
+  it('для одиночного треугольника не подбирает 1.1/1.2 при выборе ребра', () => {
+    const g = new BufferGeometry()
+    g.setAttribute('position', new Float32BufferAttribute([0, 0, 0, 2, 0, 0, 0, 2, 0], 3))
+    g.setIndex(new Uint16BufferAttribute([0, 1, 2], 1))
+    g.computeBoundingBox()
+    const r = resolveProximityPick(
+      g,
+      0,
+      new Vector3(1, 0.01, 0),
+      { facePlane: false, edgeLine: true, vertex: false },
+    )
+    expect(r.type).toBe('edge')
+    if (r.type !== 'edge') return
+    expect(r.probableFaceIndices).toBeUndefined()
   })
 })

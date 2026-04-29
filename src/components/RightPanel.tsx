@@ -47,7 +47,7 @@ export function RightPanel({
   const faceStretchSelection =
     facesForStretch.length > 0 &&
     selection.vertices.length === 0 &&
-    selection.edges.length === 0
+    (selection.faces.length > 0 || selection.edges.length > 0)
 
   const analysis = useMemo(() => {
     if (!model || !faceStretchSelection) return null

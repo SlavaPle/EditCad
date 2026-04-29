@@ -1,6 +1,7 @@
 import { Vector2, Vector3, type BufferGeometry, type Camera, type Object3D } from 'three'
 import {
   areFacesCoplanarForMeshEdgeCrease,
+  getFaceVertices,
   findFarthestOppositeCoplanarFaces,
   getCoplanarConnectedFaces,
 } from './facePlaneSelection'
@@ -17,7 +18,7 @@ import type { ModelSelectionProximityFilter } from './types'
 export type ProximityPickResult =
   | { type: 'none' }
   | { type: 'faces'; indices: readonly number[]; probableIndices?: readonly number[] }
-  | { type: 'edge'; a: number; b: number }
+  | { type: 'edge'; a: number; b: number; probableFaceIndices?: readonly number[] }
   | { type: 'vertex'; index: number }
 
 export type ProximityPickScreenContext = {
@@ -36,6 +37,9 @@ const scratchV2 = new Vector3()
 const scratchScreen0 = new Vector2()
 const scratchScreen1 = new Vector2()
 const scratchScreen2 = new Vector2()
+const EDGE_PERP_DOT_MIN = 0.9
+const PATCH_PARALLEL_DOT_MIN = 0.9
+const POSITION_EPSILON = 1e-5
 
 function triangleVertexIndices(geometry: BufferGeometry, faceIndex: number): [number, number, number] {
   const index = geometry.getIndex()
@@ -134,12 +138,108 @@ function pickInScreenSpace(
       const triangulationInterior =
         inc.length === 2 && areFacesCoplanarForMeshEdgeCrease(geometry, inc[0], inc[1])
       if (!triangulationInterior) {
-        return { type: 'edge', a: bestEdge.a, b: bestEdge.b }
+        const probableFaceIndices = resolveParallelExtremeFacesForEdge(geometry, bestEdge.a, bestEdge.b)
+        return probableFaceIndices.length > 0
+          ? { type: 'edge', a: bestEdge.a, b: bestEdge.b, probableFaceIndices }
+          : { type: 'edge', a: bestEdge.a, b: bestEdge.b }
       }
     }
   }
 
   return null
+}
+
+function resolveParallelExtremeFacesForEdge(
+  geometry: BufferGeometry,
+  edgeA: number,
+  edgeB: number,
+): readonly number[] {
+  const position = geometry.getAttribute('position')
+  if (!position) return []
+  const faces = getFaceVertices(geometry)
+  const canonicalKey = (vertexIndex: number): string => {
+    const x = position.getX(vertexIndex)
+    const y = position.getY(vertexIndex)
+    const z = position.getZ(vertexIndex)
+    const kx = Math.round(x / POSITION_EPSILON)
+    const ky = Math.round(y / POSITION_EPSILON)
+    const kz = Math.round(z / POSITION_EPSILON)
+    return `${kx}_${ky}_${kz}`
+  }
+  const edgeAKey = canonicalKey(edgeA)
+  const edgeBKey = canonicalKey(edgeB)
+
+  const edgeDir = new Vector3(
+    position.getX(edgeB) - position.getX(edgeA),
+    position.getY(edgeB) - position.getY(edgeA),
+    position.getZ(edgeB) - position.getZ(edgeA),
+  )
+  if (edgeDir.lengthSq() < 1e-20) return []
+  edgeDir.normalize()
+
+  const vertexIncidentFacesA: number[] = []
+  const vertexIncidentFacesB: number[] = []
+  for (let fi = 0; fi < faces.length; fi++) {
+    const [va, vb, vc] = faces[fi]
+    const ka = canonicalKey(va)
+    const kb = canonicalKey(vb)
+    const kc = canonicalKey(vc)
+    if (ka === edgeAKey || kb === edgeAKey || kc === edgeAKey) vertexIncidentFacesA.push(fi)
+    if (ka === edgeBKey || kb === edgeBKey || kc === edgeBKey) vertexIncidentFacesB.push(fi)
+  }
+  if (vertexIncidentFacesA.length === 0 || vertexIncidentFacesB.length === 0) return []
+
+  const normalForFace = (faceIndex: number): Vector3 => {
+    const [ia, ib, ic] = faces[faceIndex]
+    const ax = position.getX(ia)
+    const ay = position.getY(ia)
+    const az = position.getZ(ia)
+    const bx = position.getX(ib)
+    const by = position.getY(ib)
+    const bz = position.getZ(ib)
+    const cx = position.getX(ic)
+    const cy = position.getY(ic)
+    const cz = position.getZ(ic)
+    const abx = bx - ax
+    const aby = by - ay
+    const abz = bz - az
+    const acx = cx - ax
+    const acy = cy - ay
+    const acz = cz - az
+    const n = new Vector3(aby * acz - abz * acy, abz * acx - abx * acz, abx * acy - aby * acx)
+    if (n.lengthSq() < 1e-20) return new Vector3()
+    return n.normalize()
+  }
+
+  const bestPatchAtVertex = (incidentFaces: readonly number[]) => {
+    const visited = new Set<number>()
+    let best: { patch: number[]; normal: Vector3; score: number } | null = null
+    for (const faceIndex of incidentFaces) {
+      if (visited.has(faceIndex)) continue
+      const patch = getCoplanarConnectedFaces(geometry, faceIndex)
+      for (const fi of patch) visited.add(fi)
+      const n = normalForFace(faceIndex)
+      const align = Math.abs(n.dot(edgeDir))
+      if (align < EDGE_PERP_DOT_MIN) continue
+      const score = patch.length * 10 + align
+      if (!best || score > best.score) {
+        best = { patch, normal: n, score }
+      }
+    }
+    return best
+  }
+
+  const a = bestPatchAtVertex(vertexIncidentFacesA)
+  const b = bestPatchAtVertex(vertexIncidentFacesB)
+  if (!a || !b) return []
+  if (Math.abs(a.normal.dot(b.normal)) < PATCH_PARALLEL_DOT_MIN) return []
+
+  const out = [...a.patch]
+  const seen = new Set(out)
+  for (const fi of b.patch) {
+    if (!seen.has(fi)) out.push(fi)
+  }
+  return out
 }
 
 /** Kolejność: wierzchołek → stryk → łata płaszczyzny; progi z AABB. */
@@ -174,7 +274,10 @@ export function resolveProximityPick(
       const triangulationInterior =
         inc.length === 2 && areFacesCoplanarForMeshEdgeCrease(geometry, inc[0], inc[1])
       if (!triangulationInterior) {
-        return { type: 'edge', a: e.a, b: e.b }
+        const probableFaceIndices = resolveParallelExtremeFacesForEdge(geometry, e.a, e.b)
+        return probableFaceIndices.length > 0
+          ? { type: 'edge', a: e.a, b: e.b, probableFaceIndices }
+          : { type: 'edge', a: e.a, b: e.b }
       }
     }
   }
