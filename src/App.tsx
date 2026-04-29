@@ -53,6 +53,7 @@ function App() {
   const [sourceFormat, setSourceFormat] = useState<SaveFormat | null>(null)
   const [preparedName, setPreparedName] = useState<string>('edited-model')
   const [preparedConstraints, setPreparedConstraints] = useState<PreparedElementConstraints>({ mode: 'fixed' })
+  const [constraintsLocked, setConstraintsLocked] = useState(true)
   const modelLoaderRef = useRef<ModelLoaderHandle>(null)
 
   const clearAllSelection = useCallback(() => {
@@ -248,6 +249,8 @@ function App() {
           currentFileName={sourceFileName}
           currentFileFormat={sourceFormat}
           faceConstraints={preparedFaceConstraints}
+          constraintsLocked={constraintsLocked}
+          onConstraintsLockedChange={setConstraintsLocked}
         />
         <div className={styles.viewport}>
           <Viewer3D
@@ -269,6 +272,7 @@ function App() {
           onApplyTwoFaceStretch={handleApplyTwoFaceStretch}
           faceConstraints={preparedFaceConstraints}
           onFaceConstraintsChange={handleFaceConstraintsChange}
+          constraintsLocked={constraintsLocked}
         />
       </div>
     </div>

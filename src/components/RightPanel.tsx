@@ -17,6 +17,7 @@ export interface RightPanelProps {
   ) => { ok: true; geometry: BufferGeometry } | { ok: false; error: TwoFaceStretchError }
   faceConstraints: FaceConstraint[]
   onFaceConstraintsChange: (next: FaceConstraint[]) => void
+  constraintsLocked: boolean
 }
 
 function parsePositiveMm(raw: string): number | null {
@@ -35,6 +36,7 @@ export function RightPanel({
   onApplyTwoFaceStretch,
   faceConstraints,
   onFaceConstraintsChange,
+  constraintsLocked,
 }: RightPanelProps) {
   const { t } = useTranslation()
   const rows = useMemo(() => getSelectionListEntries(selection), [selection])
@@ -101,7 +103,6 @@ export function RightPanel({
   const [panelMaxX, setPanelMaxX] = useState('')
   const [panelMaxY, setPanelMaxY] = useState('')
   const [constraintError, setConstraintError] = useState<string | null>(null)
-  const [constraintsLocked, setConstraintsLocked] = useState(false)
 
   useEffect(() => {
     setApplyError(null)
@@ -333,21 +334,7 @@ export function RightPanel({
           </div>
         )}
         <div className={styles.section}>
-          <div className={styles.sectionTitleRow}>
-            <span className={styles.sectionTitle}>{t('rightPanel.constraints.title')}</span>
-            <button
-              type="button"
-              className={styles.constraintLock}
-              onClick={() => setConstraintsLocked((v) => !v)}
-              title={
-                constraintsLocked
-                  ? t('rightPanel.constraints.locked')
-                  : t('rightPanel.constraints.unlocked')
-              }
-            >
-              {constraintsLocked ? '🔒' : '🔓'}
-            </button>
-          </div>
+          <div className={styles.sectionTitle}>{t('rightPanel.constraints.title')}</div>
           <p className={styles.faceDistanceHint}>{t('rightPanel.constraints.hint')}</p>
           <div className={styles.faceDistanceRow}>
             <label className={styles.faceDistanceLabel} htmlFor="constraint-type">

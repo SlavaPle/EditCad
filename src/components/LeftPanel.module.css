@@ -34,6 +34,13 @@
   margin-bottom: 8px;
 }
 
+.sectionTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .placeholder {
   color: #64748b;
   font-size: 0.875rem;
@@ -89,4 +96,54 @@
   margin-bottom: 4px;
   background: #0f172a;
   font-variant-numeric: tabular-nums;
+}
+
+.constraintLock {
+  border: 1px solid #334155;
+  background: #0f172a;
+  color: #cbd5e1;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lockIcon {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  display: inline-block;
+}
+
+.lockIconBody {
+  position: absolute;
+  left: 2px;
+  bottom: 0;
+  width: 10px;
+  height: 7px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 2px;
+  background: transparent;
+}
+
+.lockIconShackle {
+  position: absolute;
+  left: 3px;
+  top: 0;
+  width: 8px;
+  height: 7px;
+  border: 1.5px solid #cbd5e1;
+  border-bottom: none;
+  border-radius: 5px 5px 0 0;
+  transform-origin: 2px 7px;
+}
+
+.lockIconClosed .lockIconShackle {
+  transform: translateX(0) rotate(0deg);
+}
+
+.lockIconOpen .lockIconShackle {
+  transform: translateX(5px) rotate(26deg);
 }

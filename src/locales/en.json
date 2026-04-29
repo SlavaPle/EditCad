@@ -22,7 +22,9 @@
     "constraints": {
       "title": "Constraints",
       "empty": "No constraints in this prepared part.",
-      "onlyPrepared": "Constraints are available only for ECDPRT files."
+      "onlyPrepared": "Constraints are available only for ECDPRT files.",
+      "locked": "Constraints enabled",
+      "unlocked": "Constraints disabled"
     },
     "dropHint": "Drag STL here or click \"Load model\" in the toolbar.",
     "dropHintReplace": "Drop another STL/ECDPRT/STEP/IGES to replace.",

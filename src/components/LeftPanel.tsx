@@ -23,6 +23,8 @@ export interface LeftPanelProps {
   currentFileName?: string | null
   currentFileFormat?: SaveFormat | null
   faceConstraints: FaceConstraint[]
+  constraintsLocked: boolean
+  onConstraintsLockedChange: (next: boolean) => void
 }
 
 export function LeftPanel({
@@ -34,6 +36,8 @@ export function LeftPanel({
   currentFileName,
   currentFileFormat,
   faceConstraints,
+  constraintsLocked,
+  onConstraintsLockedChange,
 }: LeftPanelProps) {
   const { t } = useTranslation()
   const dropZoneRef = useRef<HTMLDivElement>(null)
@@ -99,7 +103,27 @@ export function LeftPanel({
             )}
           </div>
           <div className={styles.section}>
-            <div className={styles.sectionTitle}>{t('leftPanel.constraints.title')}</div>
+            <div className={styles.sectionTitleRow}>
+              <span className={styles.sectionTitle}>{t('leftPanel.constraints.title')}</span>
+              <button
+                type="button"
+                className={styles.constraintLock}
+                onClick={() => onConstraintsLockedChange(!constraintsLocked)}
+                title={
+                  constraintsLocked
+                    ? t('leftPanel.constraints.locked')
+                    : t('leftPanel.constraints.unlocked')
+                }
+              >
+                <span
+                  className={`${styles.lockIcon} ${constraintsLocked ? styles.lockIconClosed : styles.lockIconOpen}`}
+                  aria-hidden
+                >
+                  <span className={styles.lockIconBody} />
+                  <span className={styles.lockIconShackle} />
+                </span>
+              </button>
+            </div>
             {currentFileFormat !== 'ecdprt' ? (
               <p className={styles.placeholder}>{t('leftPanel.constraints.onlyPrepared')}</p>
             ) : faceConstraints.length === 0 ? (
