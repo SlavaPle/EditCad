@@ -16,6 +16,7 @@ export interface Viewer3DProps {
   selection: SelectionState
   onSelectionChange: Dispatch<SetStateAction<SelectionState>>
   selectionProximityFilter: ModelSelectionProximityFilter
+  onProbableFacesChange?: (faces: readonly number[]) => void
 }
 
 export function Viewer3D({
@@ -24,6 +25,7 @@ export function Viewer3D({
   selection,
   onSelectionChange,
   selectionProximityFilter,
+  onProbableFacesChange,
 }: Viewer3DProps) {
   return (
     <div className={styles.viewer}>
@@ -41,6 +43,7 @@ export function Viewer3D({
           // Tylko LKM czyści zaznaczenie; obrót widoku (śPM) nie dotyka selekcji
           if (ev.shiftKey || ev.button !== 0) return
           onSelectionChange(createEmptySelection())
+          onProbableFacesChange?.([])
         }}
       >
         <SceneContent
@@ -49,6 +52,7 @@ export function Viewer3D({
           selection={selection}
           onSelectionChange={onSelectionChange}
           selectionProximityFilter={selectionProximityFilter}
+          onProbableFacesChange={onProbableFacesChange}
         />
         <OrbitControls
           makeDefault
@@ -77,6 +81,7 @@ export function Viewer3D({
             // Tylko LKM na siatce czyści zaznaczenie
             if (!shiftHeld && e.nativeEvent.button === 0) {
               onSelectionChange(createEmptySelection())
+              onProbableFacesChange?.([])
             }
           }}
         />

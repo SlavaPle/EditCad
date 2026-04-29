@@ -46,6 +46,7 @@ function App() {
   const [geometryRevision, setGeometryRevision] = useState(0)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [selection, setSelection] = useState<SelectionState>(createEmptySelection())
+  const [probableFaces, setProbableFaces] = useState<readonly number[]>([])
   const [sourceFileHandle, setSourceFileHandle] = useState<BrowserFileHandle | null>(null)
   const [sourceFileName, setSourceFileName] = useState<string | null>(null)
   const [sourceFormat, setSourceFormat] = useState<SaveFormat | null>(null)
@@ -55,6 +56,7 @@ function App() {
 
   useEffect(() => {
     setSelection(createEmptySelection())
+    setProbableFaces([])
     setGeometryRevision(0)
   }, [model, modelKey])
 
@@ -86,19 +88,27 @@ function App() {
         return { ok: false, error: 'invalidGeometry' }
       }
       const { faces } = selection
-      if (faces.length === 0) {
+      const mergedFaces = [...faces]
+      const seen = new Set(faces)
+      for (const fi of probableFaces) {
+        if (seen.has(fi)) continue
+        mergedFaces.push(fi)
+        seen.add(fi)
+      }
+      if (mergedFaces.length === 0) {
         return { ok: false, error: 'invalidGeometry' }
       }
-      const result = applyTwoFaceStretch(model, faces, targetMm)
+      const result = applyTwoFaceStretch(model, mergedFaces, targetMm)
       if (result.ok) {
         if (result.geometry !== model) {
           setModel(result.geometry)
         }
         setGeometryRevision((n) => n + 1)
+        setProbableFaces([])
       }
       return result
     },
-    [model, selection],
+    [model, selection, probableFaces],
   )
 
   const handleLoadModelClick = () => {
@@ -175,10 +185,12 @@ function App() {
             selection={selection}
             onSelectionChange={setSelection}
             selectionProximityFilter={DEFAULT_MODEL_SELECTION_PROXIMITY_FILTER}
+            onProbableFacesChange={setProbableFaces}
           />
         </div>
         <RightPanel
           selection={selection}
+          probableFaces={probableFaces}
           model={model}
           geometryRevision={geometryRevision}
           onApplyTwoFaceStretch={handleApplyTwoFaceStretch}

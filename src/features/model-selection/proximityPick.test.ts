@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BufferAttribute, BufferGeometry, Vector3 } from 'three'
+import { BoxGeometry, BufferAttribute, BufferGeometry, Vector3 } from 'three'
 import { resolveProximityPick } from './proximityPick'
 import { DEFAULT_MODEL_SELECTION_PROXIMITY_FILTER } from './types'
 
@@ -48,5 +48,25 @@ describe('resolveProximityPick', () => {
       vertex: true,
     })
     expect(r.type).toBe('none')
+  })
+
+  it('dla płaszczyzny wybiera też daleką przeciwległą ścianę', () => {
+    const g = new BoxGeometry(2, 2, 6)
+    const r = resolveProximityPick(
+      g,
+      8,
+      new Vector3(0, 0, 0),
+      {
+        facePlane: true,
+        edgeLine: false,
+        vertex: false,
+      },
+    )
+    expect(r.type).toBe('faces')
+    if (r.type !== 'faces') return
+    expect(r.indices).toContain(8)
+    expect(r.indices).toHaveLength(2)
+    expect(r.probableIndices).toBeDefined()
+    expect(r.probableIndices?.length).toBeGreaterThanOrEqual(2)
   })
 })

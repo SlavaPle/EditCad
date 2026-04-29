@@ -11,6 +11,7 @@ interface SceneContentProps {
   selection: SelectionState
   onSelectionChange: Dispatch<SetStateAction<SelectionState>>
   selectionProximityFilter: ModelSelectionProximityFilter
+  onProbableFacesChange?: (faces: readonly number[]) => void
 }
 
 export function SceneContent({
@@ -19,6 +20,7 @@ export function SceneContent({
   selection,
   onSelectionChange,
   selectionProximityFilter,
+  onProbableFacesChange,
 }: SceneContentProps) {
   return (
     <>
@@ -34,6 +36,7 @@ export function SceneContent({
             selection={selection}
             onSelectionChange={onSelectionChange}
             selectionProximityFilter={selectionProximityFilter}
+            onProbableFacesChange={onProbableFacesChange}
           />
         </Bounds>
       )}

@@ -7,6 +7,7 @@ import styles from './RightPanel.module.css'
 
 export interface RightPanelProps {
   selection: SelectionState
+  probableFaces?: readonly number[]
   model: BufferGeometry | null
   geometryRevision: number
   onApplyTwoFaceStretch: (
@@ -24,6 +25,7 @@ function parsePositiveMm(raw: string): number | null {
 
 export function RightPanel({
   selection,
+  probableFaces = [],
   model,
   geometryRevision,
   onApplyTwoFaceStretch,
@@ -31,15 +33,26 @@ export function RightPanel({
   const { t } = useTranslation()
   const rows = useMemo(() => getSelectionListEntries(selection), [selection])
 
+  const facesForStretch = useMemo(() => {
+    const merged = [...selection.faces]
+    const seen = new Set(selection.faces)
+    for (const fi of probableFaces) {
+      if (seen.has(fi)) continue
+      merged.push(fi)
+      seen.add(fi)
+    }
+    return merged
+  }, [selection.faces, probableFaces])
+
   const faceStretchSelection =
-    selection.faces.length > 0 &&
+    facesForStretch.length > 0 &&
     selection.vertices.length === 0 &&
     selection.edges.length === 0
 
   const analysis = useMemo(() => {
     if (!model || !faceStretchSelection) return null
-    return analyzeTwoFaceStretch(model, selection.faces)
-  }, [model, geometryRevision, selection.faces, faceStretchSelection])
+    return analyzeTwoFaceStretch(model, facesForStretch)
+  }, [model, geometryRevision, facesForStretch, faceStretchSelection])
 
   const [targetInput, setTargetInput] = useState('')
   const [applyError, setApplyError] = useState<TwoFaceStretchError | null>(null)

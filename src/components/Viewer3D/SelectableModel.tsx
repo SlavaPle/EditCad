@@ -21,6 +21,7 @@ import {
   type SelectionState,
 } from '../../lib/selection'
 import { resolveProximityPick } from '../../features/model-selection/proximityPick'
+import { resolveFaceSelectionFlow } from '../../features/model-selection/faceSelectionFlow'
 import type { ModelSelectionProximityFilter } from '../../features/model-selection/types'
 import { FatLineSegments } from './FatLineSegments'
 
@@ -28,6 +29,7 @@ const PREVIEW_COLOR_HEX = '#22c55e'
 const PREVIEW_FACE_OVERLAY_SOLID = '#2f9f55'
 const SELECTION_FACE_OVERLAY_HEX = '#f97316'
 const SELECTION_FACE_OVERLAY_SOLID = '#c45f14'
+const PROBABLE_FACE_OVERLAY_SOLID = '#f7b267'
 const EDGE_LINE_WIDTH_PX = 5
 
 const FACE_OVERLAY_OFFSET = {
@@ -132,6 +134,7 @@ interface SelectableModelProps {
   selection: SelectionState
   onSelectionChange: Dispatch<SetStateAction<SelectionState>>
   selectionProximityFilter: ModelSelectionProximityFilter
+  onProbableFacesChange?: (faces: readonly number[]) => void
 }
 
 export function SelectableModel({
@@ -140,20 +143,47 @@ export function SelectableModel({
   selection,
   onSelectionChange,
   selectionProximityFilter,
+  onProbableFacesChange,
 }: SelectableModelProps) {
   const meshRef = useRef<Mesh>(null)
   const vertexPointsRef = useRef<Points>(null)
   const vertexHoverPointsRef = useRef<Points>(null)
   const hoverFaceOverlayRef = useRef<Mesh>(null)
   const selectedFaceOverlayRef = useRef<Mesh>(null)
+  const probableFaceOverlayRef = useRef<Mesh>(null)
 
   const [hover, setHover] = useState<HoverState>({ type: 'none' })
+  const [probableFaces, setProbableFaces] = useState<readonly number[]>([])
+  const [primaryFaces, setPrimaryFaces] = useState<readonly number[]>([])
+  const selectionRef = useRef(selection)
+  const primaryFacesRef = useRef<readonly number[]>(primaryFaces)
 
   const scratchLocal = useMemo(() => new Vector3(), [])
 
   useEffect(() => {
     setHover({ type: 'none' })
+    setProbableFaces([])
+    setPrimaryFaces([])
   }, [selectionProximityFilter, model])
+
+  useEffect(() => {
+    onProbableFacesChange?.(probableFaces)
+  }, [onProbableFacesChange, probableFaces])
+
+  useEffect(() => {
+    selectionRef.current = selection
+  }, [selection])
+
+  useEffect(() => {
+    primaryFacesRef.current = primaryFaces
+  }, [primaryFaces])
+
+  useEffect(() => {
+    if (selection.faces.length === 0) {
+      setPrimaryFaces([])
+      setProbableFaces([])
+    }
+  }, [selection.faces.length])
 
   const resolveHover = useCallback(
     (event: ThreeEvent<PointerEvent>): HoverState => {
@@ -240,6 +270,36 @@ export function SelectableModel({
     }
     return arr
   }, [model, geometryRevision, selection.edges])
+
+  const probableFaceOverlayGeometry = useMemo(() => {
+    if (probableFaces.length === 0) return null
+    const position = model.getAttribute('position')
+    if (!position) return null
+
+    const arr = new Float32Array(probableFaces.length * 9)
+    let w = 0
+    let triIdx = 0
+    for (const fi of probableFaces) {
+      if (fi < 0) continue
+      const [ia, ib, ic] = triangleIndicesForFace(model, fi)
+      if (ia < 0 || ib < 0 || ic < 0 || ia >= position.count || ib >= position.count || ic >= position.count) {
+        continue
+      }
+      w = pushOverlayTriangle(position, ia, ib, ic, triIdx++, overlayDepthBias, arr, w)
+    }
+    if (w === 0) return null
+
+    const geo = new BufferGeometry()
+    geo.setAttribute('position', new BufferAttribute(arr.subarray(0, w), 3))
+    return geo
+  }, [model, geometryRevision, probableFaces, overlayDepthBias])
+
+  useEffect(() => {
+    if (!probableFaceOverlayGeometry) return
+    return () => {
+      probableFaceOverlayGeometry.dispose()
+    }
+  }, [probableFaceOverlayGeometry])
 
   const vertexPointsGeometry = useMemo(() => {
     if (selection.vertices.length === 0) return null
@@ -353,6 +413,12 @@ export function SelectableModel({
     m.raycast = () => {}
   }, [selectedFaceOverlayGeometry])
 
+  useLayoutEffect(() => {
+    const m = probableFaceOverlayRef.current
+    if (!m) return
+    m.raycast = () => {}
+  }, [probableFaceOverlayGeometry])
+
   const handlePointerDown = (event: ThreeEvent<PointerEvent>) => {
     // ŚPM / PPM zostawiamy pod kątem OrbitControls (obrót / pan); wybór tylko LKM
     if (event.nativeEvent.button !== 0) return
@@ -374,6 +440,8 @@ export function SelectableModel({
       pointer: { x: event.nativeEvent.offsetX, y: event.nativeEvent.offsetY },
       viewport: { width: viewportWidth, height: viewportHeight },
     })
+    const currentSelection = selectionRef.current
+    const currentPrimaryFaces = primaryFacesRef.current
     if (pick.type === 'none') return
 
     const shiftHeld = event.shiftKey || event.nativeEvent.shiftKey
@@ -382,31 +450,53 @@ export function SelectableModel({
 
     // Powtórny LKM na tym samym solo-zaznaczeniu — wyczyść (bez Shift)
     if (!shiftHeld) {
-      if (pick.type === 'faces' && selectionIsOnlyFaceSet(selection, pick.indices)) {
+      if (pick.type === 'faces' && selectionIsOnlyFaceSet(currentSelection, pick.indices)) {
         onSelectionChange(createEmptySelection())
+        setProbableFaces([])
+        setPrimaryFaces([])
         return
       }
-      if (pick.type === 'vertex' && selectionIsOnlyVertex(selection, pick.index)) {
+      if (pick.type === 'vertex' && selectionIsOnlyVertex(currentSelection, pick.index)) {
         onSelectionChange(createEmptySelection())
+        setProbableFaces([])
+        setPrimaryFaces([])
         return
       }
-      if (pick.type === 'edge' && selectionIsOnlyEdge(selection, pick.a, pick.b)) {
+      if (pick.type === 'edge' && selectionIsOnlyEdge(currentSelection, pick.a, pick.b)) {
         onSelectionChange(createEmptySelection())
+        setProbableFaces([])
+        setPrimaryFaces([])
         return
       }
     }
 
     if (pick.type === 'faces') {
-      onSelectionChange((prev) => selectFaces(prev, pick.indices, mode))
+      const flow = resolveFaceSelectionFlow({
+        currentSelection,
+        primaryFaces: currentPrimaryFaces,
+        pickedFaces: pick.indices,
+        probableFromPick: pick.probableIndices ?? [],
+        probableFaces,
+        shiftHeld,
+      })
+      if (flow.ignored) {
+        return
+      }
+      setPrimaryFaces(flow.nextPrimaryFaces)
+      setProbableFaces(flow.nextProbableFaces)
+      onSelectionChange(flow.nextSelection)
       return
     }
 
+    setPrimaryFaces([])
     if (pick.type === 'vertex') {
-      onSelectionChange((prev) => selectVertex(prev, pick.index, mode))
+      setProbableFaces([])
+      onSelectionChange(selectVertex(currentSelection, pick.index, mode))
       return
     }
 
-    onSelectionChange((prev) => selectEdge(prev, pick.a, pick.b, mode))
+    setProbableFaces([])
+    onSelectionChange(selectEdge(currentSelection, pick.a, pick.b, mode))
   }
 
   return (
@@ -433,6 +523,19 @@ export function SelectableModel({
             color={SELECTION_FACE_OVERLAY_SOLID}
             side={DoubleSide}
             depthWrite={false}
+            {...FACE_OVERLAY_OFFSET}
+          />
+        </mesh>
+      )}
+      {probableFaceOverlayGeometry && (
+        <mesh ref={probableFaceOverlayRef} geometry={probableFaceOverlayGeometry} renderOrder={7}>
+          <meshBasicMaterial
+            color={PROBABLE_FACE_OVERLAY_SOLID}
+            side={DoubleSide}
+            depthTest={false}
+            depthWrite={false}
+            transparent
+            opacity={0.28}
             {...FACE_OVERLAY_OFFSET}
           />
         </mesh>

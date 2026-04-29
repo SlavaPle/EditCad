@@ -3,6 +3,7 @@ import { Vector3, type BufferGeometry } from 'three'
 const NORMAL_EPSILON = 1e-4
 const DIST_EPSILON = 1e-3
 const POSITION_EPSILON = 1e-5
+const OPPOSITE_NORMAL_DOT_MAX = -0.995
 
 type FaceVertices = [number, number, number]
 
@@ -203,6 +204,40 @@ export function getCoplanarConnectedFaces(geometry: BufferGeometry, seedFaceInde
   }
 
   return result
+}
+
+export function findFarthestOppositeCoplanarFaces(geometry: BufferGeometry, seedFaceIndex: number): number[] {
+  const faces = getFaceVertices(geometry)
+  if (seedFaceIndex < 0 || seedFaceIndex >= faces.length) {
+    return []
+  }
+
+  const seedPatch = getCoplanarConnectedFaces(geometry, seedFaceIndex)
+  const seedSet = new Set(seedPatch)
+
+  const seedNormal = new Vector3()
+  const tmpNormal = new Vector3()
+  const { constant: seedConstant } = computeFacePlane(geometry, faces, seedFaceIndex, seedNormal)
+
+  let bestFace = -1
+  let bestDistance = -1
+
+  for (let fi = 0; fi < faces.length; fi++) {
+    if (seedSet.has(fi)) continue
+    const { normal, constant } = computeFacePlane(geometry, faces, fi, tmpNormal)
+    const dot = seedNormal.dot(normal)
+    if (dot > OPPOSITE_NORMAL_DOT_MAX) continue
+    const planeDistance = Math.abs(constant - seedConstant)
+    if (planeDistance <= bestDistance) continue
+    bestDistance = planeDistance
+    bestFace = fi
+  }
+
+  if (bestFace === -1) {
+    return []
+  }
+
+  return getCoplanarConnectedFaces(geometry, bestFace)
 }
 
 /** Ścisła koplaność (BFS łat, partycja zaznaczenia). */

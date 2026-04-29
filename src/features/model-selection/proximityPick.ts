@@ -1,5 +1,9 @@
 import { Vector2, Vector3, type BufferGeometry, type Camera, type Object3D } from 'three'
-import { areFacesCoplanarForMeshEdgeCrease, getCoplanarConnectedFaces } from './facePlaneSelection'
+import {
+  areFacesCoplanarForMeshEdgeCrease,
+  findFarthestOppositeCoplanarFaces,
+  getCoplanarConnectedFaces,
+} from './facePlaneSelection'
 import { edgePickToleranceFromGeometry } from './edgeLineSelection'
 import {
   getIncidentFaceIndicesForEdge,
@@ -12,7 +16,7 @@ import type { ModelSelectionProximityFilter } from './types'
 /** Wynik „najbliższego” elementu pod kursorem (lokalne współrzędne siatki) */
 export type ProximityPickResult =
   | { type: 'none' }
-  | { type: 'faces'; indices: readonly number[] }
+  | { type: 'faces'; indices: readonly number[]; probableIndices?: readonly number[] }
   | { type: 'edge'; a: number; b: number }
   | { type: 'vertex'; index: number }
 
@@ -177,7 +181,9 @@ export function resolveProximityPick(
 
   if (filter.facePlane) {
     const faces = getCoplanarConnectedFaces(geometry, faceIndex)
-    return { type: 'faces', indices: faces }
+    const oppositeFaces = findFarthestOppositeCoplanarFaces(geometry, faceIndex)
+    if (oppositeFaces.length === 0) return { type: 'faces', indices: faces }
+    return { type: 'faces', indices: faces, probableIndices: oppositeFaces }
   }
 
   return { type: 'none' }
