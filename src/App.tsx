@@ -60,6 +60,21 @@ function App() {
   }, [])
 
   useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7882/ingest/cc58a8d9-c779-4012-82fb-05fda4bfad8c', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '44a128' },
+      body: JSON.stringify({
+        sessionId: '44a128',
+        runId: 'pre-fix',
+        hypothesisId: 'H1',
+        location: 'App.tsx:useEffect.modelReset',
+        message: 'Model/modelKey reset selection effect triggered',
+        data: { modelKey, hasModel: !!model, geometryRevisionBeforeReset: geometryRevision },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
     setSelection(createEmptySelection())
     setProbableFaces([])
     setGeometryRevision(0)
@@ -68,6 +83,30 @@ function App() {
   useEffect(() => {
     if (model) clearMeshTopologyCaches(model)
   }, [model, geometryRevision])
+
+  useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7882/ingest/cc58a8d9-c779-4012-82fb-05fda4bfad8c', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '44a128' },
+      body: JSON.stringify({
+        sessionId: '44a128',
+        runId: 'pre-fix',
+        hypothesisId: 'H1-H3',
+        location: 'App.tsx:useEffect.selectionState',
+        message: 'App selection/probable state changed',
+        data: {
+          faces: selection.faces,
+          edges: selection.edges.length,
+          vertices: selection.vertices.length,
+          probableFaces,
+          geometryRevision,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
+  }, [selection, probableFaces, geometryRevision])
 
   const handleModelLoad = (
     geometry: BufferGeometry,
@@ -104,12 +143,32 @@ function App() {
         return { ok: false, error: 'invalidGeometry' }
       }
       const result = applyTwoFaceStretch(model, mergedFaces, targetMm)
+      // #region agent log
+      fetch('http://127.0.0.1:7882/ingest/cc58a8d9-c779-4012-82fb-05fda4bfad8c', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '44a128' },
+        body: JSON.stringify({
+          sessionId: '44a128',
+          runId: 'pre-fix',
+          hypothesisId: 'H1-H4',
+          location: 'App.tsx:handleApplyTwoFaceStretch.result',
+          message: 'Two-face stretch result',
+          data: {
+            ok: result.ok,
+            selectionFaces: faces,
+            probableFaces,
+            mergedFacesCount: mergedFaces.length,
+            geometryChanged: result.ok ? result.geometry !== model : false,
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {})
+      // #endregion
       if (result.ok) {
         if (result.geometry !== model) {
           setModel(result.geometry)
         }
         setGeometryRevision((n) => n + 1)
-        setProbableFaces([])
       }
       return result
     },

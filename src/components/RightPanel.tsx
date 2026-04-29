@@ -54,6 +54,38 @@ export function RightPanel({
     return analyzeTwoFaceStretch(model, facesForStretch)
   }, [model, geometryRevision, facesForStretch, faceStretchSelection])
 
+  useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7882/ingest/cc58a8d9-c779-4012-82fb-05fda4bfad8c', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '44a128' },
+      body: JSON.stringify({
+        sessionId: '44a128',
+        runId: 'pre-fix',
+        hypothesisId: 'H4',
+        location: 'RightPanel.tsx:faceStretchState',
+        message: 'Right panel distance block state',
+        data: {
+          facesForStretchCount: facesForStretch.length,
+          selectionFacesCount: selection.faces.length,
+          selectionEdgesCount: selection.edges.length,
+          probableFacesCount: probableFaces.length,
+          faceStretchSelection,
+          analysisOk: analysis ? analysis.ok : null,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
+  }, [
+    facesForStretch.length,
+    selection.faces.length,
+    selection.edges.length,
+    probableFaces.length,
+    faceStretchSelection,
+    analysis,
+  ])
+
   const [targetInput, setTargetInput] = useState('')
   const [applyError, setApplyError] = useState<TwoFaceStretchError | null>(null)
 

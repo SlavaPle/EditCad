@@ -144,6 +144,7 @@ export function SelectableModel({
   selectionProximityFilter,
   onProbableFacesChange,
 }: SelectableModelProps) {
+  const instanceIdRef = useRef(`sm_${Math.random().toString(36).slice(2, 8)}`)
   const meshRef = useRef<Mesh>(null)
   const vertexPointsRef = useRef<Points>(null)
   const vertexHoverPointsRef = useRef<Points>(null)
@@ -160,14 +161,89 @@ export function SelectableModel({
   const scratchLocal = useMemo(() => new Vector3(), [])
 
   useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7882/ingest/cc58a8d9-c779-4012-82fb-05fda4bfad8c', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '44a128' },
+      body: JSON.stringify({
+        sessionId: '44a128',
+        runId: 'pre-fix',
+        hypothesisId: 'H5-H6',
+        location: 'SelectableModel.tsx:useEffect.modelOrFilterReset',
+        message: 'Reset local probable/primary due model/filter change',
+        data: {
+          instanceId: instanceIdRef.current,
+          geometryRevision,
+          probableFacesCountBefore: probableFaces.length,
+          primaryFacesCountBefore: primaryFaces.length,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
     setHover({ type: 'none' })
     setProbableFaces([])
     setPrimaryFaces([])
   }, [selectionProximityFilter, model])
 
   useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7882/ingest/cc58a8d9-c779-4012-82fb-05fda4bfad8c', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '44a128' },
+      body: JSON.stringify({
+        sessionId: '44a128',
+        runId: 'pre-fix',
+        hypothesisId: 'H6',
+        location: 'SelectableModel.tsx:useEffect.emitProbable',
+        message: 'Emit probableFaces to parent',
+        data: {
+          instanceId: instanceIdRef.current,
+          geometryRevision,
+          probableFaces,
+          probableFacesCount: probableFaces.length,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
     onProbableFacesChange?.(probableFaces)
   }, [onProbableFacesChange, probableFaces])
+
+  useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7882/ingest/cc58a8d9-c779-4012-82fb-05fda4bfad8c', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '44a128' },
+      body: JSON.stringify({
+        sessionId: '44a128',
+        runId: 'pre-fix',
+        hypothesisId: 'H5',
+        location: 'SelectableModel.tsx:lifecycle.mount',
+        message: 'SelectableModel mounted',
+        data: { instanceId: instanceIdRef.current },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
+    return () => {
+      // #region agent log
+      fetch('http://127.0.0.1:7882/ingest/cc58a8d9-c779-4012-82fb-05fda4bfad8c', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '44a128' },
+        body: JSON.stringify({
+          sessionId: '44a128',
+          runId: 'pre-fix',
+          hypothesisId: 'H5',
+          location: 'SelectableModel.tsx:lifecycle.unmount',
+          message: 'SelectableModel unmounted',
+          data: { instanceId: instanceIdRef.current },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {})
+      // #endregion
+    }
+  }, [])
 
   useEffect(() => {
     selectionRef.current = selection
@@ -180,6 +256,28 @@ export function SelectableModel({
   useEffect(() => {
     const hasAnySelection =
       selection.faces.length > 0 || selection.edges.length > 0 || selection.vertices.length > 0
+    // #region agent log
+    fetch('http://127.0.0.1:7882/ingest/cc58a8d9-c779-4012-82fb-05fda4bfad8c', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '44a128' },
+      body: JSON.stringify({
+        sessionId: '44a128',
+        runId: 'pre-fix',
+        hypothesisId: 'H2-H3',
+        location: 'SelectableModel.tsx:useEffect.selectionSync',
+        message: 'Selection sync effect',
+        data: {
+          facesCount: selection.faces.length,
+          edgesCount: selection.edges.length,
+          verticesCount: selection.vertices.length,
+          probableFacesCount: probableFaces.length,
+          primaryFacesCount: primaryFaces.length,
+          hasAnySelection,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
     if (!hasAnySelection) {
       setPrimaryFaces([])
       setProbableFaces([])
@@ -246,6 +344,29 @@ export function SelectableModel({
     geo.setAttribute('position', new BufferAttribute(arr.subarray(0, w), 3))
     return geo
   }, [model, geometryRevision, selection.faces, overlayDepthBias])
+
+  useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7882/ingest/cc58a8d9-c779-4012-82fb-05fda4bfad8c', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '44a128' },
+      body: JSON.stringify({
+        sessionId: '44a128',
+        runId: 'pre-fix',
+        hypothesisId: 'H3',
+        location: 'SelectableModel.tsx:selectedOverlay.presence',
+        message: 'Selected/probable overlay presence',
+        data: {
+          selectedOverlay: !!selectedFaceOverlayGeometry,
+          probableFacesCount: probableFaces.length,
+          probableOverlayCandidate: probableFaces.length > 0,
+          geometryRevision,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
+  }, [selectedFaceOverlayGeometry, probableFaces.length, geometryRevision])
 
   useEffect(() => {
     if (!selectedFaceOverlayGeometry) return

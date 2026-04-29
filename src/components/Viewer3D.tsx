@@ -29,7 +29,22 @@ export function Viewer3D({
   onProbableFacesChange,
   onClearSelection,
 }: Viewer3DProps) {
-  const clearAllSelection = () => {
+  const clearAllSelection = (source: 'pointerMissed' | 'grid') => {
+    // #region agent log
+    fetch('http://127.0.0.1:7882/ingest/cc58a8d9-c779-4012-82fb-05fda4bfad8c', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '44a128' },
+      body: JSON.stringify({
+        sessionId: '44a128',
+        runId: 'pre-fix',
+        hypothesisId: 'H2',
+        location: 'Viewer3D.tsx:clearAllSelection',
+        message: 'Global clear all selection invoked',
+        data: { source },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
     if (onClearSelection) {
       onClearSelection()
       return
@@ -53,7 +68,7 @@ export function Viewer3D({
         onPointerMissed={(ev) => {
           // Tylko LKM czyści zaznaczenie; obrót widoku (śPM) nie dotyka selekcji
           if (ev.shiftKey || ev.button !== 0) return
-          clearAllSelection()
+          clearAllSelection('pointerMissed')
         }}
       >
         <SceneContent
@@ -90,7 +105,7 @@ export function Viewer3D({
             const shiftHeld = e.shiftKey || e.nativeEvent.shiftKey
             // Tylko LKM na siatce czyści zaznaczenie
             if (!shiftHeld && e.nativeEvent.button === 0) {
-              clearAllSelection()
+              clearAllSelection('grid')
             }
           }}
         />
