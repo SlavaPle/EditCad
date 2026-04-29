@@ -12,14 +12,16 @@
     "settings": "Settings",
     "tabFile": "File",
     "tabEdit": "Edit",
-    "editConstrain": "Constraints"
+    "editConstrain": "Constraints",
+    "saveFormatPrompt": "Choose save format: ecdprt or stl",
+    "saveFormatInvalid": "Invalid format. Enter ecdprt or stl."
   },
   "leftPanel": {
     "header": "Model & load",
     "file": "File",
     "dropHint": "Drag STL here or click \"Load model\" in the toolbar.",
-    "dropHintReplace": "Drop another STL/STEP/IGES to replace.",
-    "unsupportedFormat": "Unsupported format. Use .stl, .stp, .step, .igs, or .iges."
+    "dropHintReplace": "Drop another STL/ECDPRT/STEP/IGES to replace.",
+    "unsupportedFormat": "Unsupported format. Use .stl, .ecdprt, .stp, .step, .igs, or .iges."
   },
   "rightPanel": {
     "header": "Transform & material",

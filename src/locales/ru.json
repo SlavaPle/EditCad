@@ -12,14 +12,16 @@
     "settings": "Настройки",
     "tabFile": "File",
     "tabEdit": "Edit",
-    "editConstrain": "Сопряжения"
+    "editConstrain": "Сопряжения",
+    "saveFormatPrompt": "Выберите формат сохранения: ecdprt или stl",
+    "saveFormatInvalid": "Неверный формат. Введите ecdprt или stl."
   },
   "leftPanel": {
     "header": "Модель и загрузка",
     "file": "Файл",
     "dropHint": "Перетащите STL сюда или нажмите «Загрузить модель» в тулбаре.",
-    "dropHintReplace": "Перетащите другой STL/STEP/IGES для замены.",
-    "unsupportedFormat": "Формат не поддерживается. Используйте .stl, .stp, .step, .igs или .iges."
+    "dropHintReplace": "Перетащите другой STL/ECDPRT/STEP/IGES для замены.",
+    "unsupportedFormat": "Формат не поддерживается. Используйте .stl, .ecdprt, .stp, .step, .igs или .iges."
   },
   "rightPanel": {
     "header": "Трансформации и материал",

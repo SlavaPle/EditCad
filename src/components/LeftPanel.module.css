@@ -43,6 +43,30 @@
   min-height: 80px;
 }
 
+.currentFile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 7px 8px;
+}
+
+.currentFileIcon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.currentFileName {
+  color: #cbd5e1;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .error {
   color: #f87171;
   font-size: 0.8125rem;

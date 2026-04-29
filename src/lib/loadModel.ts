@@ -6,11 +6,13 @@ import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { replaceWithCreaseNormals } from './geometryCreaseNormals'
 import type { BufferGeometry } from 'three'
 import type { LoadModelResult } from '../types'
+import { parsePreparedElementFile } from './preparedElementFormat'
 
 /** Tolerancja scalania wierzchołków STL (mm); bez tego rozciąganie rozjeżdża kopie tego samego rogu. */
 const STL_VERTEX_MERGE_TOLERANCE_MM = 1e-4
 
 const STL_EXTENSIONS: readonly string[] = ['.stl']
+const ECDPRT_EXTENSIONS: readonly string[] = ['.ecdprt']
 const STEP_EXTENSIONS: readonly string[] = ['.stp', '.step']
 const IGES_EXTENSIONS: readonly string[] = ['.igs', '.iges']
 
@@ -21,6 +23,10 @@ function getExtension(filename: string): string {
 
 function isSTL(ext: string): boolean {
   return STL_EXTENSIONS.includes(ext)
+}
+
+function isECDPRT(ext: string): boolean {
+  return ECDPRT_EXTENSIONS.includes(ext)
 }
 
 function isSTEP(ext: string): boolean {
@@ -54,6 +60,44 @@ async function loadSTLFromFile(file: File): Promise<BufferGeometry> {
   }
 }
 
+function normalizeLoadedStlGeometry(raw: BufferGeometry): BufferGeometry {
+  if (raw.hasAttribute('normal')) {
+    raw.deleteAttribute('normal')
+  }
+  const merged = mergeVertices(raw, STL_VERTEX_MERGE_TOLERANCE_MM)
+  raw.dispose()
+  const withNormals = replaceWithCreaseNormals(merged)
+  withNormals.computeBoundingBox()
+  withNormals.computeBoundingSphere()
+  return withNormals
+}
+
+async function loadECDPRTFromFile(file: File): Promise<LoadModelResult> {
+  const text = await file.text()
+  const parsed = parsePreparedElementFile(text)
+  if (!parsed.ok) {
+    return { ok: false, error: parsed.error }
+  }
+  const geometryText = parsed.file.geometry.data
+  try {
+    const loader = new STLLoader()
+    const raw = loader.parse(geometryText)
+    const geometry = normalizeLoadedStlGeometry(raw)
+    return {
+      ok: true,
+      geometry,
+      format: 'ecdprt',
+      prepared: {
+        name: parsed.file.name,
+        constraints: parsed.file.constraints,
+      },
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    return { ok: false, error: `Invalid STL geometry inside ECDPRT: ${message}` }
+  }
+}
+
 /**
  * Ładuje plik modelu (STL obsługiwany; STEP/IGES — komunikat o przyszłej obsłudze).
  * @param file — plik wybrany przez użytkownika
@@ -72,6 +116,15 @@ export async function loadModel(file: File): Promise<LoadModelResult> {
     }
   }
 
+  if (isECDPRT(ext)) {
+    try {
+      return await loadECDPRTFromFile(file)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      return { ok: false, error: message }
+    }
+  }
+
   if (isSTEP(ext) || isIGES(ext)) {
     return {
       ok: false,
@@ -81,7 +134,7 @@ export async function loadModel(file: File): Promise<LoadModelResult> {
 
   return {
     ok: false,
-    error: `Unsupported format: ${ext}. Use .stl, .stp, .step, .igs, or .iges.`,
+    error: `Unsupported format: ${ext}. Use .stl, .ecdprt, .stp, .step, .igs, or .iges.`,
   }
 }
 
@@ -92,6 +145,7 @@ export function isSupportedExtension(filename: string): boolean {
   const ext = getExtension(filename)
   return (
     STL_EXTENSIONS.includes(ext) ||
+    ECDPRT_EXTENSIONS.includes(ext) ||
     STEP_EXTENSIONS.includes(ext) ||
     IGES_EXTENSIONS.includes(ext)
   )
@@ -99,4 +153,4 @@ export function isSupportedExtension(filename: string): boolean {
 
 /** Akceptowana wartość dla <input accept=""> (STL + opcjonalnie STEP/IGES). */
 export const MODEL_FILE_ACCEPT =
-  '.stl,.STL,.stp,.step,.STP,.STEP,.igs,.iges,.IGS,.IGES'
+  '.stl,.STL,.ecdprt,.ECDPRT,.stp,.step,.STP,.STEP,.igs,.iges,.IGS,.IGES'

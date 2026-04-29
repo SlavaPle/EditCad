@@ -75,10 +75,7 @@ export function Toolbar({
           >
             <span className={styles.icon}>
               <svg viewBox="0 0 20 20" aria-hidden="true">
-                <path
-                  d="M4 3h9l3 3v11H4V3zm2 2v4h8V5H6zm0 6v4h8v-4H6z"
-                  fill="currentColor"
-                />
+                <path d="M3 2.5h11l3 3V17.5H3V2.5zM6 4.5V9h7V4.5H6zm0 7V15h8v-3.5H6z" fill="currentColor" />
               </svg>
             </span>
           </button>
@@ -143,8 +140,16 @@ export function Toolbar({
             <span className={styles.icon}>
               <svg viewBox="0 0 20 20" aria-hidden="true">
                 <path
-                  d="M4 3h9l3 3v11H4V3zm2 2v4h8V5H6zm0 6v4h8v-4H6zm3-8h2v3H9V3z"
+                  d="M3 2.5h11l3 3V17.5H3V2.5zM6 4.5V9h7V4.5H6zm0 7V15h8v-3.5H6z"
                   fill="currentColor"
+                />
+                <rect x="11.1" y="11.1" width="6.3" height="6.3" rx="0.8" fill="#1e293b" />
+                <path
+                  d="M12.9 11.9h2.7v1.9h1.9v2.7h-1.9v1.9h-2.7v-1.9h-1.9v-2.7h1.9v-1.9z"
+                  fill="#ffffff"
+                  stroke="#0b1220"
+                  strokeWidth="0.5"
+                  strokeLinejoin="round"
                 />
               </svg>
             </span>

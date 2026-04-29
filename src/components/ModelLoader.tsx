@@ -1,8 +1,9 @@
 import { forwardRef, useImperativeHandle, useRef } from 'react'
 import { loadModel, MODEL_FILE_ACCEPT } from '../lib/loadModel'
 import type { BufferGeometry } from 'three'
-import type { BrowserFileHandle } from '../lib/saveModel'
+import type { BrowserFileHandle, SaveFormat } from '../lib/saveModel'
 import type { LoadModelResult } from '../types'
+import type { PreparedElementConstraints } from '../lib/preparedElementFormat'
 
 export interface ModelLoaderHandle {
   openFileDialog: () => void | Promise<void>
@@ -10,7 +11,13 @@ export interface ModelLoaderHandle {
 }
 
 export interface ModelLoaderProps {
-  onLoad: (geometry: BufferGeometry, sourceHandle?: BrowserFileHandle | null, sourceFileName?: string) => void
+  onLoad: (
+    geometry: BufferGeometry,
+    sourceHandle?: BrowserFileHandle | null,
+    sourceFileName?: string,
+    format?: SaveFormat,
+    prepared?: { name: string; constraints: PreparedElementConstraints },
+  ) => void
   onError?: (message: string) => void
 }
 
@@ -21,7 +28,7 @@ export const ModelLoader = forwardRef<ModelLoaderHandle, ModelLoaderProps>(
     const loadFile = async (file: File, sourceHandle?: BrowserFileHandle | null): Promise<LoadModelResult> => {
       const result = await loadModel(file)
       if (result.ok) {
-        onLoad(result.geometry, sourceHandle ?? null, file.name)
+        onLoad(result.geometry, sourceHandle ?? null, file.name, result.format, result.prepared)
       } else if (onError) {
         onError(result.error)
       }
@@ -42,7 +49,15 @@ export const ModelLoader = forwardRef<ModelLoaderHandle, ModelLoaderProps>(
           try {
             const handles = await showOpenFilePicker({
               multiple: false,
-              types: [{ description: '3D model', accept: { 'model/stl': ['.stl'] } }],
+              types: [
+                {
+                  description: '3D model',
+                  accept: {
+                    'model/stl': ['.stl'],
+                    'application/json': ['.ecdprt'],
+                  },
+                },
+              ],
             })
             const handle = handles[0]
             if (!handle) return

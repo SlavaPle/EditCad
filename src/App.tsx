@@ -8,9 +8,37 @@ import type { ModelLoaderHandle } from './components/ModelLoader'
 import { clearMeshTopologyCaches } from './features/model-selection/facePlaneSelection'
 import { DEFAULT_MODEL_SELECTION_PROXIMITY_FILTER } from './features/model-selection/types'
 import { createEmptySelection, type SelectionState } from './lib/selection'
-import { saveGeometryAsStlFile, saveGeometryAsStlFileAs, type BrowserFileHandle } from './lib/saveModel'
+import {
+  ECDPRT_EXTENSION,
+  saveGeometryAsEcdprtFile,
+  saveGeometryWithFormatAs,
+  type BrowserFileHandle,
+  type SaveFormat,
+} from './lib/saveModel'
 import { applyTwoFaceStretch, type TwoFaceStretchError } from './lib/twoFaceStretch'
+import type { PreparedElementConstraints } from './lib/preparedElementFormat'
 import styles from './App.module.css'
+
+function getFileExtensionLower(name: string | null): string | null {
+  if (!name) return null
+  const i = name.lastIndexOf('.')
+  if (i < 0) return null
+  return name.slice(i).toLowerCase()
+}
+
+function detectFormatByFileName(name: string | null): SaveFormat | null {
+  const ext = getFileExtensionLower(name)
+  if (ext === '.stl') return 'stl'
+  if (ext === ECDPRT_EXTENSION) return 'ecdprt'
+  return null
+}
+
+function stripExtension(name: string | null): string {
+  if (!name) return 'edited-model'
+  const i = name.lastIndexOf('.')
+  if (i < 0) return name
+  return name.slice(0, i)
+}
 
 function App() {
   const [model, setModel] = useState<BufferGeometry | null>(null)
@@ -20,6 +48,9 @@ function App() {
   const [selection, setSelection] = useState<SelectionState>(createEmptySelection())
   const [sourceFileHandle, setSourceFileHandle] = useState<BrowserFileHandle | null>(null)
   const [sourceFileName, setSourceFileName] = useState<string | null>(null)
+  const [sourceFormat, setSourceFormat] = useState<SaveFormat | null>(null)
+  const [preparedName, setPreparedName] = useState<string>('edited-model')
+  const [preparedConstraints, setPreparedConstraints] = useState<PreparedElementConstraints>({ mode: 'fixed' })
   const modelLoaderRef = useRef<ModelLoaderHandle>(null)
 
   useEffect(() => {
@@ -35,11 +66,16 @@ function App() {
     geometry: BufferGeometry,
     loadedFromHandle?: BrowserFileHandle | null,
     loadedFileName?: string,
+    loadedFormat?: SaveFormat,
+    loadedPrepared?: { name: string; constraints: PreparedElementConstraints },
   ) => {
     setModel(geometry)
     setLoadError(null)
     setSourceFileHandle(loadedFromHandle ?? null)
     setSourceFileName(loadedFileName ?? null)
+    setSourceFormat(loadedFormat ?? detectFormatByFileName(loadedFileName ?? null))
+    setPreparedName(loadedPrepared?.name ?? stripExtension(loadedFileName ?? null))
+    setPreparedConstraints(loadedPrepared?.constraints ?? { mode: 'fixed' })
   }
 
   const handleApplyTwoFaceStretch = useCallback(
@@ -70,34 +106,48 @@ function App() {
     setLoadError(null)
     setSourceFileHandle(null)
     setSourceFileName(null)
+    setSourceFormat(null)
     setModelKey((k) => k + 1)
     modelLoaderRef.current?.openFileDialog()
   }
 
   const handleSaveModelClick = useCallback(() => {
     if (!model) return
-    if (!sourceFileHandle) {
-      void saveGeometryAsStlFileAs(model, sourceFileName ?? 'edited-model').then(setSourceFileHandle).catch(() => {})
+    const baseName = preparedName || stripExtension(sourceFileName ?? 'edited-model')
+    const canOverwriteEcdprt = sourceFormat === 'ecdprt' && !!sourceFileHandle
+    if (canOverwriteEcdprt) {
+      void saveGeometryAsEcdprtFile(model, sourceFileHandle, preparedName, preparedConstraints).catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err)
+        console.error('Save failed:', message)
+      })
       return
     }
-    void saveGeometryAsStlFile(model, sourceFileHandle).catch((err: unknown) => {
-      const message = err instanceof Error ? err.message : String(err)
-      console.error('Save failed:', message)
-    })
-  }, [model, sourceFileHandle, sourceFileName])
+    void saveGeometryWithFormatAs(model, baseName, sourceFileHandle ?? undefined, preparedConstraints)
+      .then(({ handle, format, fileName }) => {
+        setSourceFileHandle(handle)
+        setSourceFileName(fileName)
+        setSourceFormat(format)
+      })
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err)
+        console.error('Save failed:', message)
+      })
+  }, [model, preparedConstraints, preparedName, sourceFileHandle, sourceFileName, sourceFormat])
 
   const handleSaveAsModelClick = useCallback(() => {
     if (!model) return
-    void saveGeometryAsStlFileAs(model, sourceFileName ?? 'edited-model', sourceFileHandle ?? undefined)
-      .then((handle) => {
+    const baseName = preparedName || stripExtension(sourceFileName ?? 'edited-model')
+    void saveGeometryWithFormatAs(model, baseName, sourceFileHandle ?? undefined, preparedConstraints)
+      .then(({ handle, format, fileName }) => {
         setSourceFileHandle(handle)
-        setSourceFileName(handle.name ?? sourceFileName ?? 'edited-model.stl')
+        setSourceFileName(fileName)
+        setSourceFormat(format)
       })
       .catch((err: unknown) => {
-      const message = err instanceof Error ? err.message : String(err)
-      console.error('Save failed:', message)
-    })
-  }, [model, sourceFileHandle, sourceFileName])
+        const message = err instanceof Error ? err.message : String(err)
+        console.error('Save failed:', message)
+      })
+  }, [model, preparedConstraints, preparedName, sourceFileHandle, sourceFileName])
 
   return (
     <div className={styles.app}>
@@ -114,6 +164,8 @@ function App() {
           onLoadError={setLoadError}
           loadError={loadError}
           hasModel={!!model}
+          currentFileName={sourceFileName}
+          currentFileFormat={sourceFormat}
         />
         <div className={styles.viewport}>
           <Viewer3D
