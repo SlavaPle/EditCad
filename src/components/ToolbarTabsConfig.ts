@@ -1,6 +1,6 @@
 export type ToolbarTabId = 'file' | 'edit'
 
-export type ToolbarActionId = 'open' | 'save' | 'settings' | 'editConstrain'
+export type ToolbarActionId = 'open' | 'save' | 'saveAs' | 'settings' | 'editConstrain'
 
 export interface ToolbarTabConfig {
   id: ToolbarTabId
@@ -12,7 +12,7 @@ export const TOOLBAR_TABS: ToolbarTabConfig[] = [
   {
     id: 'file',
     labelKey: 'toolbar.tabFile',
-    actions: ['open', 'save', 'settings']
+    actions: ['open', 'save', 'saveAs', 'settings']
   },
   {
     id: 'edit',

@@ -1,12 +1,13 @@
 import type { Dispatch, SetStateAction } from 'react'
-import type { BufferGeometry } from 'three'
-import { Color, MOUSE, NoToneMapping, SRGBColorSpace } from 'three'
+import { Color, MOUSE, NoToneMapping, SRGBColorSpace, type BufferGeometry } from 'three'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Grid } from '@react-three/drei'
 import { SceneContent } from './Viewer3D/SceneContent'
 import styles from './Viewer3D.module.css'
 import { createEmptySelection, type SelectionState } from '../lib/selection'
 import type { ModelSelectionProximityFilter } from '../features/model-selection/types'
+
+const VIEWER_BACKGROUND = '#2d3b52'
 
 export interface Viewer3DProps {
   model?: BufferGeometry | null
@@ -34,7 +35,7 @@ export function Viewer3D({
         onCreated={({ gl, scene }) => {
           gl.outputColorSpace = SRGBColorSpace
           gl.toneMapping = NoToneMapping
-          scene.background = new Color('#2d3b52')
+          scene.background = new Color(VIEWER_BACKGROUND)
         }}
         onPointerMissed={(ev) => {
           // Tylko LKM czyści zaznaczenie; obrót widoku (śPM) nie dotyka selekcji

@@ -45,8 +45,6 @@ async function loadSTLFromFile(file: File): Promise<BufferGeometry> {
     }
     const merged = mergeVertices(raw, STL_VERTEX_MERGE_TOLERANCE_MM)
     raw.dispose()
-    // Rozciąganie: kluczowe jest scalenie (STL = duplikaty wierzchołków → rozjeżdżają się przy stretch).
-    // replaceWithCreaseNormals — osobno: cieniowanie płaskich płyt bez widocznej przekątnej triangulacji.
     const withNormals = replaceWithCreaseNormals(merged)
     withNormals.computeBoundingBox()
     withNormals.computeBoundingSphere()

@@ -10,6 +10,9 @@ import {
 
 interface ToolbarProps {
   onLoadModelClick?: () => void
+  onSaveModelClick?: () => void
+  onSaveAsModelClick?: () => void
+  hasModel?: boolean
 }
 
 const LANGUAGES = [
@@ -17,7 +20,12 @@ const LANGUAGES = [
   { code: 'ru', label: 'Русский' }
 ] as const
 
-export function Toolbar({ onLoadModelClick }: ToolbarProps) {
+export function Toolbar({
+  onLoadModelClick,
+  onSaveModelClick,
+  onSaveAsModelClick,
+  hasModel = false,
+}: ToolbarProps) {
   const { t, i18n } = useTranslation()
   const [activeTabId, setActiveTabId] = useState<ToolbarTabId>(DEFAULT_TOOLBAR_TAB_ID)
 
@@ -26,8 +34,10 @@ export function Toolbar({ onLoadModelClick }: ToolbarProps) {
   }
 
   const handleExport = () => {
-    // Placeholder — STL export in next step
-    console.log('Export STL')
+    onSaveModelClick?.()
+  }
+  const handleSaveAs = () => {
+    onSaveAsModelClick?.()
   }
 
   const renderActionButton = (actionId: ToolbarActionId) => {
@@ -59,6 +69,7 @@ export function Toolbar({ onLoadModelClick }: ToolbarProps) {
             type="button"
             className={styles.iconBtn}
             onClick={handleExport}
+            disabled={!hasModel}
             title={t('toolbar.save')}
             aria-label={t('toolbar.save')}
           >
@@ -112,6 +123,27 @@ export function Toolbar({ onLoadModelClick }: ToolbarProps) {
               <svg viewBox="0 0 20 20" aria-hidden="true">
                 <path
                   d="M4 4h2v12H4V4zm10 0h2v12h-2V4zM8 9h4v2H8V9z"
+                  fill="currentColor"
+                />
+              </svg>
+            </span>
+          </button>
+        )
+      case 'saveAs':
+        return (
+          <button
+            key={actionId}
+            type="button"
+            className={styles.iconBtn}
+            onClick={handleSaveAs}
+            disabled={!hasModel}
+            title={t('toolbar.saveAs')}
+            aria-label={t('toolbar.saveAs')}
+          >
+            <span className={styles.icon}>
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path
+                  d="M4 3h9l3 3v11H4V3zm2 2v4h8V5H6zm0 6v4h8v-4H6zm3-8h2v3H9V3z"
                   fill="currentColor"
                 />
               </svg>

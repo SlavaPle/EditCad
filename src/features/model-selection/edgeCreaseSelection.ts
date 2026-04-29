@@ -1,6 +1,6 @@
 import { Vector3, type BufferGeometry } from 'three'
 import type { EdgeSelection } from '../../lib/selection'
-import { areFacesCoplanar, getFaceVertices } from './facePlaneSelection'
+import { areFacesCoplanarForMeshEdgeCrease, getFaceVertices } from './facePlaneSelection'
 import { distSqPointToSegment } from './edgeLineSelection'
 
 const POSITION_EPSILON = 1e-5
@@ -93,10 +93,7 @@ export function getIncidentFaceIndicesForEdge(
   return map.get(edgeKeyCanonical(ca, cb)) ?? []
 }
 
-/**
- * Krawędź „strykowa”: brzeg (jedna ściana) albo dwie (lub więcej) ściany nie leżące w jednej płaszczyźnie.
- * Odrzuca np. przekątną między dwoma trójkątami jednej płaszczyzny.
- */
+/** Styk CAD: brzeg lub załamanie; odrzuca wewnętrzną przekątną triangulacji płaskiej. */
 export function isIndexedEdgeACrease(geometry: BufferGeometry, rawA: number, rawB: number): boolean {
   const incident = getIncidentFaceIndicesForEdge(geometry, rawA, rawB)
   if (incident.length <= 1) {
@@ -104,7 +101,7 @@ export function isIndexedEdgeACrease(geometry: BufferGeometry, rawA: number, raw
   }
   for (let i = 0; i < incident.length; i++) {
     for (let j = i + 1; j < incident.length; j++) {
-      if (!areFacesCoplanar(geometry, incident[i], incident[j])) {
+      if (!areFacesCoplanarForMeshEdgeCrease(geometry, incident[i], incident[j])) {
         return true
       }
     }
@@ -112,7 +109,7 @@ export function isIndexedEdgeACrease(geometry: BufferGeometry, rawA: number, raw
   return false
 }
 
-// Najbliższa krawędź trójkąta spośród tych, które są strykowe (nie wewnętrzna triangulacja płaska)
+/** Najbliższa strykowa krawędź trójkąta trafienia. */
 export function pickClosestCreasedTriangleEdge(
   geometry: BufferGeometry,
   faceIndex: number,

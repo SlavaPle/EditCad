@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
-import { BufferAttribute, BufferGeometry, DoubleSide, Mesh, Points, Vector3 } from 'three'
+import {
+  BufferAttribute,
+  BufferGeometry,
+  DoubleSide,
+  Mesh,
+  Points,
+  Vector3,
+  type InterleavedBufferAttribute,
+} from 'three'
 import type { ThreeEvent } from '@react-three/fiber'
 import {
   createEmptySelection,
@@ -17,8 +25,16 @@ import type { ModelSelectionProximityFilter } from '../../features/model-selecti
 import { FatLineSegments } from './FatLineSegments'
 
 const PREVIEW_COLOR_HEX = '#22c55e'
+const PREVIEW_FACE_OVERLAY_SOLID = '#2f9f55'
 const SELECTION_FACE_OVERLAY_HEX = '#f97316'
+const SELECTION_FACE_OVERLAY_SOLID = '#c45f14'
 const EDGE_LINE_WIDTH_PX = 5
+
+const FACE_OVERLAY_OFFSET = {
+  polygonOffset: true,
+  polygonOffsetFactor: -4,
+  polygonOffsetUnits: -4,
+} as const
 
 type HoverState =
   | { type: 'none' }
@@ -50,6 +66,66 @@ function triangleIndicesForFace(geometry: BufferGeometry, faceIndex: number): [n
   return [ia, ia + 1, ia + 2]
 }
 
+type PositionAttribute = BufferAttribute | InterleavedBufferAttribute
+
+/** Wypchnięcie trójkąta wzdłuż normalnej — rozdziela Z między sąsiadującymi trójkątami owerlaya. */
+function pushOverlayTriangle(
+  position: PositionAttribute,
+  ia: number,
+  ib: number,
+  ic: number,
+  triIndex: number,
+  depthStep: number,
+  out: Float32Array,
+  w: number,
+): number {
+  const ax = position.getX(ia)
+  const ay = position.getY(ia)
+  const az = position.getZ(ia)
+  const bx = position.getX(ib)
+  const by = position.getY(ib)
+  const bz = position.getZ(ib)
+  const cx = position.getX(ic)
+  const cy = position.getY(ic)
+  const cz = position.getZ(ic)
+  const abx = bx - ax
+  const aby = by - ay
+  const abz = bz - az
+  const acx = cx - ax
+  const acy = cy - ay
+  const acz = cz - az
+  let nx = aby * acz - abz * acy
+  let ny = abz * acx - abx * acz
+  let nz = abx * acy - aby * acx
+  const len = Math.hypot(nx, ny, nz)
+  const off = (1 + triIndex) * depthStep
+  if (len < 1e-22) {
+    out[w++] = ax
+    out[w++] = ay
+    out[w++] = az
+    out[w++] = bx
+    out[w++] = by
+    out[w++] = bz
+    out[w++] = cx
+    out[w++] = cy
+    out[w++] = cz
+    return w
+  }
+  nx = (nx / len) * off
+  ny = (ny / len) * off
+  nz = (nz / len) * off
+  out[w++] = ax + nx
+  out[w++] = ay + ny
+  out[w++] = az + nz
+  out[w++] = bx + nx
+  out[w++] = by + ny
+  out[w++] = bz + nz
+  out[w++] = cx + nx
+  out[w++] = cy + ny
+  out[w++] = cz + nz
+  return w
+}
+
 interface SelectableModelProps {
   model: BufferGeometry
   geometryRevision: number
@@ -58,7 +134,6 @@ interface SelectableModelProps {
   selectionProximityFilter: ModelSelectionProximityFilter
 }
 
-// Komponent siatki: wykrywanie wierzchołka / strykowej krawędzi / płaszczyzny w promieniu; podgląd (zielony), zatwierdzone (pomarańczowy)
 export function SelectableModel({
   model,
   geometryRevision,
@@ -88,7 +163,15 @@ export function SelectableModel({
       const fi = event.faceIndex
       if (typeof fi !== 'number') return { type: 'none' }
       mesh.worldToLocal(scratchLocal.copy(event.point))
-      return resolveProximityPick(model, fi, scratchLocal, selectionProximityFilter)
+      const target = event.nativeEvent.target as HTMLElement | null
+      const viewportWidth = target?.clientWidth ?? 0
+      const viewportHeight = target?.clientHeight ?? 0
+      return resolveProximityPick(model, fi, scratchLocal, selectionProximityFilter, {
+        camera: event.camera,
+        mesh,
+        pointer: { x: event.nativeEvent.offsetX, y: event.nativeEvent.offsetY },
+        viewport: { width: viewportWidth, height: viewportHeight },
+      })
     },
     [model, scratchLocal, selectionProximityFilter],
   )
@@ -105,8 +188,10 @@ export function SelectableModel({
     setHover({ type: 'none' })
   }, [])
 
-  // Ściany zaznaczone: osobna geometria (kopia trójkątów), nie vertexColors na siatce —
-  // po mergeVertices wspólne wierzchołki interpolują kolor i zacierają krawędzie zaznaczenia.
+  const overlayDepthBias = useMemo(() => {
+    if (!model.boundingSphere) model.computeBoundingSphere()
+    return Math.max(1e-6, (model.boundingSphere?.radius ?? 1) * 1e-7)
+  }, [model, geometryRevision])
 
   const selectedFaceOverlayGeometry = useMemo(() => {
     if (selection.faces.length === 0) return null
@@ -115,28 +200,21 @@ export function SelectableModel({
 
     const arr = new Float32Array(selection.faces.length * 9)
     let w = 0
+    let triIdx = 0
     for (const fi of selection.faces) {
       if (fi < 0) continue
       const [ia, ib, ic] = triangleIndicesForFace(model, fi)
       if (ia < 0 || ib < 0 || ic < 0 || ia >= position.count || ib >= position.count || ic >= position.count) {
         continue
       }
-      arr[w++] = position.getX(ia)
-      arr[w++] = position.getY(ia)
-      arr[w++] = position.getZ(ia)
-      arr[w++] = position.getX(ib)
-      arr[w++] = position.getY(ib)
-      arr[w++] = position.getZ(ib)
-      arr[w++] = position.getX(ic)
-      arr[w++] = position.getY(ic)
-      arr[w++] = position.getZ(ic)
+      w = pushOverlayTriangle(position, ia, ib, ic, triIdx++, overlayDepthBias, arr, w)
     }
     if (w === 0) return null
 
     const geo = new BufferGeometry()
     geo.setAttribute('position', new BufferAttribute(arr.subarray(0, w), 3))
     return geo
-  }, [model, geometryRevision, selection.faces])
+  }, [model, geometryRevision, selection.faces, overlayDepthBias])
 
   useEffect(() => {
     if (!selectedFaceOverlayGeometry) return
@@ -197,22 +275,15 @@ export function SelectableModel({
 
     const arr = new Float32Array(hover.indices.length * 9)
     let w = 0
+    let triIdx = 0
     for (const fi of hover.indices) {
       const [ia, ib, ic] = triangleIndicesForFace(model, fi)
-      arr[w++] = position.getX(ia)
-      arr[w++] = position.getY(ia)
-      arr[w++] = position.getZ(ia)
-      arr[w++] = position.getX(ib)
-      arr[w++] = position.getY(ib)
-      arr[w++] = position.getZ(ib)
-      arr[w++] = position.getX(ic)
-      arr[w++] = position.getY(ic)
-      arr[w++] = position.getZ(ic)
+      w = pushOverlayTriangle(position, ia, ib, ic, triIdx++, overlayDepthBias, arr, w)
     }
     const geo = new BufferGeometry()
-    geo.setAttribute('position', new BufferAttribute(arr, 3))
+    geo.setAttribute('position', new BufferAttribute(arr.subarray(0, w), 3))
     return geo
-  }, [model, geometryRevision, hover])
+  }, [model, geometryRevision, hover, overlayDepthBias])
 
   useEffect(() => {
     if (!hoverFaceOverlayGeometry) return
@@ -294,7 +365,15 @@ export function SelectableModel({
     if (typeof faceIndex !== 'number') return
 
     mesh.worldToLocal(scratchLocal.copy(event.point))
-    const pick = resolveProximityPick(model, faceIndex, scratchLocal, selectionProximityFilter)
+    const target = event.nativeEvent.target as HTMLElement | null
+    const viewportWidth = target?.clientWidth ?? 0
+    const viewportHeight = target?.clientHeight ?? 0
+    const pick = resolveProximityPick(model, faceIndex, scratchLocal, selectionProximityFilter, {
+      camera: event.camera,
+      mesh,
+      pointer: { x: event.nativeEvent.offsetX, y: event.nativeEvent.offsetY },
+      viewport: { width: viewportWidth, height: viewportHeight },
+    })
     if (pick.type === 'none') return
 
     const shiftHeld = event.shiftKey || event.nativeEvent.shiftKey
@@ -351,28 +430,20 @@ export function SelectableModel({
       {selectedFaceOverlayGeometry && (
         <mesh ref={selectedFaceOverlayRef} geometry={selectedFaceOverlayGeometry} renderOrder={6}>
           <meshBasicMaterial
-            color={SELECTION_FACE_OVERLAY_HEX}
-            transparent
-            opacity={0.4}
+            color={SELECTION_FACE_OVERLAY_SOLID}
             side={DoubleSide}
             depthWrite={false}
-            polygonOffset
-            polygonOffsetFactor={-1}
-            polygonOffsetUnits={-1}
+            {...FACE_OVERLAY_OFFSET}
           />
         </mesh>
       )}
       {hoverFaceOverlayGeometry && (
         <mesh ref={hoverFaceOverlayRef} geometry={hoverFaceOverlayGeometry} renderOrder={8}>
           <meshBasicMaterial
-            color={PREVIEW_COLOR_HEX}
-            transparent
-            opacity={0.38}
+            color={PREVIEW_FACE_OVERLAY_SOLID}
             side={DoubleSide}
             depthWrite={false}
-            polygonOffset
-            polygonOffsetFactor={-1}
-            polygonOffsetUnits={-1}
+            {...FACE_OVERLAY_OFFSET}
           />
         </mesh>
       )}

@@ -3,6 +3,7 @@
   height: 100%;
   position: absolute;
   inset: 0;
+  /* jak Viewer3D.tsx VIEWER_BACKGROUND */
   background: #2d3b52;
 }
 

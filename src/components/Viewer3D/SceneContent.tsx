@@ -13,7 +13,6 @@ interface SceneContentProps {
   selectionProximityFilter: ModelSelectionProximityFilter
 }
 
-// Oświetlenie i interaktywny model (STL → BufferGeometry); Bounds dopasowuje kamerę do modelu
 export function SceneContent({
   model,
   geometryRevision,

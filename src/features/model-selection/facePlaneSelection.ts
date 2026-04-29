@@ -6,7 +6,16 @@ const POSITION_EPSILON = 1e-5
 
 type FaceVertices = [number, number, number]
 
-// Indeksy wierzchołków dla każdej ściany trójkąta (numeracja ścian jak w buforze indeksów)
+/** Czyści cache topologii w userData (po edycji geometrii). */
+export function clearMeshTopologyCaches(geometry: BufferGeometry): void {
+  const ud = geometry.userData as Record<string, unknown>
+  delete ud.__faceVertices
+  delete ud.__faceNeighbors
+  delete ud.__edgeToFaces
+  delete ud.__vertexKeyToCanonical
+}
+
+// Indeksy wierzchołków każdej ściany (numeracja jak w buforze indeksów / non-indexed)
 export function getFaceVertices(geometry: BufferGeometry): FaceVertices[] {
   const cached = (geometry as { userData: { __faceVertices?: FaceVertices[] } }).userData.__faceVertices
   if (cached) return cached
@@ -196,7 +205,7 @@ export function getCoplanarConnectedFaces(geometry: BufferGeometry, seedFaceInde
   return result
 }
 
-// Czy dwie ściany leżą w tej samej płaszczyźnie (jak sąsiedzi w getCoplanarConnectedFaces)
+/** Ścisła koplaność (BFS łat, partycja zaznaczenia). */
 export function areFacesCoplanar(geometry: BufferGeometry, faceI: number, faceJ: number): boolean {
   if (faceI === faceJ) return true
   const faces = getFaceVertices(geometry)
@@ -204,6 +213,36 @@ export function areFacesCoplanar(geometry: BufferGeometry, faceI: number, faceJ:
   const tmpNormal = new Vector3()
   const { normal, constant } = computeFacePlane(geometry, faces, faceI, baseNormal)
   return isCoplanarNeighbor(geometry, faces, normal, constant, faceJ, tmpNormal)
+}
+
+const EDGE_CREASE_DOT_MIN = 0.995
+
+/** Luźna koplaność — tylko odróżnienie stryku od przekątnej triangulacji. */
+export function areFacesCoplanarForMeshEdgeCrease(
+  geometry: BufferGeometry,
+  faceI: number,
+  faceJ: number,
+): boolean {
+  if (faceI === faceJ) return true
+  const faces = getFaceVertices(geometry)
+  const baseNormal = new Vector3()
+  const tmpNormal = new Vector3()
+  const { normal, constant } = computeFacePlane(geometry, faces, faceI, baseNormal)
+  const { normal: n2, constant: c2 } = computeFacePlane(geometry, faces, faceJ, tmpNormal)
+
+  const dot = Math.abs(normal.dot(n2))
+  if (dot < EDGE_CREASE_DOT_MIN) {
+    return false
+  }
+
+  if (!geometry.boundingBox) {
+    geometry.computeBoundingBox()
+  }
+  const box = geometry.boundingBox
+  const diag = box ? box.min.distanceTo(box.max) : 1
+  const distTol = Math.max(2e-1, diag * 2e-4)
+
+  return Math.abs(constant - c2) <= distTol
 }
 
 /**

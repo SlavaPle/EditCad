@@ -4,7 +4,10 @@
  * Zakładamy: 1 jednostka = 1 mm (typowy eksport STL).
  */
 import { BufferGeometry, Vector3 } from 'three'
-import { partitionSelectionIntoCoplanarPatches } from '../features/model-selection/facePlaneSelection'
+import {
+  clearMeshTopologyCaches,
+  partitionSelectionIntoCoplanarPatches,
+} from '../features/model-selection/facePlaneSelection'
 import { replaceWithCreaseNormals } from './geometryCreaseNormals'
 
 /** Minimalna odległość między płaszczyznami grup (mm). */
@@ -132,12 +135,6 @@ function patchMeanSignedDepth(
     s += meanSignedDepth(geometry, fi, origin, axis)
   }
   return s / patch.length
-}
-
-function clearFaceTopologyCache(geometry: BufferGeometry): void {
-  const ud = geometry.userData as { __faceVertices?: unknown; __faceNeighbors?: unknown }
-  delete ud.__faceVertices
-  delete ud.__faceNeighbors
 }
 
 function computeAxisAndGapForPatches(
@@ -289,7 +286,7 @@ export function applyTwoFaceStretch(
   const geo = replaceWithCreaseNormals(geometry)
   geo.computeBoundingBox()
   geo.computeBoundingSphere()
-  clearFaceTopologyCache(geo)
+  clearMeshTopologyCaches(geo)
 
   return { ok: true, geometry: geo }
 }
