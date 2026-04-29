@@ -17,6 +17,7 @@ import {
 } from './lib/saveModel'
 import { applyTwoFaceStretch, type TwoFaceStretchError } from './lib/twoFaceStretch'
 import type { PreparedElementConstraints } from './lib/preparedElementFormat'
+import type { FaceConstraint } from './features/face-constraints/model'
 import styles from './App.module.css'
 
 function getFileExtensionLower(name: string | null): string | null {
@@ -121,8 +122,14 @@ function App() {
     setSourceFileName(loadedFileName ?? null)
     setSourceFormat(loadedFormat ?? detectFormatByFileName(loadedFileName ?? null))
     setPreparedName(loadedPrepared?.name ?? stripExtension(loadedFileName ?? null))
-    setPreparedConstraints(loadedPrepared?.constraints ?? { mode: 'fixed' })
+    setPreparedConstraints(loadedPrepared?.constraints ?? { mode: 'fixed', faceConstraints: [] })
   }
+
+  const preparedFaceConstraints = preparedConstraints.faceConstraints ?? []
+
+  const handleFaceConstraintsChange = useCallback((next: FaceConstraint[]) => {
+    setPreparedConstraints((prev) => ({ ...prev, faceConstraints: next }) as PreparedElementConstraints)
+  }, [])
 
   const handleApplyTwoFaceStretch = useCallback(
     (
@@ -240,6 +247,7 @@ function App() {
           hasModel={!!model}
           currentFileName={sourceFileName}
           currentFileFormat={sourceFormat}
+          faceConstraints={preparedFaceConstraints}
         />
         <div className={styles.viewport}>
           <Viewer3D
@@ -259,6 +267,8 @@ function App() {
           model={model}
           geometryRevision={geometryRevision}
           onApplyTwoFaceStretch={handleApplyTwoFaceStretch}
+          faceConstraints={preparedFaceConstraints}
+          onFaceConstraintsChange={handleFaceConstraintsChange}
         />
       </div>
     </div>

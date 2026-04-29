@@ -19,6 +19,11 @@
   "leftPanel": {
     "header": "Model & load",
     "file": "File",
+    "constraints": {
+      "title": "Constraints",
+      "empty": "No constraints in this prepared part.",
+      "onlyPrepared": "Constraints are available only for ECDPRT files."
+    },
     "dropHint": "Drag STL here or click \"Load model\" in the toolbar.",
     "dropHintReplace": "Drop another STL/ECDPRT/STEP/IGES to replace.",
     "unsupportedFormat": "Unsupported format. Use .stl, .ecdprt, .stp, .step, .igs, or .iges."
@@ -48,7 +53,34 @@
         "invalidTarget": "Enter a positive distance in millimetres.",
         "invalidGeometry": "The model or selection is not valid for this operation.",
         "needSecondPlanarFace": "Only one planar region is selected. Shift+click the opposite face to add the second patch.",
-        "tooManyPlanarGroups": "The selection splits into more than two planar regions. Clear the selection and pick only two opposite faces."
+        "tooManyPlanarGroups": "The selection splits into more than two planar regions. Clear the selection and pick only two opposite faces.",
+        "lockedByBlock": "Size is locked by BLOCK constraint.",
+        "lockedExact": "Size is fixed by CONST/PROFIL constraint.",
+        "lockedMin": "Size is below allowed MIN constraint.",
+        "lockedMax": "Size is above allowed MAX constraint."
+      }
+    },
+    "constraints": {
+      "title": "Face constraints",
+      "hint": "Add MIN/MAX/CONST/PROFIL/BLOCK/PANEL constraints for selected faces.",
+      "locked": "Constraints enabled",
+      "unlocked": "Constraints disabled",
+      "type": "Constraint type",
+      "valuePlaceholder": "Value",
+      "panelThickness": "Panel thickness (Current distance)",
+      "panelMinX": "PANEL MIN X",
+      "panelMinY": "PANEL MIN Y",
+      "panelMaxX": "PANEL MAX X",
+      "panelMaxY": "PANEL MAX Y",
+      "add": "Add constraint",
+      "remove": "Remove",
+      "empty": "No constraints.",
+      "blocked": "Size changes are blocked",
+      "errors": {
+        "needTwoFaces": "Select two faces first.",
+        "invalidValue": "Enter a valid positive number.",
+        "invalidRange": "PANEL MIN cannot exceed PANEL MAX on X or Y.",
+        "needPanelThickness": "PANEL requires a valid current distance."
       }
     },
     "scale": "Scale",

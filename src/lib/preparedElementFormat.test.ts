@@ -33,6 +33,17 @@ describe('preparedElementFormat', () => {
     expect(result.ok).toBe(true)
   })
 
+  it('accepts old format without faceConstraints', () => {
+    const result = validatePreparedElementFile({
+      ...createBaseFile(),
+      constraints: {
+        mode: 'stretch1d',
+        limits: [{ axis: 'x', maxMm: 1000 }],
+      },
+    })
+    expect(result.ok).toBe(true)
+  })
+
   it('accepts stretch2d with distinct axes', () => {
     const result = validatePreparedElementFile({
       ...createBaseFile(),
@@ -74,6 +85,10 @@ describe('preparedElementFormat', () => {
 
   it('roundtrips through JSON', () => {
     const source = createBaseFile()
+    source.constraints.faceConstraints = [
+      { id: 'c1', type: 'min', facePair: { a: 2, b: 8 }, valueMm: 20 },
+      { id: 'c2', type: 'block', facePair: null },
+    ]
     const content = serializePreparedElementFile(source)
     const parsed = parsePreparedElementFile(content)
     expect(parsed.ok).toBe(true)

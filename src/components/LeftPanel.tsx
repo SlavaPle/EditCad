@@ -5,6 +5,7 @@ import { isSupportedExtension } from '../lib/loadModel'
 import type { ModelLoaderHandle } from './ModelLoader'
 import type { SaveFormat } from '../lib/saveModel'
 import type { PreparedElementConstraints } from '../lib/preparedElementFormat'
+import type { FaceConstraint } from '../features/face-constraints/model'
 import styles from './LeftPanel.module.css'
 
 export interface LeftPanelProps {
@@ -21,6 +22,7 @@ export interface LeftPanelProps {
   hasModel: boolean
   currentFileName?: string | null
   currentFileFormat?: SaveFormat | null
+  faceConstraints: FaceConstraint[]
 }
 
 export function LeftPanel({
@@ -31,6 +33,7 @@ export function LeftPanel({
   hasModel,
   currentFileName,
   currentFileFormat,
+  faceConstraints,
 }: LeftPanelProps) {
   const { t } = useTranslation()
   const dropZoneRef = useRef<HTMLDivElement>(null)
@@ -93,6 +96,28 @@ export function LeftPanel({
               <p className={styles.error} role="alert">
                 {loadError}
               </p>
+            )}
+          </div>
+          <div className={styles.section}>
+            <div className={styles.sectionTitle}>{t('leftPanel.constraints.title')}</div>
+            {currentFileFormat !== 'ecdprt' ? (
+              <p className={styles.placeholder}>{t('leftPanel.constraints.onlyPrepared')}</p>
+            ) : faceConstraints.length === 0 ? (
+              <p className={styles.placeholder}>{t('leftPanel.constraints.empty')}</p>
+            ) : (
+              <ul className={styles.constraintsList}>
+                {faceConstraints.map((item) => (
+                  <li key={item.id}>
+                    {item.type.toUpperCase()}
+                    {item.type === 'panel'
+                      ? ` t=${item.thicknessMm}mm min=${item.minSizeMm.x}x${item.minSizeMm.y} max=${item.maxSizeMm.x}x${item.maxSizeMm.y}`
+                      : item.type === 'block'
+                        ? ''
+                        : ` ${item.valueMm}mm`}
+                    {item.facePair ? ` [${item.facePair.a}, ${item.facePair.b}]` : ''}
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         </div>

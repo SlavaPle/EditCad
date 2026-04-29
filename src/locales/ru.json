@@ -19,6 +19,11 @@
   "leftPanel": {
     "header": "Модель и загрузка",
     "file": "Файл",
+    "constraints": {
+      "title": "Ограничения",
+      "empty": "В этой подготовленной детали нет ограничений.",
+      "onlyPrepared": "Ограничения доступны только для файлов ECDPRT."
+    },
     "dropHint": "Перетащите STL сюда или нажмите «Загрузить модель» в тулбаре.",
     "dropHintReplace": "Перетащите другой STL/ECDPRT/STEP/IGES для замены.",
     "unsupportedFormat": "Формат не поддерживается. Используйте .stl, .ecdprt, .stp, .step, .igs или .iges."
@@ -48,7 +53,34 @@
         "invalidTarget": "Введите положительное расстояние в миллиметрах.",
         "invalidGeometry": "Модель или выделение не подходят для этой операции.",
         "needSecondPlanarFace": "Выделена только одна плоская область. Добавьте противоположную грань: Shift+клик.",
-        "tooManyPlanarGroups": "Выделение даёт больше двух плоских групп. Сбросьте выделение и укажите только две противоположные грани."
+        "tooManyPlanarGroups": "Выделение даёт больше двух плоских групп. Сбросьте выделение и укажите только две противоположные грани.",
+        "lockedByBlock": "Размер заблокирован ограничением BLOCK.",
+        "lockedExact": "Размер фиксирован ограничением CONST/PROFIL.",
+        "lockedMin": "Размер меньше допустимого минимума MIN.",
+        "lockedMax": "Размер больше допустимого максимума MAX."
+      }
+    },
+    "constraints": {
+      "title": "Ограничения граней",
+      "hint": "Добавляйте ограничения MIN/MAX/CONST/PROFIL/BLOCK/PANEL для выбранных граней.",
+      "locked": "Ограничения включены",
+      "unlocked": "Ограничения выключены",
+      "type": "Тип ограничения",
+      "valuePlaceholder": "Значение",
+      "panelThickness": "Толщина панели (Current distance)",
+      "panelMinX": "PANEL MIN X",
+      "panelMinY": "PANEL MIN Y",
+      "panelMaxX": "PANEL MAX X",
+      "panelMaxY": "PANEL MAX Y",
+      "add": "Добавить ограничение",
+      "remove": "Удалить",
+      "empty": "Ограничений нет.",
+      "blocked": "Изменение размеров запрещено",
+      "errors": {
+        "needTwoFaces": "Сначала выберите две грани.",
+        "invalidValue": "Введите корректное положительное число.",
+        "invalidRange": "PANEL MIN не может быть больше PANEL MAX по X или Y.",
+        "needPanelThickness": "Для PANEL сначала нужно корректное Current distance."
       }
     },
     "scale": "Масштаб",

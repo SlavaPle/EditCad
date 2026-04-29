@@ -3,6 +3,8 @@ import type { BufferGeometry } from 'three'
 import { useTranslation } from 'react-i18next'
 import { analyzeTwoFaceStretch, type TwoFaceStretchError } from '../lib/twoFaceStretch'
 import { getSelectionListEntries, type SelectionState } from '../lib/selection'
+import type { FaceConstraint, FaceConstraintType } from '../features/face-constraints/model'
+import { removeFaceConstraint, upsertFaceConstraint } from '../features/face-constraints/store'
 import styles from './RightPanel.module.css'
 
 export interface RightPanelProps {
@@ -13,6 +15,8 @@ export interface RightPanelProps {
   onApplyTwoFaceStretch: (
     targetMm: number,
   ) => { ok: true; geometry: BufferGeometry } | { ok: false; error: TwoFaceStretchError }
+  faceConstraints: FaceConstraint[]
+  onFaceConstraintsChange: (next: FaceConstraint[]) => void
 }
 
 function parsePositiveMm(raw: string): number | null {
@@ -29,6 +33,8 @@ export function RightPanel({
   model,
   geometryRevision,
   onApplyTwoFaceStretch,
+  faceConstraints,
+  onFaceConstraintsChange,
 }: RightPanelProps) {
   const { t } = useTranslation()
   const rows = useMemo(() => getSelectionListEntries(selection), [selection])
@@ -87,7 +93,15 @@ export function RightPanel({
   ])
 
   const [targetInput, setTargetInput] = useState('')
-  const [applyError, setApplyError] = useState<TwoFaceStretchError | null>(null)
+  const [applyError, setApplyError] = useState<string | null>(null)
+  const [constraintType, setConstraintType] = useState<FaceConstraintType>('min')
+  const [constraintValue, setConstraintValue] = useState('')
+  const [panelMinX, setPanelMinX] = useState('')
+  const [panelMinY, setPanelMinY] = useState('')
+  const [panelMaxX, setPanelMaxX] = useState('')
+  const [panelMaxY, setPanelMaxY] = useState('')
+  const [constraintError, setConstraintError] = useState<string | null>(null)
+  const [constraintsLocked, setConstraintsLocked] = useState(false)
 
   useEffect(() => {
     setApplyError(null)
@@ -106,11 +120,122 @@ export function RightPanel({
       setApplyError('invalidTarget')
       return
     }
+    if (constraintsLocked) {
+      const currentPair =
+        facesForStretch.length >= 2
+          ? { a: Math.min(facesForStretch[0], facesForStretch[1]), b: Math.max(facesForStretch[0], facesForStretch[1]) }
+          : null
+      const pairConstraints = faceConstraints.filter((c) => {
+        if (c.type === 'block') return true
+        if (!currentPair || !c.facePair) return false
+        return (
+          (c.facePair.a === currentPair.a && c.facePair.b === currentPair.b) ||
+          (c.facePair.a === currentPair.b && c.facePair.b === currentPair.a)
+        )
+      })
+      if (pairConstraints.some((c) => c.type === 'block')) {
+        setApplyError('lockedByBlock')
+        return
+      }
+      const exact = pairConstraints.find((c) => c.type === 'const' || c.type === 'profil')
+      if (exact && exact.type !== 'block' && exact.type !== 'panel') {
+        if (Math.abs(mm - exact.valueMm) > 1e-6) {
+          setApplyError('lockedExact')
+          return
+        }
+      }
+      const minBounds = pairConstraints.filter((c) => c.type === 'min').map((c) => c.valueMm)
+      const maxBounds = pairConstraints.filter((c) => c.type === 'max').map((c) => c.valueMm)
+      const minBound = minBounds.length > 0 ? Math.max(...minBounds) : null
+      const maxBound = maxBounds.length > 0 ? Math.min(...maxBounds) : null
+      if (minBound !== null && mm < minBound) {
+        setApplyError('lockedMin')
+        return
+      }
+      if (maxBound !== null && mm > maxBound) {
+        setApplyError('lockedMax')
+        return
+      }
+    }
     const result = onApplyTwoFaceStretch(mm)
     if (!result.ok) {
       setApplyError(result.error)
     }
-  }, [onApplyTwoFaceStretch, targetInput])
+  }, [constraintsLocked, faceConstraints, facesForStretch, onApplyTwoFaceStretch, targetInput])
+
+  const facePair =
+    facesForStretch.length >= 2 ? { a: Math.min(facesForStretch[0], facesForStretch[1]), b: Math.max(facesForStretch[0], facesForStretch[1]) } : null
+  const panelThicknessMm = analysis?.ok ? Number(analysis.gapMm.toFixed(6)) : null
+
+  const handleAddConstraint = useCallback(() => {
+    const id = `${constraintType}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    setConstraintError(null)
+
+    if (constraintType === 'block') {
+      const next: FaceConstraint = { id, type: 'block', facePair: null }
+      onFaceConstraintsChange(upsertFaceConstraint(faceConstraints, next))
+      return
+    }
+
+    if (constraintType === 'panel') {
+      if (panelThicknessMm === null) {
+        setConstraintError('needPanelThickness')
+        return
+      }
+      const minX = parsePositiveMm(panelMinX)
+      const minY = parsePositiveMm(panelMinY)
+      const maxX = parsePositiveMm(panelMaxX)
+      const maxY = parsePositiveMm(panelMaxY)
+      if (minX === null || minY === null || maxX === null || maxY === null) {
+        setConstraintError('invalidValue')
+        return
+      }
+      if (minX > maxX || minY > maxY) {
+        setConstraintError('invalidRange')
+        return
+      }
+      const next: FaceConstraint = {
+        id,
+        type: 'panel',
+        facePair: null,
+        thicknessMm: panelThicknessMm,
+        minSizeMm: { x: minX, y: minY },
+        maxSizeMm: { x: maxX, y: maxY },
+      }
+      onFaceConstraintsChange(upsertFaceConstraint(faceConstraints, next))
+      return
+    }
+
+    if (!facePair) {
+      setConstraintError('needTwoFaces')
+      return
+    }
+    const valueMm = parsePositiveMm(constraintValue)
+    if (valueMm === null) {
+      setConstraintError('invalidValue')
+      return
+    }
+    const next: FaceConstraint = { id, type: constraintType, facePair, valueMm } as FaceConstraint
+    onFaceConstraintsChange(upsertFaceConstraint(faceConstraints, next))
+  }, [
+    constraintType,
+    constraintValue,
+    faceConstraints,
+    facePair,
+    onFaceConstraintsChange,
+    panelMaxX,
+    panelMaxY,
+    panelMinX,
+    panelMinY,
+    panelThicknessMm,
+  ])
+
+  const handleRemoveConstraint = useCallback(
+    (id: string) => {
+      onFaceConstraintsChange(removeFaceConstraint(faceConstraints, id))
+    },
+    [faceConstraints, onFaceConstraintsChange],
+  )
 
   return (
     <aside className={styles.panel}>
@@ -207,6 +332,148 @@ export function RightPanel({
             )}
           </div>
         )}
+        <div className={styles.section}>
+          <div className={styles.sectionTitleRow}>
+            <span className={styles.sectionTitle}>{t('rightPanel.constraints.title')}</span>
+            <button
+              type="button"
+              className={styles.constraintLock}
+              onClick={() => setConstraintsLocked((v) => !v)}
+              title={
+                constraintsLocked
+                  ? t('rightPanel.constraints.locked')
+                  : t('rightPanel.constraints.unlocked')
+              }
+            >
+              {constraintsLocked ? '🔒' : '🔓'}
+            </button>
+          </div>
+          <p className={styles.faceDistanceHint}>{t('rightPanel.constraints.hint')}</p>
+          <div className={styles.faceDistanceRow}>
+            <label className={styles.faceDistanceLabel} htmlFor="constraint-type">
+              {t('rightPanel.constraints.type')}
+            </label>
+            <select
+              id="constraint-type"
+              className={styles.faceDistanceInput}
+              value={constraintType}
+              onChange={(e) => setConstraintType(e.target.value as FaceConstraintType)}
+            >
+              <option value="min">MIN</option>
+              <option value="max">MAX</option>
+              <option value="const">CONST</option>
+              <option value="profil">PROFIL</option>
+              <option value="block">BLOCK</option>
+              <option value="panel">PANEL</option>
+            </select>
+            {constraintType !== 'block' && constraintType !== 'panel' && (
+              <div className={styles.faceDistanceInputWrap}>
+                <input
+                  className={styles.faceDistanceInput}
+                  type="text"
+                  inputMode="decimal"
+                  value={constraintValue}
+                  onChange={(e) => setConstraintValue(e.target.value)}
+                  placeholder={t('rightPanel.constraints.valuePlaceholder')}
+                />
+                <span className={styles.faceDistanceUnit}>mm</span>
+              </div>
+            )}
+            {constraintType === 'panel' && (
+              <>
+                <div className={styles.faceDistanceInputWrap}>
+                  <input
+                    className={styles.faceDistanceInput}
+                    type="text"
+                    value={panelThicknessMm === null ? '' : String(panelThicknessMm)}
+                    placeholder={t('rightPanel.constraints.panelThickness')}
+                    readOnly
+                  />
+                  <span className={styles.faceDistanceUnit}>mm</span>
+                </div>
+                <div className={styles.faceDistanceInputWrap}>
+                  <input
+                    className={styles.faceDistanceInput}
+                    type="text"
+                    inputMode="decimal"
+                    value={panelMinX}
+                    onChange={(e) => setPanelMinX(e.target.value)}
+                    placeholder={t('rightPanel.constraints.panelMinX')}
+                  />
+                  <span className={styles.faceDistanceUnit}>mm</span>
+                </div>
+                <div className={styles.faceDistanceInputWrap}>
+                  <input
+                    className={styles.faceDistanceInput}
+                    type="text"
+                    inputMode="decimal"
+                    value={panelMinY}
+                    onChange={(e) => setPanelMinY(e.target.value)}
+                    placeholder={t('rightPanel.constraints.panelMinY')}
+                  />
+                  <span className={styles.faceDistanceUnit}>mm</span>
+                </div>
+                <div className={styles.faceDistanceInputWrap}>
+                  <input
+                    className={styles.faceDistanceInput}
+                    type="text"
+                    inputMode="decimal"
+                    value={panelMaxX}
+                    onChange={(e) => setPanelMaxX(e.target.value)}
+                    placeholder={t('rightPanel.constraints.panelMaxX')}
+                  />
+                  <span className={styles.faceDistanceUnit}>mm</span>
+                </div>
+                <div className={styles.faceDistanceInputWrap}>
+                  <input
+                    className={styles.faceDistanceInput}
+                    type="text"
+                    inputMode="decimal"
+                    value={panelMaxY}
+                    onChange={(e) => setPanelMaxY(e.target.value)}
+                    placeholder={t('rightPanel.constraints.panelMaxY')}
+                  />
+                  <span className={styles.faceDistanceUnit}>mm</span>
+                </div>
+              </>
+            )}
+            <button type="button" className={styles.faceDistanceApply} onClick={handleAddConstraint}>
+              {t('rightPanel.constraints.add')}
+            </button>
+            {constraintError && (
+              <p className={styles.faceDistanceError} role="alert">
+                {t(`rightPanel.constraints.errors.${constraintError}`)}
+              </p>
+            )}
+          </div>
+          {faceConstraints.length === 0 ? (
+            <p className={styles.selectionListEmpty}>{t('rightPanel.constraints.empty')}</p>
+          ) : (
+            <ul className={styles.selectionList}>
+              {faceConstraints.map((item) => (
+                <li key={item.id}>
+                  <span>
+                    {item.type.toUpperCase()}
+                    {' - '}
+                    {item.type === 'panel'
+                      ? `t=${item.thicknessMm} mm; min=${item.minSizeMm.x}x${item.minSizeMm.y}; max=${item.maxSizeMm.x}x${item.maxSizeMm.y}`
+                      : item.type === 'block'
+                        ? t('rightPanel.constraints.blocked')
+                        : `${item.valueMm} mm`}
+                    {item.facePair ? ` (${item.facePair.a}, ${item.facePair.b})` : ''}
+                  </span>
+                  <button
+                    type="button"
+                    className={styles.constraintRemove}
+                    onClick={() => handleRemoveConstraint(item.id)}
+                  >
+                    {t('rightPanel.constraints.remove')}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
         <div className={styles.section}>
           <div className={styles.sectionTitle}>{t('rightPanel.scale')}</div>
           <p className={styles.placeholder}>{t('rightPanel.scaleHint')}</p>

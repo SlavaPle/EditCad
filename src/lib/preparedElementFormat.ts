@@ -1,5 +1,9 @@
 export const PREPARED_ELEMENT_FORMAT = 'editcad.prepared-element' as const
 export const PREPARED_ELEMENT_VERSION = 1 as const
+import {
+  parseFaceConstraintsForPreparedFile,
+} from '../features/face-constraints/codec'
+import type { FaceConstraint } from '../features/face-constraints/model'
 
 export type StretchAxis = 'x' | 'y' | 'z'
 
@@ -10,16 +14,19 @@ export type StretchLimit = {
 
 export type FixedConstraints = {
   mode: 'fixed'
+  faceConstraints?: FaceConstraint[]
 }
 
 export type Stretch1DConstraints = {
   mode: 'stretch1d'
   limits: [StretchLimit]
+  faceConstraints?: FaceConstraint[]
 }
 
 export type Stretch2DConstraints = {
   mode: 'stretch2d'
   limits: [StretchLimit, StretchLimit]
+  faceConstraints?: FaceConstraint[]
 }
 
 export type PreparedElementConstraints =
@@ -68,9 +75,11 @@ function validateDistinctAxes(limits: readonly StretchLimit[]): boolean {
 
 function parseConstraints(value: unknown): PreparedElementConstraints | null {
   if (!isObject(value) || typeof value.mode !== 'string') return null
+  const faceConstraints = parseFaceConstraintsForPreparedFile(value.faceConstraints)
+  if (faceConstraints === null) return null
   const mode = value.mode
   if (mode === 'fixed') {
-    return { mode: 'fixed' }
+    return { mode: 'fixed', faceConstraints }
   }
   if (mode !== 'stretch1d' && mode !== 'stretch2d') {
     return null
@@ -81,11 +90,11 @@ function parseConstraints(value: unknown): PreparedElementConstraints | null {
   const limits = parsedLimits as StretchLimit[]
   if (mode === 'stretch1d') {
     if (limits.length !== 1) return null
-    return { mode: 'stretch1d', limits: [limits[0]] }
+    return { mode: 'stretch1d', limits: [limits[0]], faceConstraints }
   }
   if (limits.length !== 2) return null
   if (!validateDistinctAxes(limits)) return null
-  return { mode: 'stretch2d', limits: [limits[0], limits[1]] }
+  return { mode: 'stretch2d', limits: [limits[0], limits[1]], faceConstraints }
 }
 
 function parseGeometry(value: unknown): PreparedElementGeometry | null {
