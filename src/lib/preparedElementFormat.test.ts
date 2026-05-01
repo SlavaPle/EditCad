@@ -16,6 +16,8 @@ function createBaseFile(): PreparedElementFile {
     constraints: {
       mode: 'stretch1d',
       limits: [{ axis: 'x', maxMm: 2400 }],
+      faceConstraints: [],
+      modelElements: [],
     },
     geometry: {
       format: 'stl-ascii',
@@ -28,7 +30,7 @@ describe('preparedElementFormat', () => {
   it('accepts fixed element constraints', () => {
     const result = validatePreparedElementFile({
       ...createBaseFile(),
-      constraints: { mode: 'fixed' },
+      constraints: { mode: 'fixed', faceConstraints: [], modelElements: [] },
     })
     expect(result.ok).toBe(true)
   })
@@ -39,6 +41,8 @@ describe('preparedElementFormat', () => {
       constraints: {
         mode: 'stretch1d',
         limits: [{ axis: 'x', maxMm: 1000 }],
+        faceConstraints: [],
+        modelElements: [],
       },
     })
     expect(result.ok).toBe(true)
@@ -94,5 +98,42 @@ describe('preparedElementFormat', () => {
     expect(parsed.ok).toBe(true)
     if (!parsed.ok) return
     expect(parsed.file).toEqual(source)
+  })
+
+  it('roundtrips modelElements and element-bound constraints', () => {
+    const source = createBaseFile()
+    source.constraints.modelElements = [
+      { id: 'ea', faceIndices: [0, 1] },
+      { id: 'eb', faceIndices: [2, 3] },
+    ]
+    source.constraints.faceConstraints = [
+      {
+        id: 'dist1',
+        type: 'max',
+        facePair: null,
+        elementAId: 'ea',
+        elementBId: 'eb',
+        valueMm: 100,
+      },
+    ]
+    const content = serializePreparedElementFile(source)
+    const parsed = parsePreparedElementFile(content)
+    expect(parsed.ok).toBe(true)
+    if (!parsed.ok) return
+    expect(parsed.file).toEqual(source)
+  })
+
+  it('rejects duplicate modelElements id', () => {
+    const result = validatePreparedElementFile({
+      ...createBaseFile(),
+      constraints: {
+        ...createBaseFile().constraints,
+        modelElements: [
+          { id: 'same', faceIndices: [0] },
+          { id: 'same', faceIndices: [1] },
+        ],
+      },
+    })
+    expect(result.ok).toBe(false)
   })
 })

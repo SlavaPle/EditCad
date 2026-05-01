@@ -5,6 +5,11 @@ import {
 } from '../features/face-constraints/codec'
 import type { FaceConstraint } from '../features/face-constraints/model'
 
+export type PreparedModelElement = {
+  id: string
+  faceIndices: number[]
+}
+
 export type StretchAxis = 'x' | 'y' | 'z'
 
 export type StretchLimit = {
@@ -15,18 +20,21 @@ export type StretchLimit = {
 export type FixedConstraints = {
   mode: 'fixed'
   faceConstraints?: FaceConstraint[]
+  modelElements?: PreparedModelElement[]
 }
 
 export type Stretch1DConstraints = {
   mode: 'stretch1d'
   limits: [StretchLimit]
   faceConstraints?: FaceConstraint[]
+  modelElements?: PreparedModelElement[]
 }
 
 export type Stretch2DConstraints = {
   mode: 'stretch2d'
   limits: [StretchLimit, StretchLimit]
   faceConstraints?: FaceConstraint[]
+  modelElements?: PreparedModelElement[]
 }
 
 export type PreparedElementConstraints =
@@ -64,6 +72,37 @@ function parseStretchLimit(value: unknown): StretchLimit | null {
   return { axis, maxMm }
 }
 
+function parsePreparedModelElement(value: unknown): PreparedModelElement | null {
+  if (!isObject(value)) return null
+  if (typeof value.id !== 'string' || value.id.trim().length === 0) return null
+  if (!Array.isArray(value.faceIndices)) return null
+  const seen = new Set<number>()
+  const out: number[] = []
+  for (const fi of value.faceIndices) {
+    if (!Number.isInteger(fi) || fi < 0) return null
+    if (seen.has(fi)) continue
+    seen.add(fi)
+    out.push(fi)
+  }
+  if (out.length === 0) return null
+  return { id: value.id.trim(), faceIndices: out.sort((x, y) => x - y) }
+}
+
+function parseModelElements(value: unknown): PreparedModelElement[] | null {
+  if (value === undefined) return []
+  if (!Array.isArray(value)) return null
+  const els: PreparedModelElement[] = []
+  const ids = new Set<string>()
+  for (const item of value) {
+    const el = parsePreparedModelElement(item)
+    if (!el) return null
+    if (ids.has(el.id)) return null
+    ids.add(el.id)
+    els.push(el)
+  }
+  return els
+}
+
 function validateDistinctAxes(limits: readonly StretchLimit[]): boolean {
   const seen = new Set<StretchAxis>()
   for (const limit of limits) {
@@ -77,9 +116,11 @@ function parseConstraints(value: unknown): PreparedElementConstraints | null {
   if (!isObject(value) || typeof value.mode !== 'string') return null
   const faceConstraints = parseFaceConstraintsForPreparedFile(value.faceConstraints)
   if (faceConstraints === null) return null
+  const modelElements = parseModelElements(value.modelElements)
+  if (modelElements === null) return null
   const mode = value.mode
   if (mode === 'fixed') {
-    return { mode: 'fixed', faceConstraints }
+    return { mode: 'fixed', faceConstraints, modelElements }
   }
   if (mode !== 'stretch1d' && mode !== 'stretch2d') {
     return null
@@ -90,11 +131,11 @@ function parseConstraints(value: unknown): PreparedElementConstraints | null {
   const limits = parsedLimits as StretchLimit[]
   if (mode === 'stretch1d') {
     if (limits.length !== 1) return null
-    return { mode: 'stretch1d', limits: [limits[0]], faceConstraints }
+    return { mode: 'stretch1d', limits: [limits[0]], faceConstraints, modelElements }
   }
   if (limits.length !== 2) return null
   if (!validateDistinctAxes(limits)) return null
-  return { mode: 'stretch2d', limits: [limits[0], limits[1]], faceConstraints }
+  return { mode: 'stretch2d', limits: [limits[0], limits[1]], faceConstraints, modelElements }
 }
 
 function parseGeometry(value: unknown): PreparedElementGeometry | null {

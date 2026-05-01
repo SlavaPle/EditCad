@@ -24,7 +24,8 @@
       "empty": "В этой подготовленной детали нет ограничений.",
       "onlyPrepared": "Ограничения доступны только для файлов ECDPRT.",
       "locked": "Ограничения включены",
-      "unlocked": "Ограничения выключены"
+      "unlocked": "Ограничения выключены",
+      "panelYSameBadge": " (Y=X)"
     },
     "dropHint": "Перетащите STL сюда или нажмите «Загрузить модель» в тулбаре.",
     "dropHintReplace": "Перетащите другой STL/ECDPRT/STEP/IGES для замены.",
@@ -57,9 +58,15 @@
         "needSecondPlanarFace": "Выделена только одна плоская область. Добавьте противоположную грань: Shift+клик.",
         "tooManyPlanarGroups": "Выделение даёт больше двух плоских групп. Сбросьте выделение и укажите только две противоположные грани.",
         "lockedByBlock": "Размер заблокирован ограничением BLOCK.",
-        "lockedExact": "Размер фиксирован ограничением CONST/PROFIL.",
+        "lockedExact": "Размер фиксирован ограничением CONST.",
         "lockedMin": "Размер меньше допустимого минимума MIN.",
-        "lockedMax": "Размер больше допустимого максимума MAX."
+        "lockedMax": "Размер больше допустимого максимума MAX/PROFIL.",
+        "constraintBrokenConst": "После изменения нарушается ограничение CONST на расстояние между элементами.",
+        "constraintBrokenMin": "После изменения расстояние между элементами меньше ограничения MIN.",
+        "constraintBrokenMax": "После изменения расстояние между элементами больше ограничения MAX.",
+        "constraintBrokenProfil": "После изменения расстояние между элементами больше максимума PROFIL.",
+        "profilWrongTarget": "PROFIL допускает изменение только заданной пары элементов.",
+        "constraintPanelBroken": "После изменения нарушены ограничения PANEL (толщина или размеры плоскости)."
       }
     },
     "constraints": {
@@ -70,18 +77,22 @@
       "type": "Тип ограничения",
       "valuePlaceholder": "Значение",
       "panelThickness": "Толщина панели (Current distance)",
-      "panelMinX": "PANEL MIN X",
-      "panelMinY": "PANEL MIN Y",
-      "panelMaxX": "PANEL MAX X",
-      "panelMaxY": "PANEL MAX Y",
+      "panelAxisX": "Ось X плоскости — максимум",
+      "panelAxisY": "Ось Y плоскости — максимум",
+      "panelMaxPlaceholder": "MAX (мм)",
+      "panelMinPlaceholder": "MIN (мм)",
+      "panelRestrictMin": "Нижняя граница MIN (необязательно)",
+      "panelYSameAsX": "Y как у X (значения дублируются в файле)",
+      "panelYSameBadge": " (Y=X)",
       "add": "Добавить ограничение",
       "remove": "Удалить",
       "empty": "Ограничений нет.",
       "blocked": "Изменение размеров запрещено",
       "errors": {
         "needTwoFaces": "Сначала выберите две грани.",
+        "needTwoPlanarGroups": "Нужно ровно две плоских группы граней (две противоположные плоскости).",
         "invalidValue": "Введите корректное положительное число.",
-        "invalidRange": "PANEL MIN не может быть больше PANEL MAX по X или Y.",
+        "invalidRange": "На каждой оси MIN не должен быть больше MAX.",
         "needPanelThickness": "Для PANEL сначала нужно корректное Current distance."
       }
     },

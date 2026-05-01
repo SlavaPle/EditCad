@@ -75,6 +75,39 @@
   color: #64748b;
 }
 
+.panelConstraintFields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.panelFieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.panelAxisLabel {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+}
+
+.panelCheckboxRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: #cbd5e1;
+  cursor: pointer;
+  user-select: none;
+}
+
+.panelCheckboxRow input[type='checkbox'] {
+  accent-color: #64748b;
+}
+
 .faceDistanceHint {
   margin: 4px 0 8px;
   font-size: 0.75rem;

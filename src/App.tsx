@@ -16,7 +16,11 @@ import {
   type SaveFormat,
 } from './lib/saveModel'
 import { applyTwoFaceStretch, type TwoFaceStretchError } from './lib/twoFaceStretch'
-import type { PreparedElementConstraints } from './lib/preparedElementFormat'
+import type { PreparedElementConstraints, PreparedModelElement } from './lib/preparedElementFormat'
+import {
+  validatePreparedStretchPrecheck,
+  type PreparedStretchPrecheckError,
+} from './lib/preparedStretchValidation'
 import type { FaceConstraint } from './features/face-constraints/model'
 import styles from './App.module.css'
 
@@ -52,7 +56,11 @@ function App() {
   const [sourceFileName, setSourceFileName] = useState<string | null>(null)
   const [sourceFormat, setSourceFormat] = useState<SaveFormat | null>(null)
   const [preparedName, setPreparedName] = useState<string>('edited-model')
-  const [preparedConstraints, setPreparedConstraints] = useState<PreparedElementConstraints>({ mode: 'fixed' })
+  const [preparedConstraints, setPreparedConstraints] = useState<PreparedElementConstraints>({
+    mode: 'fixed',
+    faceConstraints: [],
+    modelElements: [],
+  })
   const [constraintsLocked, setConstraintsLocked] = useState(true)
   const modelLoaderRef = useRef<ModelLoaderHandle>(null)
 
@@ -62,21 +70,6 @@ function App() {
   }, [])
 
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7882/ingest/cc58a8d9-c779-4012-82fb-05fda4bfad8c', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '44a128' },
-      body: JSON.stringify({
-        sessionId: '44a128',
-        runId: 'pre-fix',
-        hypothesisId: 'H1',
-        location: 'App.tsx:useEffect.modelReset',
-        message: 'Model/modelKey reset selection effect triggered',
-        data: { modelKey, hasModel: !!model, geometryRevisionBeforeReset: geometryRevision },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {})
-    // #endregion
     setSelection(createEmptySelection())
     setProbableFaces([])
     setGeometryRevision(0)
@@ -85,30 +78,6 @@ function App() {
   useEffect(() => {
     if (model) clearMeshTopologyCaches(model)
   }, [model, geometryRevision])
-
-  useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7882/ingest/cc58a8d9-c779-4012-82fb-05fda4bfad8c', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '44a128' },
-      body: JSON.stringify({
-        sessionId: '44a128',
-        runId: 'pre-fix',
-        hypothesisId: 'H1-H3',
-        location: 'App.tsx:useEffect.selectionState',
-        message: 'App selection/probable state changed',
-        data: {
-          faces: selection.faces,
-          edges: selection.edges.length,
-          vertices: selection.vertices.length,
-          probableFaces,
-          geometryRevision,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {})
-    // #endregion
-  }, [selection, probableFaces, geometryRevision])
 
   const handleModelLoad = (
     geometry: BufferGeometry,
@@ -123,8 +92,23 @@ function App() {
     setSourceFileName(loadedFileName ?? null)
     setSourceFormat(loadedFormat ?? detectFormatByFileName(loadedFileName ?? null))
     setPreparedName(loadedPrepared?.name ?? stripExtension(loadedFileName ?? null))
-    setPreparedConstraints(loadedPrepared?.constraints ?? { mode: 'fixed', faceConstraints: [] })
+    setPreparedConstraints(
+      loadedPrepared?.constraints ?? { mode: 'fixed', faceConstraints: [], modelElements: [] },
+    )
   }
+
+  const handleMergeModelElements = useCallback((newElements: readonly PreparedModelElement[]) => {
+    setPreparedConstraints((prev) => {
+      const existing = [...(prev.modelElements ?? [])]
+      const ids = new Set(existing.map((e) => e.id))
+      for (const el of newElements) {
+        if (ids.has(el.id)) continue
+        ids.add(el.id)
+        existing.push({ ...el, faceIndices: [...el.faceIndices] })
+      }
+      return { ...prev, modelElements: existing } as PreparedElementConstraints
+    })
+  }, [])
 
   const preparedFaceConstraints = preparedConstraints.faceConstraints ?? []
 
@@ -135,7 +119,9 @@ function App() {
   const handleApplyTwoFaceStretch = useCallback(
     (
       targetMm: number,
-    ): { ok: true; geometry: BufferGeometry } | { ok: false; error: TwoFaceStretchError } => {
+    ):
+      | { ok: true; geometry: BufferGeometry }
+      | { ok: false; error: TwoFaceStretchError | PreparedStretchPrecheckError } => {
       if (!model) {
         return { ok: false, error: 'invalidGeometry' }
       }
@@ -150,28 +136,17 @@ function App() {
       if (mergedFaces.length === 0) {
         return { ok: false, error: 'invalidGeometry' }
       }
+      const pre = validatePreparedStretchPrecheck({
+        model,
+        mergedFaces,
+        targetMm,
+        prepared: preparedConstraints,
+        constraintsLocked,
+      })
+      if (!pre.ok) {
+        return { ok: false, error: pre.error }
+      }
       const result = applyTwoFaceStretch(model, mergedFaces, targetMm)
-      // #region agent log
-      fetch('http://127.0.0.1:7882/ingest/cc58a8d9-c779-4012-82fb-05fda4bfad8c', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '44a128' },
-        body: JSON.stringify({
-          sessionId: '44a128',
-          runId: 'pre-fix',
-          hypothesisId: 'H1-H4',
-          location: 'App.tsx:handleApplyTwoFaceStretch.result',
-          message: 'Two-face stretch result',
-          data: {
-            ok: result.ok,
-            selectionFaces: faces,
-            probableFaces,
-            mergedFacesCount: mergedFaces.length,
-            geometryChanged: result.ok ? result.geometry !== model : false,
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {})
-      // #endregion
       if (result.ok) {
         if (result.geometry !== model) {
           setModel(result.geometry)
@@ -180,7 +155,7 @@ function App() {
       }
       return result
     },
-    [model, selection, probableFaces],
+    [model, selection, probableFaces, preparedConstraints, constraintsLocked],
   )
 
   const handleLoadModelClick = () => {
@@ -272,7 +247,7 @@ function App() {
           onApplyTwoFaceStretch={handleApplyTwoFaceStretch}
           faceConstraints={preparedFaceConstraints}
           onFaceConstraintsChange={handleFaceConstraintsChange}
-          constraintsLocked={constraintsLocked}
+          onMergeModelElements={handleMergeModelElements}
         />
       </div>
     </div>

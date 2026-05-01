@@ -6,6 +6,7 @@ import type { ModelLoaderHandle } from './ModelLoader'
 import type { SaveFormat } from '../lib/saveModel'
 import type { PreparedElementConstraints } from '../lib/preparedElementFormat'
 import type { FaceConstraint } from '../features/face-constraints/model'
+import { formatPanelConstraintSummary } from '../features/face-constraints/model'
 import styles from './LeftPanel.module.css'
 
 export interface LeftPanelProps {
@@ -134,11 +135,15 @@ export function LeftPanel({
                   <li key={item.id}>
                     {item.type.toUpperCase()}
                     {item.type === 'panel'
-                      ? ` t=${item.thicknessMm}mm min=${item.minSizeMm.x}x${item.minSizeMm.y} max=${item.maxSizeMm.x}x${item.maxSizeMm.y}`
+                      ? ` ${formatPanelConstraintSummary(item)}${item.ySameAsX ? t('leftPanel.constraints.panelYSameBadge') : ''}`
                       : item.type === 'block'
                         ? ''
                         : ` ${item.valueMm}mm`}
-                    {item.facePair ? ` [${item.facePair.a}, ${item.facePair.b}]` : ''}
+                    {item.elementAId && item.elementBId
+                      ? ` (${item.elementAId} ↔ ${item.elementBId})`
+                      : item.facePair
+                        ? ` [${item.facePair.a}, ${item.facePair.b}]`
+                        : ''}
                   </li>
                 ))}
               </ul>

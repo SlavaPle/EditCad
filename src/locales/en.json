@@ -24,7 +24,8 @@
       "empty": "No constraints in this prepared part.",
       "onlyPrepared": "Constraints are available only for ECDPRT files.",
       "locked": "Constraints enabled",
-      "unlocked": "Constraints disabled"
+      "unlocked": "Constraints disabled",
+      "panelYSameBadge": " (Y=X)"
     },
     "dropHint": "Drag STL here or click \"Load model\" in the toolbar.",
     "dropHintReplace": "Drop another STL/ECDPRT/STEP/IGES to replace.",
@@ -57,9 +58,15 @@
         "needSecondPlanarFace": "Only one planar region is selected. Shift+click the opposite face to add the second patch.",
         "tooManyPlanarGroups": "The selection splits into more than two planar regions. Clear the selection and pick only two opposite faces.",
         "lockedByBlock": "Size is locked by BLOCK constraint.",
-        "lockedExact": "Size is fixed by CONST/PROFIL constraint.",
+        "lockedExact": "Size is fixed by CONST constraint.",
         "lockedMin": "Size is below allowed MIN constraint.",
-        "lockedMax": "Size is above allowed MAX constraint."
+        "lockedMax": "Size is above allowed MAX/PROFIL constraint.",
+        "constraintBrokenConst": "After editing, CONST distance constraint between elements would be violated.",
+        "constraintBrokenMin": "After editing, distance between elements would be below MIN.",
+        "constraintBrokenMax": "After editing, distance between elements would be above MAX.",
+        "constraintBrokenProfil": "After editing, distance between elements would be above PROFIL maximum.",
+        "profilWrongTarget": "PROFIL allows resizing only for the designated element pair.",
+        "constraintPanelBroken": "After editing, PANEL bounds (thickness or plane dimensions) would be violated."
       }
     },
     "constraints": {
@@ -70,18 +77,22 @@
       "type": "Constraint type",
       "valuePlaceholder": "Value",
       "panelThickness": "Panel thickness (Current distance)",
-      "panelMinX": "PANEL MIN X",
-      "panelMinY": "PANEL MIN Y",
-      "panelMaxX": "PANEL MAX X",
-      "panelMaxY": "PANEL MAX Y",
+      "panelAxisX": "Plane axis X — max extent",
+      "panelAxisY": "Plane axis Y — max extent",
+      "panelMaxPlaceholder": "MAX (mm)",
+      "panelMinPlaceholder": "MIN (mm)",
+      "panelRestrictMin": "Minimum limit (optional)",
+      "panelYSameAsX": "Y bounds same as X",
+      "panelYSameBadge": " (Y=X)",
       "add": "Add constraint",
       "remove": "Remove",
       "empty": "No constraints.",
       "blocked": "Size changes are blocked",
       "errors": {
         "needTwoFaces": "Select two faces first.",
+        "needTwoPlanarGroups": "Exactly two planar face groups are required for this constraint.",
         "invalidValue": "Enter a valid positive number.",
-        "invalidRange": "PANEL MIN cannot exceed PANEL MAX on X or Y.",
+        "invalidRange": "On each axis, MIN must not exceed MAX.",
         "needPanelThickness": "PANEL requires a valid current distance."
       }
     },

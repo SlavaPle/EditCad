@@ -11,6 +11,31 @@ describe('face constraints store', () => {
     expect(updated[0]).toEqual(next)
   })
 
+  it('updates same type and element bindings', () => {
+    const list: FaceConstraint[] = []
+    const first: FaceConstraint = {
+      id: 'min-1',
+      type: 'min',
+      facePair: null,
+      elementAId: 'ea',
+      elementBId: 'eb',
+      valueMm: 10,
+    }
+    const updated: FaceConstraint = {
+      id: 'min-2',
+      type: 'min',
+      facePair: null,
+      elementAId: 'eb',
+      elementBId: 'ea',
+      valueMm: 12,
+    }
+    const withFirst = upsertFaceConstraint(list, first)
+    const out = upsertFaceConstraint(withFirst, updated)
+    expect(out).toHaveLength(1)
+    if (out[0].type !== 'min') return
+    expect(out[0].valueMm).toBe(12)
+  })
+
   it('updates same type and pair', () => {
     const list: FaceConstraint[] = [{ id: 'min-1', type: 'min', facePair: { a: 2, b: 1 }, valueMm: 10 }]
     const next: FaceConstraint = { id: 'min-2', type: 'min', facePair: { a: 1, b: 2 }, valueMm: 20 }
