@@ -7,4 +7,9 @@ export type StretchConstraintEvalContext = {
   geometryAfter: BufferGeometry
   mergedFacesForEdit: readonly number[]
   elements: readonly PreparedModelElement[]
+  /**
+   * PANEL: przy rozciągnięciu X/Y śledzimy trójkąty tej merged listy jako grubość (inwariant grubości),
+   * nie parę faktycznie rozciąganą przez `mergedFacesForEdit`.
+   */
+  panelThicknessMergedFaces?: readonly number[]
 }

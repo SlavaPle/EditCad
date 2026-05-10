@@ -154,6 +154,10 @@
   border-color: #64748b;
 }
 
+.panelSpanBlock {
+  margin-top: 0.75rem;
+}
+
 .faceDistanceHint {
   margin: 4px 0 8px;
   font-size: 0.75rem;

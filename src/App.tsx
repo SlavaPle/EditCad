@@ -247,6 +247,7 @@ function App() {
         targetMm: resolvedTargetMm,
         prepared: preparedEffective,
         constraintsLocked: constraintsEvalLocked,
+        panelThicknessMergedFaces: overlay?.panelThicknessMergedFaces,
       })
       if (!pre.ok) {
         return { ok: false, error: pre.error }

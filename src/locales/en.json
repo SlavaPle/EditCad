@@ -90,14 +90,33 @@
     },
     "faceDistance": {
       "title": "Distance between faces",
+      "titlePanel": "Panel — thickness",
+      "titleProfileStretch": "Profile length (stretch gap)",
       "hint": "Each CAD face is usually two triangles in STL; one click selects the whole coplanar patch. Select two opposite (parallel) patches: first click, then Shift+click the second. Coordinates are treated as millimetres (typical STL export). Stretching runs along a single axis — the direction between the two planes.",
+      "hintPanelThicknessAxis": "The selected gap matches stored panel thickness. Edit thickness here; when the panel uses element pairs, length and width (in-plane spans) appear below.",
+      "hintProfilStretch": "The selected planes match this part’s PROFILE stretch axis. Adjust the stretch gap — frozen PROFILE dimensions remain constrained after apply.",
       "current": "Current distance: {{value}} mm",
+      "currentPanelThickness": "Panel thickness (current gap): {{value}} mm",
+      "currentProfileStretchGap": "Profile stretch gap: {{value}} mm",
+      "currentSpanX": "Measured length (X span): {{value}} mm",
+      "currentSpanY": "Measured width (Y span): {{value}} mm",
       "targetLabel": "Target distance",
+      "targetThickness": "Thickness (target)",
+      "targetProfilStretch": "Profile length — stretch gap (target)",
+      "targetPanelSpanX": "Length — X span (target)",
+      "targetPanelSpanY": "Width — Y span (target)",
+      "targetPanelInPlaneUnified": "Length & width share limits — span (target)",
+      "panelBBoxSpanMinor": "Bounding-box short in-plane size (estimated): {{value}} mm",
+      "panelBBoxSpanMajor": "Bounding-box long in-plane size (estimated): {{value}} mm",
       "apply": "Apply stretch",
       "boundHints": {
         "belowMin": "This value is below the allowed minimum for this pair (≥ {{minMm}} mm).",
         "aboveMax": "This value is above the allowed maximum for this pair (≤ {{maxMm}} mm).",
         "constMismatch": "CONST on this pair requires exactly {{exactMm}} mm."
+      },
+      "profilBoundHints": {
+        "belowStretchMin": "This value is below the PROFILE stretch minimum (≥ {{minMm}} mm when limits are on).",
+        "aboveStretchMax": "This value is above the PROFILE stretch maximum (≤ {{maxMm}} mm when limits are on)."
       },
       "errors": {
         "notParallel": "The two faces are not parallel enough. Pick two opposite planar faces.",
@@ -121,7 +140,6 @@
     },
     "limits": {
       "title": "Face limits",
-      "installModeToolbarHint": "To add limits here, open the Edit tab and turn on Limits in the toolbar. Click again on that button to exit placement mode.",
       "waitingStretchSelection": "Limits placement is on. Select two opposite planar regions (faces or edges—no vertices-only selection), same workflow as Distance between faces, then add limits here.",
       "hint": "Add MIN/MAX/CONST/PROFIL (2× frozen + optional MIN/MAX stretch band), BLOCK, PANEL limits on selected faces.",
       "locked": "Limits enforced",

@@ -16,8 +16,10 @@ export function validatePreparedStretchPrecheck(params: {
   targetMm: number
   prepared: PreparedElementConstraints
   constraintsLocked: boolean
+  panelThicknessMergedFaces?: readonly number[]
 }): { ok: true } | { ok: false; error: PreparedStretchPrecheckError } {
-  const { model, mergedFaces, targetMm, prepared, constraintsLocked } = params
+  const { model, mergedFaces, targetMm, prepared, constraintsLocked, panelThicknessMergedFaces } =
+    params
 
   if (!constraintsLocked) {
     return { ok: true }
@@ -42,6 +44,7 @@ export function validatePreparedStretchPrecheck(params: {
     geometryAfter: newGeo,
     mergedFacesForEdit: mergedFaces,
     elements,
+    panelThicknessMergedFaces,
   }
 
   for (const c of list) {

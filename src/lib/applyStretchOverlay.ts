@@ -4,6 +4,7 @@ import type { PreparedModelElement } from './preparedElementFormat'
 export type ApplyTwoFaceStretchOverlay = {
   mergedFaces?: readonly number[]
   faceConstraints?: FaceConstraint[]
-  modelElements?: readonly PreparedModelElement[]
+  modelElements?: PreparedModelElement[]
   forceConstraintEvaluation?: boolean
+  panelThicknessMergedFaces?: readonly number[]
 }

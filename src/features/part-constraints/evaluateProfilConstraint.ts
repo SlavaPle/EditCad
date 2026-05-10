@@ -1,4 +1,3 @@
-import { partitionSelectionIntoCoplanarPatches } from '../model-selection/facePlaneSelection'
 import {
   validateProfilFrozenSlotStored,
   type ConstFaceConstraint,
@@ -9,25 +8,10 @@ import {
 } from '../face-constraints/model'
 import type { StretchConstraintEvalContext } from './stretchEvalTypes'
 import type { PreparedStretchPrecheckError } from '../../lib/preparedStretchPrecheckErrors'
-import { mergedFacesMatchProfilElementPair } from './matchesProfilEditTarget'
+import { mergedFacesMatchProfilStretchAxis } from './matchesProfilStretchAxis'
 import { evaluateConstGeometryInvariant } from './evaluateConstConstraint'
 import { evaluateMaxConstraint } from './evaluateMaxConstraint'
 import { evaluateMinConstraint } from './evaluateMinConstraint'
-
-function editMatchesLegacyProfilFaces(
-  ctx: StretchConstraintEvalContext,
-  faceA: number,
-  faceB: number,
-): boolean {
-  const patches = partitionSelectionIntoCoplanarPatches(ctx.geometryBefore, ctx.mergedFacesForEdit)
-  if (patches.length !== 2) return false
-  const sa = new Set(patches[0]!)
-  const sb = new Set(patches[1]!)
-  return (
-    (sa.has(faceA) && sb.has(faceB)) ||
-    (sa.has(faceB) && sb.has(faceA))
-  )
-}
 
 function frozenSlotAsConst(slot: ProfilFrozenSlotStored): ConstFaceConstraint {
   return {
@@ -39,25 +23,6 @@ function frozenSlotAsConst(slot: ProfilFrozenSlotStored): ConstFaceConstraint {
     edgeVertexPair: slot.edgeVertexPair,
     valueMm: 1,
   }
-}
-
-function stretchTargetMatchesProfilPair(
-  ctx: StretchConstraintEvalContext,
-  c: Pick<ProfilFaceConstraint, 'elementAId' | 'elementBId' | 'facePair'>,
-): boolean {
-  const ea = c.elementAId?.trim()
-  const eb = c.elementBId?.trim()
-  if (ea && eb) {
-    return mergedFacesMatchProfilElementPair(
-      ctx.geometryBefore,
-      ctx.mergedFacesForEdit,
-      [...ctx.elements],
-      ea,
-      eb,
-    )
-  }
-  if (c.facePair) return editMatchesLegacyProfilFaces(ctx, c.facePair.a, c.facePair.b)
-  return false
 }
 
 /**
@@ -74,7 +39,15 @@ export function evaluateProfilConstraint(
     if (err) return err
   }
 
-  if (!stretchTargetMatchesProfilPair(ctx, c)) return 'profilWrongTarget'
+  if (
+    !mergedFacesMatchProfilStretchAxis(
+      ctx.geometryBefore,
+      ctx.mergedFacesForEdit,
+      ctx.elements,
+      c,
+    )
+  )
+    return 'profilWrongTarget'
 
   const stretchMinMm = c.stretchMinMm
   if (typeof stretchMinMm === 'number' && Number.isFinite(stretchMinMm) && stretchMinMm > 0) {

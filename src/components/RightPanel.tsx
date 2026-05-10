@@ -12,6 +12,13 @@ import {
 } from '../lib/selection'
 import type { PreparedStretchPrecheckError } from '../lib/preparedStretchValidation'
 import type { PreparedModelElement } from '../lib/preparedElementFormat'
+import { boundingBoxThicknessAndInPlaneSpansMm } from '../features/face-constraints/panelExtentsFromBBox'
+import {
+  findMatchingPanelThicknessConstraint,
+  findMatchingProfilStretchConstraint,
+} from '../features/part-constraints/findMatchingPartConstraintDimensions'
+import { mergeTrianglesForPreparedElementPair } from '../features/part-constraints/mergeFacesForPreparedElementPair'
+import { MIN_STRETCH_GAP_FLOOR_MM } from '../features/part-constraints/stretchBasicEnvelopeForMergedPair'
 import { mergedFacesMatchConstraintStretchPair } from '../features/part-constraints/matchesConstraintStretchPair'
 import {
   stretchBasicEnvelopeForMergedPair,
@@ -121,7 +128,10 @@ export function RightPanel({
   ])
 
   const [targetInput, setTargetInput] = useState('')
+  const [panelSpanXInput, setPanelSpanXInput] = useState('')
+  const [panelSpanYInput, setPanelSpanYInput] = useState('')
   const [applyError, setApplyError] = useState<string | null>(null)
+  const [panelSpanApplyError, setPanelSpanApplyError] = useState<string | null>(null)
   const [constraintType, setConstraintType] = useState<FaceConstraintType>('min')
   const prevConstraintTypeRef = useRef(constraintType)
   const [constraintValue, setConstraintValue] = useState('')
@@ -160,6 +170,86 @@ export function RightPanel({
     geometryRevision,
   ])
 
+  const matchingPanelThicknessConstraint = useMemo(() => {
+    if (!model || !faceStretchSelection) return null
+    return findMatchingPanelThicknessConstraint(model, facesForStretch, faceConstraints)
+  }, [model, geometryRevision, facesForStretch, faceStretchSelection, faceConstraints])
+
+  const matchingProfilStretchConstraint = useMemo(() => {
+    if (!model || !faceStretchSelection || matchingPanelThicknessConstraint) return null
+    return findMatchingProfilStretchConstraint(
+      model,
+      facesForStretch,
+      faceConstraints,
+      preparedModelElements,
+    )
+  }, [
+    model,
+    geometryRevision,
+    facesForStretch,
+    faceStretchSelection,
+    faceConstraints,
+    preparedModelElements,
+    matchingPanelThicknessConstraint,
+  ])
+
+  const panelThicknessInvariantTriangles = useMemo((): readonly number[] | null => {
+    if (!matchingPanelThicknessConstraint || !faceStretchSelection || facesForStretch.length === 0)
+      return null
+    return [...facesForStretch]
+  }, [matchingPanelThicknessConstraint, faceStretchSelection, facesForStretch])
+
+  const panelSpanXTriangles = useMemo(() => {
+    if (
+      !matchingPanelThicknessConstraint ||
+      matchingPanelThicknessConstraint.panelMeasureMode !== 'facePairs'
+    )
+      return null
+    const xa = matchingPanelThicknessConstraint.panelXElementAId
+    const xb = matchingPanelThicknessConstraint.panelXElementBId
+    if (!xa?.trim() || !xb?.trim()) return null
+    return mergeTrianglesForPreparedElementPair(preparedModelElements, xa, xb)
+  }, [matchingPanelThicknessConstraint, preparedModelElements])
+
+  const thicknessPanelYBakedSameAsX = matchingPanelThicknessConstraint?.ySameAsX === true
+
+  const panelSpanYTriangles = useMemo(() => {
+    if (
+      !matchingPanelThicknessConstraint ||
+      matchingPanelThicknessConstraint.panelMeasureMode !== 'facePairs'
+    )
+      return null
+    if (thicknessPanelYBakedSameAsX) return panelSpanXTriangles
+    const ya = matchingPanelThicknessConstraint.panelYElementAId
+    const yb = matchingPanelThicknessConstraint.panelYElementBId
+    if (!ya?.trim() || !yb?.trim()) return null
+    return mergeTrianglesForPreparedElementPair(preparedModelElements, ya, yb)
+  }, [
+    matchingPanelThicknessConstraint,
+    preparedModelElements,
+    panelSpanXTriangles,
+    thicknessPanelYBakedSameAsX,
+  ])
+
+  const spanXStretchAnalysis = useMemo(() => {
+    if (!model || !panelSpanXTriangles?.length) return null
+    return analyzeTwoFaceStretch(model, panelSpanXTriangles)
+  }, [model, geometryRevision, panelSpanXTriangles])
+
+  const spanYStretchAnalysis = useMemo(() => {
+    if (!model || thicknessPanelYBakedSameAsX || !panelSpanYTriangles?.length) return null
+    return analyzeTwoFaceStretch(model, panelSpanYTriangles)
+  }, [model, geometryRevision, panelSpanYTriangles, thicknessPanelYBakedSameAsX])
+
+  const panelBBoxTriple = useMemo(() => {
+    if (
+      !matchingPanelThicknessConstraint ||
+      matchingPanelThicknessConstraint.panelMeasureMode !== 'bboxExtents'
+    )
+      return null
+    return boundingBoxThicknessAndInPlaneSpansMm(model)
+  }, [matchingPanelThicknessConstraint, model, geometryRevision])
+
   const stretchDistanceBoundHint = useMemo(() => {
     if (!stretchEnvelope || stretchEnvelope.matchedConstraintCount === 0) return null
     const mm = parsePositiveMm(targetInput)
@@ -168,9 +258,34 @@ export function RightPanel({
     return kind === null ? null : { kind, envelope: stretchEnvelope }
   }, [targetInput, stretchEnvelope])
 
+  const profilStretchGapBandMm = useMemo(() => {
+    if (!constraintsLocked || !matchingProfilStretchConstraint) return null
+    const c = matchingProfilStretchConstraint
+    const upper = c.valueMm
+    const lower =
+      typeof c.stretchMinMm === 'number' &&
+      Number.isFinite(c.stretchMinMm) &&
+      c.stretchMinMm > 0
+        ? c.stretchMinMm
+        : MIN_STRETCH_GAP_FLOOR_MM
+    if (!(upper > 0 && Number.isFinite(upper))) return null
+    if (lower > upper + 1e-4) return null
+    return { lower, upper }
+  }, [constraintsLocked, matchingProfilStretchConstraint])
+
+  const profilStretchBoundHintKey = useMemo(() => {
+    if (!profilStretchGapBandMm) return null
+    const mm = parsePositiveMm(targetInput)
+    if (mm === null) return null
+    if (mm < profilStretchGapBandMm.lower - 1e-4) return 'belowStretchMin' as const
+    if (mm > profilStretchGapBandMm.upper + 1e-4) return 'aboveStretchMax' as const
+    return null
+  }, [targetInput, profilStretchGapBandMm])
+
   useEffect(() => {
     setApplyError(null)
     setConstraintError(null)
+    setPanelSpanApplyError(null)
   }, [selection, geometryRevision])
 
   useEffect(() => {
@@ -214,6 +329,18 @@ export function RightPanel({
     setTargetInput(String(Number(analysis.gapMm.toFixed(6))))
   }, [analysis, constStretchNominalMm])
 
+  useEffect(() => {
+    if (!spanXStretchAnalysis?.ok) return
+    const s = String(Number(spanXStretchAnalysis.gapMm.toFixed(6)))
+    setPanelSpanXInput(s)
+    if (thicknessPanelYBakedSameAsX) setPanelSpanYInput(s)
+  }, [spanXStretchAnalysis, geometryRevision, thicknessPanelYBakedSameAsX])
+
+  useEffect(() => {
+    if (thicknessPanelYBakedSameAsX || !spanYStretchAnalysis?.ok) return
+    setPanelSpanYInput(String(Number(spanYStretchAnalysis.gapMm.toFixed(6))))
+  }, [spanYStretchAnalysis, thicknessPanelYBakedSameAsX, geometryRevision])
+
   const handleApply = useCallback(() => {
     const mm = parsePositiveMm(targetInput)
     if (mm === null) {
@@ -230,6 +357,54 @@ export function RightPanel({
       setTargetInput(String(Number(result.effectiveTargetMm.toFixed(6))))
     }
   }, [onApplyTwoFaceStretch, targetInput])
+
+  const handleApplyPanelSpan = useCallback(
+    (axis: 'x' | 'y') => {
+      setPanelSpanApplyError(null)
+      const raw = axis === 'x' ? panelSpanXInput : panelSpanYInput
+      const mm = parsePositiveMm(raw)
+      if (mm === null) {
+        setPanelSpanApplyError('invalidTarget')
+        return
+      }
+      const merged =
+        axis === 'x'
+          ? panelSpanXTriangles
+          : thicknessPanelYBakedSameAsX
+            ? panelSpanXTriangles
+            : panelSpanYTriangles
+      if (!merged?.length || !panelThicknessInvariantTriangles?.length) {
+        setPanelSpanApplyError('invalidGeometry')
+        return
+      }
+      const overlay: ApplyTwoFaceStretchOverlay = {
+        mergedFaces: merged,
+        panelThicknessMergedFaces: [...panelThicknessInvariantTriangles],
+      }
+      const result = onApplyTwoFaceStretch(mm, overlay)
+      if (!result.ok) {
+        setPanelSpanApplyError(result.error)
+        return
+      }
+      setPanelSpanApplyError(null)
+      const formatted = String(Number(result.effectiveTargetMm.toFixed(6)))
+      if (axis === 'x') {
+        setPanelSpanXInput(formatted)
+        if (thicknessPanelYBakedSameAsX) setPanelSpanYInput(formatted)
+      } else {
+        setPanelSpanYInput(formatted)
+      }
+    },
+    [
+      panelSpanXInput,
+      panelSpanYInput,
+      panelSpanXTriangles,
+      panelSpanYTriangles,
+      thicknessPanelYBakedSameAsX,
+      panelThicknessInvariantTriangles,
+      onApplyTwoFaceStretch,
+    ],
+  )
 
   const facePair =
     facesForStretch.length >= 2 ? { a: Math.min(facesForStretch[0], facesForStretch[1]), b: Math.max(facesForStretch[0], facesForStretch[1]) } : null
@@ -626,15 +801,51 @@ export function RightPanel({
         </div>
         {faceStretchSelection && model && (
           <div className={styles.section}>
-            <div className={styles.sectionTitle}>{t('rightPanel.faceDistance.title')}</div>
-            <p className={styles.faceDistanceHint}>{t('rightPanel.faceDistance.hint')}</p>
+            <div className={styles.sectionTitle}>
+              {matchingPanelThicknessConstraint !== null
+                ? t('rightPanel.faceDistance.titlePanel')
+                : matchingProfilStretchConstraint !== null
+                  ? t('rightPanel.faceDistance.titleProfileStretch')
+                  : t('rightPanel.faceDistance.title')}
+            </div>
+            <p className={styles.faceDistanceHint}>
+              {matchingPanelThicknessConstraint !== null
+                ? t('rightPanel.faceDistance.hintPanelThicknessAxis')
+                : matchingProfilStretchConstraint !== null
+                  ? t('rightPanel.faceDistance.hintProfilStretch')
+                  : t('rightPanel.faceDistance.hint')}
+            </p>
             {analysis && analysis.ok && (
               <p className={styles.faceDistanceCurrent}>
-                {t('rightPanel.faceDistance.current', {
-                  value: Number(analysis.gapMm.toFixed(4)),
-                })}
+                {matchingPanelThicknessConstraint !== null
+                  ? t('rightPanel.faceDistance.currentPanelThickness', {
+                      value: Number(analysis.gapMm.toFixed(4)),
+                    })
+                  : matchingProfilStretchConstraint !== null
+                    ? t('rightPanel.faceDistance.currentProfileStretchGap', {
+                        value: Number(analysis.gapMm.toFixed(4)),
+                      })
+                    : t('rightPanel.faceDistance.current', {
+                        value: Number(analysis.gapMm.toFixed(4)),
+                      })}
               </p>
             )}
+            {matchingPanelThicknessConstraint?.panelMeasureMode === 'bboxExtents' &&
+              panelBBoxTriple &&
+              analysis?.ok && (
+                <>
+                  <p className={styles.faceDistanceBoundHint} role="status">
+                    {t('rightPanel.faceDistance.panelBBoxSpanMinor', {
+                      value: Number(panelBBoxTriple.inPlaneMinorMm.toFixed(4)),
+                    })}
+                  </p>
+                  <p className={styles.faceDistanceBoundHint} role="status">
+                    {t('rightPanel.faceDistance.panelBBoxSpanMajor', {
+                      value: Number(panelBBoxTriple.inPlaneMajorMm.toFixed(4)),
+                    })}
+                  </p>
+                </>
+              )}
             {analysis && !analysis.ok && (
               <p className={styles.faceDistanceError} role="alert">
                 {t(`rightPanel.faceDistance.errors.${analysis.error}`)}
@@ -643,7 +854,11 @@ export function RightPanel({
             {analysis?.ok && (
               <div className={styles.faceDistanceRow}>
                 <label className={styles.faceDistanceLabel} htmlFor="face-distance-mm">
-                  {t('rightPanel.faceDistance.targetLabel')}
+                  {matchingPanelThicknessConstraint !== null
+                    ? t('rightPanel.faceDistance.targetThickness')
+                    : matchingProfilStretchConstraint !== null
+                      ? t('rightPanel.faceDistance.targetProfilStretch')
+                      : t('rightPanel.faceDistance.targetLabel')}
                 </label>
                 <div className={styles.faceDistanceInputWrap}>
                   <input
@@ -661,7 +876,12 @@ export function RightPanel({
                     }}
                     aria-invalid={applyError === 'invalidTarget'}
                     aria-describedby={
-                      stretchDistanceBoundHint !== null ? 'face-distance-bound-hint' : undefined
+                      [
+                        stretchDistanceBoundHint !== null ? 'face-distance-bound-hint' : null,
+                        profilStretchBoundHintKey !== null ? 'face-distance-profil-band-hint' : null,
+                      ]
+                        .filter((x): x is string => typeof x === 'string' && x.length > 0)
+                        .join(' ') || undefined
                     }
                   />
                   <span className={styles.faceDistanceUnit}>mm</span>
@@ -683,17 +903,97 @@ export function RightPanel({
                 })}
               </p>
             )}
+            {analysis?.ok && profilStretchBoundHintKey !== null && profilStretchGapBandMm !== null && (
+              <p id="face-distance-profil-band-hint" className={styles.faceDistanceBoundHint} role="status">
+                {t(`rightPanel.faceDistance.profilBoundHints.${profilStretchBoundHintKey}`, {
+                  minMm: Number(profilStretchGapBandMm.lower.toFixed(4)),
+                  maxMm: Number(profilStretchGapBandMm.upper.toFixed(4)),
+                })}
+              </p>
+            )}
+            {matchingPanelThicknessConstraint?.panelMeasureMode === 'facePairs' &&
+              spanXStretchAnalysis?.ok && (
+                <div className={styles.panelSpanBlock}>
+                  <div className={styles.faceDistanceRow}>
+                    <label className={styles.faceDistanceLabel} htmlFor="panel-span-x-mm">
+                      {thicknessPanelYBakedSameAsX
+                        ? t('rightPanel.faceDistance.targetPanelInPlaneUnified')
+                        : t('rightPanel.faceDistance.targetPanelSpanX')}
+                    </label>
+                    <div className={styles.faceDistanceInputWrap}>
+                      <input
+                        id="panel-span-x-mm"
+                        className={styles.faceDistanceInput}
+                        type="text"
+                        inputMode="decimal"
+                        value={panelSpanXInput}
+                        onChange={(e) => setPanelSpanXInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key !== 'Enter') return
+                          e.preventDefault()
+                          handleApplyPanelSpan('x')
+                        }}
+                        aria-invalid={panelSpanApplyError === 'invalidTarget'}
+                      />
+                      <span className={styles.faceDistanceUnit}>mm</span>
+                    </div>
+                    <button type="button" className={styles.faceDistanceApply} onClick={() => handleApplyPanelSpan('x')}>
+                      {t('rightPanel.faceDistance.apply')}
+                    </button>
+                  </div>
+                  <p className={styles.faceDistanceCurrent}>
+                    {t('rightPanel.faceDistance.currentSpanX', {
+                      value: Number(spanXStretchAnalysis.gapMm.toFixed(4)),
+                    })}
+                  </p>
+                  {!thicknessPanelYBakedSameAsX && spanYStretchAnalysis?.ok && (
+                    <>
+                      <div className={styles.faceDistanceRow}>
+                        <label className={styles.faceDistanceLabel} htmlFor="panel-span-y-mm">
+                          {t('rightPanel.faceDistance.targetPanelSpanY')}
+                        </label>
+                        <div className={styles.faceDistanceInputWrap}>
+                          <input
+                            id="panel-span-y-mm"
+                            className={styles.faceDistanceInput}
+                            type="text"
+                            inputMode="decimal"
+                            value={panelSpanYInput}
+                            onChange={(e) => setPanelSpanYInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key !== 'Enter') return
+                              e.preventDefault()
+                              handleApplyPanelSpan('y')
+                            }}
+                            aria-invalid={panelSpanApplyError === 'invalidTarget'}
+                          />
+                          <span className={styles.faceDistanceUnit}>mm</span>
+                        </div>
+                        <button type="button" className={styles.faceDistanceApply} onClick={() => handleApplyPanelSpan('y')}>
+                          {t('rightPanel.faceDistance.apply')}
+                        </button>
+                      </div>
+                      <p className={styles.faceDistanceCurrent}>
+                        {t('rightPanel.faceDistance.currentSpanY', {
+                          value: Number(spanYStretchAnalysis.gapMm.toFixed(4)),
+                        })}
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
             {applyError && (
               <p className={styles.faceDistanceError} role="alert">
                 {t(`rightPanel.faceDistance.errors.${applyError}`)}
               </p>
             )}
-          </div>
-        )}
-        {model && faceStretchSelection && !limitsInstallActive && (
-          <div className={styles.section}>
-            <div className={styles.sectionTitle}>{t('rightPanel.limits.title')}</div>
-            <p className={styles.limitsInstallToolbarHint}>{t('rightPanel.limits.installModeToolbarHint')}</p>
+            {panelSpanApplyError !== null && (
+              <p className={styles.faceDistanceError} role="alert">
+                {i18n.exists(`rightPanel.faceDistance.errors.${panelSpanApplyError}`)
+                  ? t(`rightPanel.faceDistance.errors.${panelSpanApplyError}`)
+                  : panelSpanApplyError}
+              </p>
+            )}
           </div>
         )}
         {model && limitsInstallActive && !faceStretchSelection && (
