@@ -9,6 +9,10 @@ import type { PreparedStretchPrecheckError } from '../lib/preparedStretchValidat
 import type { PreparedModelElement } from '../lib/preparedElementFormat'
 import { mergedFacesMatchConstraintStretchPair } from '../features/part-constraints/matchesConstraintStretchPair'
 import {
+  stretchBasicEnvelopeForMergedPair,
+  stretchInputDeviationKind,
+} from '../features/part-constraints/stretchBasicEnvelopeForMergedPair'
+import {
   formatPanelConstraintSummary,
   formatProfilStretchGapLabelMm,
   type FaceConstraint,
@@ -140,6 +144,32 @@ export function RightPanel({
   const [profilFrozenSlot2Ids, setProfilFrozenSlot2Ids] = useState<{ a: string; b: string } | null>(null)
   const [profilStretchUseMin, setProfilStretchUseMin] = useState(false)
   const [profilStretchMinMm, setProfilStretchMinMm] = useState('')
+
+  const stretchEnvelope = useMemo(() => {
+    if (!constraintsLocked || !model || !faceStretchSelection) return null
+    return stretchBasicEnvelopeForMergedPair(
+      model,
+      facesForStretch,
+      faceConstraints,
+      preparedModelElements,
+    )
+  }, [
+    constraintsLocked,
+    model,
+    faceStretchSelection,
+    facesForStretch,
+    faceConstraints,
+    preparedModelElements,
+    geometryRevision,
+  ])
+
+  const stretchDistanceBoundHint = useMemo(() => {
+    if (!stretchEnvelope || stretchEnvelope.matchedConstraintCount === 0) return null
+    const mm = parsePositiveMm(targetInput)
+    if (mm === null) return null
+    const kind = stretchInputDeviationKind(mm, stretchEnvelope)
+    return kind === null ? null : { kind, envelope: stretchEnvelope }
+  }, [targetInput, stretchEnvelope])
 
   useEffect(() => {
     setApplyError(null)
@@ -633,6 +663,9 @@ export function RightPanel({
                       handleApply()
                     }}
                     aria-invalid={applyError === 'invalidTarget'}
+                    aria-describedby={
+                      stretchDistanceBoundHint !== null ? 'face-distance-bound-hint' : undefined
+                    }
                   />
                   <span className={styles.faceDistanceUnit}>mm</span>
                 </div>
@@ -640,6 +673,18 @@ export function RightPanel({
                   {t('rightPanel.faceDistance.apply')}
                 </button>
               </div>
+            )}
+            {analysis?.ok && stretchDistanceBoundHint !== null && (
+              <p id="face-distance-bound-hint" className={styles.faceDistanceBoundHint} role="status">
+                {t(`rightPanel.faceDistance.boundHints.${stretchDistanceBoundHint.kind}`, {
+                  minMm: Number(stretchDistanceBoundHint.envelope.lower.toFixed(4)),
+                  maxMm: Number(stretchDistanceBoundHint.envelope.upper.toFixed(4)),
+                  exactMm:
+                    stretchDistanceBoundHint.envelope.pinConstMm !== null
+                      ? Number(stretchDistanceBoundHint.envelope.pinConstMm.toFixed(4))
+                      : 0,
+                })}
+              </p>
             )}
             {applyError && (
               <p className={styles.faceDistanceError} role="alert">

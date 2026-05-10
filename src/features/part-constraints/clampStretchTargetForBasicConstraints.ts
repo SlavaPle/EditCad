@@ -1,14 +1,9 @@
 import type { BufferGeometry } from 'three'
 import type { PreparedModelElement } from '../../lib/preparedElementFormat'
-import { analyzeTwoFaceStretch } from '../../lib/twoFaceStretch'
 import type { FaceConstraint } from '../face-constraints/model'
-import { mergedFacesMatchConstraintStretchPair } from './matchesConstraintStretchPair'
+import { stretchBasicEnvelopeForMergedPair } from './stretchBasicEnvelopeForMergedPair'
 
-/** Tolerancja porównania po przeliczeniu zaznaczonego celu (mm). */
 const EPS_ADJUST = 1e-4
-
-/** Minimalny sensowny zamos (jak w analyzeTwoFaceStretch / twoFaceStretch). */
-const MIN_STRETCH_GAP_FLOOR_MM = 1e-4
 
 /** Przy włączonej blokadzie — MIN/MAX/CONST na aktualnej parze (CONST = valueMm dla płaszczyzn). */
 export function clampStretchTargetMmForBasicConstraints(params: {
@@ -37,47 +32,35 @@ export function clampStretchTargetMmForBasicConstraints(params: {
     return { targetMm: rawTargetMm, adjusted: false }
   }
 
-  const an = analyzeTwoFaceStretch(geometry, mergedFaces)
-  if (!an.ok) return { targetMm: rawTargetMm, adjusted: false }
+  const env = stretchBasicEnvelopeForMergedPair(geometry, mergedFaces, faceConstraints, modelElements)
+  if (!env) return { targetMm: rawTargetMm, adjusted: false }
 
-  const elems = modelElements ?? []
-  let lower = MIN_STRETCH_GAP_FLOOR_MM
-  let upper = Number.POSITIVE_INFINITY
-  let constFacePairTargetMm: number | null = null
+  if (env.matchedConstraintCount === 0) {
+    let t = rawTargetMm
+    if (t < env.lower) t = env.lower
+    if (env.upper < Number.POSITIVE_INFINITY && t > env.upper) t = env.upper
+    const adjusted = Math.abs(t - rawTargetMm) > EPS_ADJUST
+    if (!Number.isFinite(t) || t <= 0) return { targetMm: rawTargetMm, adjusted: false }
+    return { targetMm: t, adjusted }
+  }
 
-  for (const c of faceConstraints) {
-    if (c.type !== 'min' && c.type !== 'max' && c.type !== 'const') continue
-    if (!mergedFacesMatchConstraintStretchPair(geometry, mergedFaces, elems, c)) continue
-
-    if (c.type === 'const') {
-      if (c.edgeVertexPair) continue
-      constFacePairTargetMm = c.valueMm
-      continue
-    }
-    if (c.type === 'min') lower = Math.max(lower, c.valueMm)
-    if (c.type === 'max') upper = Math.min(upper, c.valueMm)
+  if (env.pinConstMm !== null) {
+    const t = env.pinConstMm
+    return { targetMm: t, adjusted: Math.abs(t - rawTargetMm) > EPS_ADJUST }
   }
 
   if (
-    constFacePairTargetMm === null &&
-    upper < Number.POSITIVE_INFINITY &&
-    lower > upper + EPS_ADJUST
+    env.upper < Number.POSITIVE_INFINITY &&
+    env.lower > env.upper + EPS_ADJUST
   ) {
     return { targetMm: rawTargetMm, adjusted: false }
   }
 
-  if (constFacePairTargetMm !== null) {
-    const t = constFacePairTargetMm
-    const adjusted = Math.abs(t - rawTargetMm) > EPS_ADJUST
-    return { targetMm: t, adjusted }
-  }
-
   let t = rawTargetMm
-  if (t < lower) t = lower
-  if (upper < Number.POSITIVE_INFINITY && t > upper) t = upper
+  if (t < env.lower) t = env.lower
+  if (env.upper < Number.POSITIVE_INFINITY && t > env.upper) t = env.upper
   const adjusted = Math.abs(t - rawTargetMm) > EPS_ADJUST
-
-  if (!Number.isFinite(t) || t <= 0 || (upper < Number.POSITIVE_INFINITY && lower > upper + EPS_ADJUST)) {
+  if (!Number.isFinite(t) || t <= 0 || (env.upper < Number.POSITIVE_INFINITY && env.lower > env.upper + EPS_ADJUST)) {
     return { targetMm: rawTargetMm, adjusted: false }
   }
 

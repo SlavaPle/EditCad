@@ -51,6 +51,11 @@
       "current": "Current distance: {{value}} mm",
       "targetLabel": "Target distance",
       "apply": "Apply stretch",
+      "boundHints": {
+        "belowMin": "This value is below the allowed minimum for this pair (≥ {{minMm}} mm).",
+        "aboveMax": "This value is above the allowed maximum for this pair (≤ {{maxMm}} mm).",
+        "constMismatch": "CONST on this pair requires exactly {{exactMm}} mm."
+      },
       "errors": {
         "notParallel": "The two faces are not parallel enough. Pick two opposite planar faces.",
         "tooThin": "The distance between the faces is too small to resize reliably.",

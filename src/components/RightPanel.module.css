@@ -212,6 +212,12 @@
   cursor: pointer;
 }
 
+.faceDistanceBoundHint {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+  color: #ad5a07;
+}
+
 .faceDistanceApply:hover {
   background: #475569;
 }
