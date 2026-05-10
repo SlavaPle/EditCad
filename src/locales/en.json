@@ -80,6 +80,7 @@
     "limits": {
       "title": "Face limits",
       "installModeToolbarHint": "To add limits here, open the Edit tab and turn on Limits in the toolbar. Click again on that button to exit placement mode.",
+      "waitingStretchSelection": "Limits placement is on. Select two opposite planar regions (faces or edges—no vertices-only selection), same workflow as Distance between faces, then add limits here.",
       "hint": "Add MIN/MAX/CONST/PROFIL (2× frozen + optional MIN/MAX stretch band), BLOCK, PANEL limits on selected faces.",
       "locked": "Limits enforced",
       "unlocked": "Limits not enforced",

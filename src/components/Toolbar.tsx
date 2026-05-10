@@ -13,7 +13,6 @@ interface ToolbarProps {
   onSaveModelClick?: () => void
   onSaveAsModelClick?: () => void
   hasModel?: boolean
-  limitsPlacementAllowed?: boolean
   limitsInstallActive?: boolean
   onToggleLimitsInstall?: () => void
 }
@@ -28,7 +27,6 @@ export function Toolbar({
   onSaveModelClick,
   onSaveAsModelClick,
   hasModel = false,
-  limitsPlacementAllowed = true,
   limitsInstallActive = false,
   onToggleLimitsInstall,
 }: ToolbarProps) {
@@ -126,7 +124,7 @@ export function Toolbar({
                 : t('toolbar.limits')
             }
             aria-pressed={limitsInstallActive}
-            disabled={!hasModel || !limitsPlacementAllowed}
+            disabled={!hasModel}
             onClick={() => onToggleLimitsInstall?.()}
           >
             <span className={styles.icon}>

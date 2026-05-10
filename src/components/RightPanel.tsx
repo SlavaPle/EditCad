@@ -701,7 +701,13 @@ export function RightPanel({
             <p className={styles.limitsInstallToolbarHint}>{t('rightPanel.limits.installModeToolbarHint')}</p>
           </div>
         )}
-        {model && faceStretchSelection && limitsInstallActive && (
+        {model && limitsInstallActive && !faceStretchSelection && (
+          <div className={styles.section}>
+            <div className={styles.sectionTitle}>{t('rightPanel.limits.title')}</div>
+            <p className={styles.limitsInstallToolbarHint}>{t('rightPanel.limits.waitingStretchSelection')}</p>
+          </div>
+        )}
+        {model && limitsInstallActive && faceStretchSelection && (
         <div className={styles.section}>
           <div className={styles.sectionTitle}>{t('rightPanel.limits.title')}</div>
           <p className={styles.faceDistanceHint}>{t('rightPanel.limits.hint')}</p>
