@@ -333,3 +333,16 @@ export function partitionSelectionIntoCoplanarPatches(
   patches.sort((a, b) => Math.min(...a) - Math.min(...b))
   return patches
 }
+
+/** Minimalny indeks trójkąta w każdej koplanarnej łacie (kolejność jak partitionSelectionIntoCoplanarPatches). */
+export function coplanarPatchRepresentativeFaces(
+  geometry: BufferGeometry | null,
+  mergedTriangleIndices: readonly number[],
+): number[] {
+  if (mergedTriangleIndices.length === 0) return []
+  if (!geometry) {
+    return Array.from(new Set(mergedTriangleIndices)).sort((a, b) => a - b)
+  }
+  const patches = partitionSelectionIntoCoplanarPatches(geometry, mergedTriangleIndices)
+  return patches.map((patch) => Math.min(...patch))
+}

@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { BufferGeometry, Float32BufferAttribute, Uint16BufferAttribute } from 'three'
 import {
   createEmptySelection,
   selectVertex,
@@ -7,6 +8,7 @@ import {
   selectFaces,
   clearSelection,
   getSelectionListEntries,
+  getSelectionPanelListEntries,
   isVertexSelected,
   isEdgeSelected,
   isFaceSelected,
@@ -168,6 +170,41 @@ describe('selection module', () => {
 
     s = selectVertex(s, 1, 'add')
     expect(selectionIsOnlyFaceSet(s, [10, 20])).toBe(false)
+  })
+
+  it('panel list collapses duplicate triangle indices without geometry', () => {
+    let s = createEmptySelection()
+    s = selectFaces(s, [5, 2, 2], 'replace')
+    const entries = getSelectionPanelListEntries(s, null, [])
+    expect(entries.filter((e) => e.kind === 'face')).toEqual([
+      { kind: 'face', index: 2 },
+      { kind: 'face', index: 5 },
+    ])
+  })
+
+  it('panel list gives one face per coplanar patch (quad = two triangles)', () => {
+    const g = new BufferGeometry()
+    const positions = new Float32Array([0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0])
+    g.setAttribute('position', new Float32BufferAttribute(positions, 3))
+    g.setIndex(new Uint16BufferAttribute([0, 1, 2, 0, 2, 3], 1))
+    let s = createEmptySelection()
+    s = selectFaces(s, [0, 1], 'replace')
+    const entries = getSelectionPanelListEntries(s, g, [])
+    expect(entries).toEqual([{ kind: 'face', index: 0 }])
+  })
+
+  it('panel list shows one representative per plane (z=0 quad + lone z=1 tri)', () => {
+    const g = new BufferGeometry()
+    const positions = new Float32Array([
+      0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0,
+      0, 0, 1, 1, 0, 1, 1, 1, 1,
+    ])
+    g.setAttribute('position', new Float32BufferAttribute(positions, 3))
+    g.setIndex(new Uint16BufferAttribute([0, 1, 2, 0, 2, 3, 4, 5, 6], 1))
+    let s = createEmptySelection()
+    s = selectFaces(s, [0, 1, 2], 'replace')
+    const faceRows = getSelectionPanelListEntries(s, g, []).filter((e): e is { kind: 'face'; index: number } => e.kind === 'face')
+    expect(faceRows.map((r) => r.index)).toEqual([0, 2])
   })
 })
 

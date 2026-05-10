@@ -5,7 +5,8 @@ import { analyzeTwoFaceStretch, type TwoFaceStretchError } from '../lib/twoFaceS
 import type { ApplyTwoFaceStretchOverlay } from '../lib/applyStretchOverlay'
 import { partitionSelectionIntoCoplanarPatches } from '../features/model-selection/facePlaneSelection'
 import {
-  getSelectionListEntries,
+  getSelectionPanelListEntries,
+  mergeFaceSelectionWithProbable,
   selectionSupportsTwoFaceStretchProximity,
   type SelectionState,
 } from '../lib/selection'
@@ -88,18 +89,15 @@ export function RightPanel({
   onMergeModelElements,
 }: RightPanelProps) {
   const { t, i18n } = useTranslation()
-  const rows = useMemo(() => getSelectionListEntries(selection), [selection])
+  const rows = useMemo(
+    () => getSelectionPanelListEntries(selection, model, probableFaces),
+    [selection, model, geometryRevision, probableFaces],
+  )
 
-  const facesForStretch = useMemo(() => {
-    const merged = [...selection.faces]
-    const seen = new Set(selection.faces)
-    for (const fi of probableFaces) {
-      if (seen.has(fi)) continue
-      merged.push(fi)
-      seen.add(fi)
-    }
-    return merged
-  }, [selection.faces, probableFaces])
+  const facesForStretch = useMemo(
+    () => mergeFaceSelectionWithProbable(selection.faces, probableFaces),
+    [selection.faces, probableFaces],
+  )
 
   const faceStretchSelection = selectionSupportsTwoFaceStretchProximity(selection, probableFaces)
 

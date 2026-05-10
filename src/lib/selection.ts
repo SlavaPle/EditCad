@@ -1,5 +1,7 @@
 import type { BufferGeometry } from 'three'
 
+import { coplanarPatchRepresentativeFaces } from '../features/model-selection/facePlaneSelection'
+
 // Stan zaznaczenia elementów modelu (wierzchołki/krawędzie/ściany)
 
 export type SelectionKind = 'vertex' | 'edge' | 'face'
@@ -37,6 +39,44 @@ export function getSelectionListEntries(state: SelectionState): SelectionListEnt
   return out
 }
 
+/** Ściany z sąsiedztwa proximity (jak panel rozciągnięcia) — ta sama kolejność dodawania co wcześniej inline. */
+export function mergeFaceSelectionWithProbable(
+  selectionFaces: readonly number[],
+  probableFaces: readonly number[],
+): number[] {
+  const merged = [...selectionFaces]
+  const seen = new Set(selectionFaces)
+  for (const fi of probableFaces) {
+    if (seen.has(fi)) continue
+    merged.push(fi)
+    seen.add(fi)
+  }
+  return merged
+}
+
+/**
+ * Lista dla panelu: wierzchołki i krawędzie jak dotychczas; z trójkątów —
+ * jeden reprezentant na koplanarną „płaszczyznę” (minimalny indeks w łacie), proximity wliczone.
+ */
+export function getSelectionPanelListEntries(
+  state: SelectionState,
+  geometry: BufferGeometry | null,
+  probableFaces: readonly number[],
+): SelectionListEntry[] {
+  const out: SelectionListEntry[] = []
+  for (const index of state.vertices) {
+    out.push({ kind: 'vertex', index })
+  }
+  for (const e of state.edges) {
+    out.push({ kind: 'edge', a: e.a, b: e.b })
+  }
+  const merged = mergeFaceSelectionWithProbable(state.faces, probableFaces)
+  for (const fi of coplanarPatchRepresentativeFaces(geometry, merged)) {
+    out.push({ kind: 'face', index: fi })
+  }
+  return out
+}
+
 // Reprezentuje brak zaznaczenia
 export function createEmptySelection(): SelectionState {
   return {
@@ -54,13 +94,7 @@ export function selectionSupportsTwoFaceStretchProximity(
   selection: SelectionState,
   probableFaces: readonly number[],
 ): boolean {
-  const merged = [...selection.faces]
-  const seen = new Set(selection.faces)
-  for (const fi of probableFaces) {
-    if (seen.has(fi)) continue
-    merged.push(fi)
-    seen.add(fi)
-  }
+  const merged = mergeFaceSelectionWithProbable(selection.faces, probableFaces)
   return (
     merged.length > 0 &&
     selection.vertices.length === 0 &&
