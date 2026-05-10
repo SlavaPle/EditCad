@@ -990,6 +990,12 @@ export function RightPanel({
                   <button
                     type="button"
                     className={styles.constraintRemove}
+                    disabled={constraintsLocked}
+                    title={
+                      constraintsLocked
+                        ? t('rightPanel.limits.removeDisabledWhenLocked')
+                        : undefined
+                    }
                     onClick={() => handleRemoveConstraint(item.id)}
                   >
                     {t('rightPanel.limits.remove')}

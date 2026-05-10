@@ -55,3 +55,16 @@ export function upsertFaceConstraint(
 export function removeFaceConstraint(list: readonly FaceConstraint[], id: string): FaceConstraint[] {
   return list.filter((item) => item.id !== id)
 }
+
+/** Podmiana wpisu po `id` (np. edycja parametrów mm — wiązania elementów bez zmian). */
+export function replaceFaceConstraintById(
+  list: readonly FaceConstraint[],
+  replacement: FaceConstraint,
+): FaceConstraint[] {
+  if (!validateFaceConstraint(replacement)) return [...list]
+  const idx = list.findIndex((item) => item.id === replacement.id)
+  if (idx < 0) return [...list]
+  const next = [...list]
+  next[idx] = replacement
+  return next
+}

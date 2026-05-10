@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { upsertFaceConstraint, removeFaceConstraint } from './store'
+import { upsertFaceConstraint, removeFaceConstraint, replaceFaceConstraintById } from './store'
 import type { FaceConstraint } from './model'
 
 describe('face constraints store', () => {
@@ -54,5 +54,18 @@ describe('face constraints store', () => {
     const updated = removeFaceConstraint(list, 'a')
     expect(updated).toHaveLength(1)
     expect(updated[0].id).toBe('b')
+  })
+
+  it('replaceFaceConstraintById keeps order and swaps fields', () => {
+    const list: FaceConstraint[] = [
+      { id: 'a', type: 'min', facePair: { a: 0, b: 1 }, valueMm: 10 },
+      { id: 'b', type: 'max', facePair: { a: 2, b: 3 }, valueMm: 20 },
+    ]
+    const next: FaceConstraint = { id: 'a', type: 'min', facePair: { a: 0, b: 1 }, valueMm: 15 }
+    const updated = replaceFaceConstraintById(list, next)
+    expect(updated).toHaveLength(2)
+    expect(updated[0].type).toBe('min')
+    if (updated[0].type === 'min') expect(updated[0].valueMm).toBe(15)
+    expect(updated[1].id).toBe('b')
   })
 })

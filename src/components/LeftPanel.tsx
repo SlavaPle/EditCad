@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useRef, Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelLoader } from './ModelLoader'
 import { isSupportedExtension } from '../lib/loadModel'
@@ -8,6 +8,7 @@ import type { BufferGeometry } from 'three'
 import type { PreparedElementConstraints, PreparedModelElement } from '../lib/preparedElementFormat'
 import type { FaceConstraint } from '../features/face-constraints/model'
 import { formatConstraintUiSummary } from '../features/face-constraints/formatConstraintUiSummary'
+import { LeftPanelLimitInlineEditor } from './LeftPanelLimitInlineEditor'
 import styles from './LeftPanel.module.css'
 
 export interface LeftPanelProps {
@@ -29,7 +30,10 @@ export interface LeftPanelProps {
   onConstraintsLockedChange: (next: boolean) => void
   limitsSummaryGeometry: BufferGeometry | null
   limitsSummaryModelElements: readonly PreparedModelElement[]
-  onHighlightLimitDependentFaces?: (constraint: FaceConstraint) => void
+  onLimitRowClick?: (constraint: FaceConstraint) => void
+  focusedLimitConstraintId?: string | null
+  onReplaceLimitConstraint?: (next: FaceConstraint) => void
+  onRemoveLimitConstraint?: (id: string) => void
 }
 
 export function LeftPanel({
@@ -45,7 +49,10 @@ export function LeftPanel({
   onConstraintsLockedChange,
   limitsSummaryGeometry,
   limitsSummaryModelElements,
-  onHighlightLimitDependentFaces,
+  onLimitRowClick,
+  focusedLimitConstraintId = null,
+  onReplaceLimitConstraint,
+  onRemoveLimitConstraint,
 }: LeftPanelProps) {
   const { t } = useTranslation()
   const dropZoneRef = useRef<HTMLDivElement>(null)
@@ -75,6 +82,11 @@ export function LeftPanel({
     e.preventDefault()
     e.dataTransfer.dropEffect = 'copy'
   }, [])
+
+  const focusedConstraint =
+    !constraintsLocked && focusedLimitConstraintId
+      ? faceConstraints.find((c) => c.id === focusedLimitConstraintId)
+      : undefined
 
   return (
     <aside className={styles.panel}>
@@ -137,32 +149,45 @@ export function LeftPanel({
             ) : faceConstraints.length === 0 ? (
               <p className={styles.placeholder}>{t('leftPanel.limits.empty')}</p>
             ) : (
-              <ul className={styles.constraintsList}>
-                {faceConstraints.map((item) => {
-                  const { primary, tooltip } = formatConstraintUiSummary({
-                    constraint: item,
-                    geometry: limitsSummaryGeometry,
-                    modelElements: limitsSummaryModelElements,
-                    t,
-                  })
-                  const hint = t('leftPanel.limits.selectLinkedFaces')
-                  const canNavigate = Boolean(onHighlightLimitDependentFaces && limitsSummaryGeometry)
-                  return (
-                    <li key={item.id}>
-                      <button
-                        type="button"
-                        className={styles.constraintLimitButton}
-                        title={`${tooltip}\n\n${hint}`}
-                        aria-label={`${item.type.toUpperCase()} · ${primary}. ${hint}`}
-                        disabled={!canNavigate}
-                        onClick={() => canNavigate && onHighlightLimitDependentFaces!(item)}
-                      >
-                        {item.type.toUpperCase()} · {primary}
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
+              <Fragment>
+                <ul className={styles.constraintsList}>
+                  {faceConstraints.map((item) => {
+                    const { primary, tooltip } = formatConstraintUiSummary({
+                      constraint: item,
+                      geometry: limitsSummaryGeometry,
+                      modelElements: limitsSummaryModelElements,
+                      t,
+                    })
+                    const hint = t('leftPanel.limits.selectLinkedFaces')
+                    const isSelected = !constraintsLocked && focusedLimitConstraintId === item.id
+                    return (
+                      <li key={item.id}>
+                        <button
+                          type="button"
+                          className={`${styles.constraintLimitButton}${isSelected ? ` ${styles.constraintLimitButtonSelected}` : ''}`}
+                          title={`${tooltip}\n\n${hint}`}
+                          aria-label={`${item.type.toUpperCase()} · ${primary}. ${hint}`}
+                          disabled={!onLimitRowClick}
+                          onClick={() => onLimitRowClick?.(item)}
+                        >
+                          {item.type.toUpperCase()} · {primary}
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+                {!constraintsLocked && focusedConstraint && onReplaceLimitConstraint && onRemoveLimitConstraint && (
+                  <LeftPanelLimitInlineEditor
+                    key={focusedConstraint.id}
+                    constraint={focusedConstraint}
+                    onSave={onReplaceLimitConstraint}
+                    onDelete={() => onRemoveLimitConstraint(focusedConstraint.id)}
+                  />
+                )}
+                {!constraintsLocked && focusedLimitConstraintId === null && (
+                  <p className={styles.pickLimitEditHint}>{t('leftPanel.limits.pickLimitToEdit')}</p>
+                )}
+              </Fragment>
             )}
           </div>
         </div>

@@ -22,6 +22,7 @@ import {
   type PreparedStretchPrecheckError,
 } from './lib/preparedStretchValidation'
 import type { FaceConstraint } from './features/face-constraints/model'
+import { removeFaceConstraint, replaceFaceConstraintById } from './features/face-constraints/store'
 import { resolveConstraintDependentFaceIndices } from './features/part-constraints/resolveConstraintDependentFaces'
 import { clampStretchTargetMmForBasicConstraints } from './features/part-constraints/clampStretchTargetForBasicConstraints'
 import type { ApplyTwoFaceStretchOverlay } from './lib/applyStretchOverlay'
@@ -65,6 +66,7 @@ function App() {
     modelElements: [],
   })
   const [constraintsLocked, setConstraintsLocked] = useState(true)
+  const [focusedLimitConstraintId, setFocusedLimitConstraintId] = useState<string | null>(null)
   const [limitsInstallActive, setLimitsInstallActive] = useState(false)
   const modelLoaderRef = useRef<ModelLoaderHandle>(null)
 
@@ -73,8 +75,11 @@ function App() {
     setProbableFaces([])
   }, [])
 
-  const handleHighlightLimitDependentFaces = useCallback(
+  const handleLimitRowClick = useCallback(
     (c: FaceConstraint) => {
+      if (!constraintsLocked) {
+        setFocusedLimitConstraintId(c.id)
+      }
       if (!model) return
       const faces = resolveConstraintDependentFaceIndices({
         constraint: c,
@@ -88,7 +93,7 @@ function App() {
       }
       setSelection(selectFaces(createEmptySelection(), faces, 'replace'))
     },
-    [model, preparedConstraints.modelElements, clearAllSelection],
+    [constraintsLocked, model, preparedConstraints.modelElements, clearAllSelection],
   )
 
   useEffect(() => {
@@ -100,6 +105,10 @@ function App() {
   useEffect(() => {
     if (model) clearMeshTopologyCaches(model)
   }, [model, geometryRevision])
+
+  useEffect(() => {
+    if (constraintsLocked) setFocusedLimitConstraintId(null)
+  }, [constraintsLocked])
 
   const handleModelLoad = (
     geometry: BufferGeometry,
@@ -117,6 +126,7 @@ function App() {
     setPreparedConstraints(
       loadedPrepared?.constraints ?? { mode: 'fixed', faceConstraints: [], modelElements: [] },
     )
+    setFocusedLimitConstraintId(null)
   }
 
   const handleMergeModelElements = useCallback((newElements: readonly PreparedModelElement[]) => {
@@ -134,9 +144,31 @@ function App() {
 
   const preparedFaceConstraints = preparedConstraints.faceConstraints ?? []
 
+  useEffect(() => {
+    if (focusedLimitConstraintId === null) return
+    if (!preparedFaceConstraints.some((x) => x.id === focusedLimitConstraintId)) {
+      setFocusedLimitConstraintId(null)
+    }
+  }, [preparedFaceConstraints, focusedLimitConstraintId])
+
   const handleFaceConstraintsChange = useCallback((next: FaceConstraint[]) => {
     setPreparedConstraints((prev) => ({ ...prev, faceConstraints: next }) as PreparedElementConstraints)
   }, [])
+
+  const handleReplaceLimitConstraint = useCallback(
+    (next: FaceConstraint) => {
+      handleFaceConstraintsChange(replaceFaceConstraintById(preparedFaceConstraints, next))
+    },
+    [handleFaceConstraintsChange, preparedFaceConstraints],
+  )
+
+  const handleRemoveLimitConstraint = useCallback(
+    (id: string) => {
+      handleFaceConstraintsChange(removeFaceConstraint(preparedFaceConstraints, id))
+      setFocusedLimitConstraintId((cur) => (cur === id ? null : cur))
+    },
+    [handleFaceConstraintsChange, preparedFaceConstraints],
+  )
 
   const handleApplyTwoFaceStretch = useCallback(
     (
@@ -285,7 +317,10 @@ function App() {
           onConstraintsLockedChange={setConstraintsLocked}
           limitsSummaryGeometry={model}
           limitsSummaryModelElements={preparedConstraints.modelElements ?? []}
-          onHighlightLimitDependentFaces={handleHighlightLimitDependentFaces}
+          onLimitRowClick={handleLimitRowClick}
+          focusedLimitConstraintId={focusedLimitConstraintId}
+          onReplaceLimitConstraint={handleReplaceLimitConstraint}
+          onRemoveLimitConstraint={handleRemoveLimitConstraint}
         />
         <div className={styles.viewport}>
           <Viewer3D
