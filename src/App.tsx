@@ -23,6 +23,7 @@ import {
 } from './lib/preparedStretchValidation'
 import type { FaceConstraint } from './features/face-constraints/model'
 import { removeFaceConstraint, replaceFaceConstraintById } from './features/face-constraints/store'
+import { resizeGeometryAfterConstraintMmEdit } from './features/part-constraints/resizeGeometryAfterConstraintMmEdit'
 import { resolveConstraintDependentFaceIndices } from './features/part-constraints/resolveConstraintDependentFaces'
 import { clampStretchTargetMmForBasicConstraints } from './features/part-constraints/clampStretchTargetForBasicConstraints'
 import type { ApplyTwoFaceStretchOverlay } from './lib/applyStretchOverlay'
@@ -157,9 +158,31 @@ function App() {
 
   const handleReplaceLimitConstraint = useCallback(
     (next: FaceConstraint) => {
-      handleFaceConstraintsChange(replaceFaceConstraintById(preparedFaceConstraints, next))
+      const newList = replaceFaceConstraintById(preparedFaceConstraints, next)
+      handleFaceConstraintsChange(newList)
+      if (!model) return
+      const preparedNext: PreparedElementConstraints = {
+        ...preparedConstraints,
+        faceConstraints: newList,
+      } as PreparedElementConstraints
+      const resize = resizeGeometryAfterConstraintMmEdit({
+        geometry: model,
+        editedConstraint: next,
+        allConstraints: newList,
+        prepared: preparedNext,
+      })
+      if (!resize.gapAdjusted) return
+      clearAllSelection()
+      setModel(resize.geometry)
+      setGeometryRevision((n) => n + 1)
     },
-    [handleFaceConstraintsChange, preparedFaceConstraints],
+    [
+      handleFaceConstraintsChange,
+      preparedFaceConstraints,
+      preparedConstraints,
+      model,
+      clearAllSelection,
+    ],
   )
 
   const handleRemoveLimitConstraint = useCallback(
