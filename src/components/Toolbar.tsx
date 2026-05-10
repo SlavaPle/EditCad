@@ -13,6 +13,9 @@ interface ToolbarProps {
   onSaveModelClick?: () => void
   onSaveAsModelClick?: () => void
   hasModel?: boolean
+  limitsPlacementAllowed?: boolean
+  limitsInstallActive?: boolean
+  onToggleLimitsInstall?: () => void
 }
 
 const LANGUAGES = [
@@ -25,6 +28,9 @@ export function Toolbar({
   onSaveModelClick,
   onSaveAsModelClick,
   hasModel = false,
+  limitsPlacementAllowed = true,
+  limitsInstallActive = false,
+  onToggleLimitsInstall,
 }: ToolbarProps) {
   const { t, i18n } = useTranslation()
   const [activeTabId, setActiveTabId] = useState<ToolbarTabId>(DEFAULT_TOOLBAR_TAB_ID)
@@ -103,18 +109,25 @@ export function Toolbar({
             </span>
           </button>
         )
-      case 'editConstrain':
+      case 'editLimits':
         return (
           <button
             key={actionId}
             type="button"
-            className={styles.iconBtn}
-            title={t('toolbar.editConstrain')}
-            aria-label={t('toolbar.editConstrain')}
-            onClick={() => {
-              // Placeholder for future edit-constrain handling
-              console.log('Edit constraints')
-            }}
+            className={`${styles.iconBtn} ${limitsInstallActive ? styles.iconBtnActive : ''}`}
+            title={
+              limitsInstallActive
+                ? t('toolbar.limitsActive')
+                : t('toolbar.limits')
+            }
+            aria-label={
+              limitsInstallActive
+                ? t('toolbar.limitsActive')
+                : t('toolbar.limits')
+            }
+            aria-pressed={limitsInstallActive}
+            disabled={!hasModel || !limitsPlacementAllowed}
+            onClick={() => onToggleLimitsInstall?.()}
           >
             <span className={styles.icon}>
               <svg viewBox="0 0 20 20" aria-hidden="true">

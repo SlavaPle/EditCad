@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { BufferGeometry } from 'three'
 import { Toolbar } from './components/Toolbar'
 import { Viewer3D } from './components/Viewer3D'
@@ -7,7 +7,11 @@ import { RightPanel } from './components/RightPanel'
 import type { ModelLoaderHandle } from './components/ModelLoader'
 import { clearMeshTopologyCaches } from './features/model-selection/facePlaneSelection'
 import { DEFAULT_MODEL_SELECTION_PROXIMITY_FILTER } from './features/model-selection/types'
-import { createEmptySelection, type SelectionState } from './lib/selection'
+import {
+  createEmptySelection,
+  selectionSupportsTwoFaceStretchProximity,
+  type SelectionState,
+} from './lib/selection'
 import {
   ECDPRT_EXTENSION,
   saveGeometryAsEcdprtFile,
@@ -64,6 +68,7 @@ function App() {
     modelElements: [],
   })
   const [constraintsLocked, setConstraintsLocked] = useState(true)
+  const [limitsInstallActive, setLimitsInstallActive] = useState(false)
   const modelLoaderRef = useRef<ModelLoaderHandle>(null)
 
   const clearAllSelection = useCallback(() => {
@@ -111,6 +116,17 @@ function App() {
       return { ...prev, modelElements: existing } as PreparedElementConstraints
     })
   }, [])
+
+  const stretchSelectionForLimitsUi = useMemo(
+    () => selectionSupportsTwoFaceStretchProximity(selection, probableFaces),
+    [selection, probableFaces],
+  )
+
+  useEffect(() => {
+    if (!stretchSelectionForLimitsUi && limitsInstallActive) {
+      setLimitsInstallActive(false)
+    }
+  }, [stretchSelectionForLimitsUi, limitsInstallActive])
 
   const preparedFaceConstraints = preparedConstraints.faceConstraints ?? []
 
@@ -248,6 +264,9 @@ function App() {
         onSaveModelClick={handleSaveModelClick}
         onSaveAsModelClick={handleSaveAsModelClick}
         hasModel={!!model}
+        limitsInstallActive={limitsInstallActive}
+        limitsPlacementAllowed={stretchSelectionForLimitsUi}
+        onToggleLimitsInstall={() => setLimitsInstallActive((v) => !v)}
       />
       <div className={styles.main}>
         <LeftPanel
@@ -280,6 +299,7 @@ function App() {
           model={model}
           geometryRevision={geometryRevision}
           constraintsLocked={constraintsLocked}
+          limitsInstallActive={limitsInstallActive}
           preparedModelElements={preparedConstraints.modelElements ?? []}
           onApplyTwoFaceStretch={handleApplyTwoFaceStretch}
           faceConstraints={preparedFaceConstraints}

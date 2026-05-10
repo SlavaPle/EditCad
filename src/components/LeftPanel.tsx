@@ -108,15 +108,15 @@ export function LeftPanel({
           </div>
           <div className={styles.section}>
             <div className={styles.sectionTitleRow}>
-              <span className={styles.sectionTitle}>{t('leftPanel.constraints.title')}</span>
+              <span className={styles.sectionTitle}>{t('leftPanel.limits.title')}</span>
               <button
                 type="button"
                 className={styles.constraintLock}
                 onClick={() => onConstraintsLockedChange(!constraintsLocked)}
                 title={
                   constraintsLocked
-                    ? t('leftPanel.constraints.locked')
-                    : t('leftPanel.constraints.unlocked')
+                    ? t('leftPanel.limits.locked')
+                    : t('leftPanel.limits.unlocked')
                 }
               >
                 <span
@@ -129,18 +129,18 @@ export function LeftPanel({
               </button>
             </div>
             {currentFileFormat !== 'ecdprt' ? (
-              <p className={styles.placeholder}>{t('leftPanel.constraints.onlyPrepared')}</p>
+              <p className={styles.placeholder}>{t('leftPanel.limits.onlyPrepared')}</p>
             ) : faceConstraints.length === 0 ? (
-              <p className={styles.placeholder}>{t('leftPanel.constraints.empty')}</p>
+              <p className={styles.placeholder}>{t('leftPanel.limits.empty')}</p>
             ) : (
               <ul className={styles.constraintsList}>
                 {faceConstraints.map((item) => (
                   <li key={item.id}>
                     {item.type.toUpperCase()}
                     {item.type === 'panel'
-                      ? ` ${formatPanelConstraintSummary(item)}${item.ySameAsX ? t('leftPanel.constraints.panelYSameBadge') : ''}${
+                      ? ` ${formatPanelConstraintSummary(item)}${item.ySameAsX ? t('leftPanel.limits.panelYSameBadge') : ''}${
                           item.panelMeasureMode === 'bboxExtents'
-                            ? ` (${t('leftPanel.constraints.panelMeasureBboxBadge')})`
+                            ? ` (${t('leftPanel.limits.panelMeasureBboxBadge')})`
                             : ` · X ${item.panelXElementAId ?? ''}↔${item.panelXElementBId ?? ''}; Y ${item.panelYElementAId ?? ''}↔${item.panelYElementBId ?? ''}`
                         }`
                       : item.type === 'profil'

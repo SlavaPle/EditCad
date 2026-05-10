@@ -1,6 +1,6 @@
 export type ToolbarTabId = 'file' | 'edit'
 
-export type ToolbarActionId = 'open' | 'save' | 'saveAs' | 'settings' | 'editConstrain'
+export type ToolbarActionId = 'open' | 'save' | 'saveAs' | 'settings' | 'editLimits'
 
 export interface ToolbarTabConfig {
   id: ToolbarTabId
@@ -17,7 +17,7 @@ export const TOOLBAR_TABS: ToolbarTabConfig[] = [
   {
     id: 'edit',
     labelKey: 'toolbar.tabEdit',
-    actions: ['editConstrain']
+    actions: ['editLimits']
   }
 ]
 

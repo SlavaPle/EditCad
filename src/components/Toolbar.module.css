@@ -144,6 +144,17 @@
   cursor: not-allowed;
 }
 
+.iconBtnActive {
+  background: #1e40af;
+  border-color: #3b82f6;
+  color: #f8fafc;
+}
+
+.iconBtnActive:hover:not(:disabled) {
+  background: #2563eb;
+  border-color: #60a5fa;
+}
+
 .icon {
   width: 16px;
   height: 16px;

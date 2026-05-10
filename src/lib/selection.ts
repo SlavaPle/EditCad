@@ -46,6 +46,28 @@ export function createEmptySelection(): SelectionState {
   }
 }
 
+/**
+ * Takie samo kryterium jak panel „Distance between faces” / limity: wyłącznie krawędzie lub ściany
+ * (plus faces z proximity), bez wierzchołków w zaznaczeniu.
+ */
+export function selectionSupportsTwoFaceStretchProximity(
+  selection: SelectionState,
+  probableFaces: readonly number[],
+): boolean {
+  const merged = [...selection.faces]
+  const seen = new Set(selection.faces)
+  for (const fi of probableFaces) {
+    if (seen.has(fi)) continue
+    merged.push(fi)
+    seen.add(fi)
+  }
+  return (
+    merged.length > 0 &&
+    selection.vertices.length === 0 &&
+    (selection.faces.length > 0 || selection.edges.length > 0)
+  )
+}
+
 // Normalizuje krawędź tak, aby (a, b) i (b, a) były tym samym kluczem
 function normalizeEdge(a: number, b: number): EdgeSelection {
   return a <= b ? { a, b } : { a: b, b: a }

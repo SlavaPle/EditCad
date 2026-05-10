@@ -4,7 +4,11 @@ import { useTranslation } from 'react-i18next'
 import { analyzeTwoFaceStretch, type TwoFaceStretchError } from '../lib/twoFaceStretch'
 import type { ApplyTwoFaceStretchOverlay } from '../lib/applyStretchOverlay'
 import { partitionSelectionIntoCoplanarPatches } from '../features/model-selection/facePlaneSelection'
-import { getSelectionListEntries, type SelectionState } from '../lib/selection'
+import {
+  getSelectionListEntries,
+  selectionSupportsTwoFaceStretchProximity,
+  type SelectionState,
+} from '../lib/selection'
 import type { PreparedStretchPrecheckError } from '../lib/preparedStretchValidation'
 import type { PreparedModelElement } from '../lib/preparedElementFormat'
 import { mergedFacesMatchConstraintStretchPair } from '../features/part-constraints/matchesConstraintStretchPair'
@@ -28,6 +32,8 @@ export interface RightPanelProps {
   model: BufferGeometry | null
   geometryRevision: number
   constraintsLocked: boolean
+  /** Aktywny przycisk „Limits” na zakładce Edit — pokazuje formularz na panelu */
+  limitsInstallActive: boolean
   preparedModelElements: readonly PreparedModelElement[]
   onApplyTwoFaceStretch: (
     targetMm: number,
@@ -74,6 +80,7 @@ export function RightPanel({
   model,
   geometryRevision,
   constraintsLocked,
+  limitsInstallActive,
   preparedModelElements,
   onApplyTwoFaceStretch,
   faceConstraints,
@@ -94,10 +101,7 @@ export function RightPanel({
     return merged
   }, [selection.faces, probableFaces])
 
-  const faceStretchSelection =
-    facesForStretch.length > 0 &&
-    selection.vertices.length === 0 &&
-    (selection.faces.length > 0 || selection.edges.length > 0)
+  const faceStretchSelection = selectionSupportsTwoFaceStretchProximity(selection, probableFaces)
 
   const analysis = useMemo(() => {
     if (!model || !faceStretchSelection) return null
@@ -579,8 +583,8 @@ export function RightPanel({
   const constraintAddErrorText =
     constraintError === null
       ? null
-      : i18n.exists(`rightPanel.constraints.errors.${constraintError}`)
-        ? t(`rightPanel.constraints.errors.${constraintError}`)
+      : i18n.exists(`rightPanel.limits.errors.${constraintError}`)
+        ? t(`rightPanel.limits.errors.${constraintError}`)
         : t(`rightPanel.faceDistance.errors.${constraintError}`)
 
   return (
@@ -693,12 +697,19 @@ export function RightPanel({
             )}
           </div>
         )}
+        {model && faceStretchSelection && !limitsInstallActive && (
+          <div className={styles.section}>
+            <div className={styles.sectionTitle}>{t('rightPanel.limits.title')}</div>
+            <p className={styles.limitsInstallToolbarHint}>{t('rightPanel.limits.installModeToolbarHint')}</p>
+          </div>
+        )}
+        {model && faceStretchSelection && limitsInstallActive && (
         <div className={styles.section}>
-          <div className={styles.sectionTitle}>{t('rightPanel.constraints.title')}</div>
-          <p className={styles.faceDistanceHint}>{t('rightPanel.constraints.hint')}</p>
+          <div className={styles.sectionTitle}>{t('rightPanel.limits.title')}</div>
+          <p className={styles.faceDistanceHint}>{t('rightPanel.limits.hint')}</p>
           <div className={styles.faceDistanceRow}>
             <label className={styles.faceDistanceLabel} htmlFor="constraint-type">
-              {t('rightPanel.constraints.type')}
+              {t('rightPanel.limits.type')}
             </label>
             <select
               id="constraint-type"
@@ -723,14 +734,14 @@ export function RightPanel({
                   inputMode="decimal"
                   value={constraintValue}
                   onChange={(e) => setConstraintValue(e.target.value)}
-                  placeholder={t('rightPanel.constraints.valuePlaceholder')}
+                  placeholder={t('rightPanel.limits.valuePlaceholder')}
                 />
                 <span className={styles.faceDistanceUnit}>mm</span>
               </div>
             )}
             {constraintType === 'profil' && (
               <div className={styles.panelConstraintFields}>
-                <p className={styles.panelWorkflowHint}>{t('rightPanel.constraints.profilWorkflowIntro')}</p>
+                <p className={styles.panelWorkflowHint}>{t('rightPanel.limits.profilWorkflowIntro')}</p>
                 <div className={styles.faceDistanceInputWrap}>
                   <input
                     className={styles.faceDistanceInput}
@@ -738,7 +749,7 @@ export function RightPanel({
                     inputMode="decimal"
                     value={constraintValue}
                     onChange={(e) => setConstraintValue(e.target.value)}
-                    placeholder={t('rightPanel.constraints.profilMaxStretchPlaceholder')}
+                    placeholder={t('rightPanel.limits.profilMaxStretchPlaceholder')}
                   />
                   <span className={styles.faceDistanceUnit}>mm</span>
                 </div>
@@ -748,7 +759,7 @@ export function RightPanel({
                     checked={profilStretchUseMin}
                     onChange={(e) => setProfilStretchUseMin(e.target.checked)}
                   />
-                  {t('rightPanel.constraints.profilStretchRestrictMin')}
+                  {t('rightPanel.limits.profilStretchRestrictMin')}
                 </label>
                 {profilStretchUseMin && (
                   <div className={styles.faceDistanceInputWrap}>
@@ -758,73 +769,73 @@ export function RightPanel({
                       inputMode="decimal"
                       value={profilStretchMinMm}
                       onChange={(e) => setProfilStretchMinMm(e.target.value)}
-                      placeholder={t('rightPanel.constraints.profilMinStretchPlaceholder')}
+                      placeholder={t('rightPanel.limits.profilMinStretchPlaceholder')}
                     />
                     <span className={styles.faceDistanceUnit}>mm</span>
                   </div>
                 )}
                 <div className={styles.panelFieldGroup}>
-                  <div className={styles.panelAxisLabel}>{t('rightPanel.constraints.profilFrozenDimsTitle')}</div>
-                  <p className={styles.panelExtentsHintMuted}>{t('rightPanel.constraints.profilFrozenPickHint')}</p>
+                  <div className={styles.panelAxisLabel}>{t('rightPanel.limits.profilFrozenDimsTitle')}</div>
+                  <p className={styles.panelExtentsHintMuted}>{t('rightPanel.limits.profilFrozenPickHint')}</p>
                   <button type="button" className={styles.panelCaptureBtn} onClick={() => captureProfilFrozenDimension(1)}>
-                    {t('rightPanel.constraints.profilCaptureFrozen1')}
+                    {t('rightPanel.limits.profilCaptureFrozen1')}
                   </button>
                   {profilFrozenSlot1Ids ? (
                     <p className={styles.panelExtentsMeasured}>
-                      {t('rightPanel.constraints.panelCapturedPairOk', {
+                      {t('rightPanel.limits.panelCapturedPairOk', {
                         a: profilFrozenSlot1Ids.a,
                         b: profilFrozenSlot1Ids.b,
                       })}
                     </p>
                   ) : (
-                    <p className={styles.panelExtentsHintMuted}>{t('rightPanel.constraints.panelNotCapturedYet')}</p>
+                    <p className={styles.panelExtentsHintMuted}>{t('rightPanel.limits.panelNotCapturedYet')}</p>
                   )}
                   <button type="button" className={styles.panelCaptureBtn} onClick={() => captureProfilFrozenDimension(2)}>
-                    {t('rightPanel.constraints.profilCaptureFrozen2')}
+                    {t('rightPanel.limits.profilCaptureFrozen2')}
                   </button>
                   {profilFrozenSlot2Ids ? (
                     <p className={styles.panelExtentsMeasured}>
-                      {t('rightPanel.constraints.panelCapturedPairOk', {
+                      {t('rightPanel.limits.panelCapturedPairOk', {
                         a: profilFrozenSlot2Ids.a,
                         b: profilFrozenSlot2Ids.b,
                       })}
                     </p>
                   ) : (
-                    <p className={styles.panelExtentsHintMuted}>{t('rightPanel.constraints.panelNotCapturedYet')}</p>
+                    <p className={styles.panelExtentsHintMuted}>{t('rightPanel.limits.panelNotCapturedYet')}</p>
                   )}
-                  <p className={styles.panelExtentsHintMuted}>{t('rightPanel.constraints.profilStretchAfterFrozenHint')}</p>
+                  <p className={styles.panelExtentsHintMuted}>{t('rightPanel.limits.profilStretchAfterFrozenHint')}</p>
                 </div>
               </div>
             )}
             {constraintType === 'panel' && (
               <div className={styles.panelConstraintFields}>
-                <p className={styles.panelWorkflowHint}>{t('rightPanel.constraints.panelWorkflowIntro')}</p>
+                <p className={styles.panelWorkflowHint}>{t('rightPanel.limits.panelWorkflowIntro')}</p>
                 <div className={styles.panelFieldGroup}>
-                  <div className={styles.panelAxisLabel}>{t('rightPanel.constraints.panelThicknessSection')}</div>
-                  <p className={styles.panelExtentsHintMuted}>{t('rightPanel.constraints.panelThicknessFrozenHint')}</p>
+                  <div className={styles.panelAxisLabel}>{t('rightPanel.limits.panelThicknessSection')}</div>
+                  <p className={styles.panelExtentsHintMuted}>{t('rightPanel.limits.panelThicknessFrozenHint')}</p>
                   <p className={styles.panelExtentsMeasured}>
                     {lockedPanelThicknessMm !== null
-                      ? t('rightPanel.constraints.panelThicknessSelectionUnlockedForXY')
-                      : t('rightPanel.constraints.panelThicknessLockPending')}
+                      ? t('rightPanel.limits.panelThicknessSelectionUnlockedForXY')
+                      : t('rightPanel.limits.panelThicknessLockPending')}
                   </p>
                   <div className={styles.faceDistanceInputWrap}>
                     <input
                       className={styles.faceDistanceInput}
                       type="text"
                       value={lockedPanelThicknessMm === null ? '' : String(lockedPanelThicknessMm)}
-                      placeholder={t('rightPanel.constraints.panelThickness')}
+                      placeholder={t('rightPanel.limits.panelThickness')}
                       readOnly
                     />
                     <span className={styles.faceDistanceUnit}>mm</span>
                   </div>
                 </div>
                 <div className={styles.panelFieldGroup}>
-                  <div className={styles.panelAxisLabel}>{t('rightPanel.constraints.panelFacesForXTitle')}</div>
+                  <div className={styles.panelAxisLabel}>{t('rightPanel.limits.panelFacesForXTitle')}</div>
                   <p className={styles.panelExtentsHintMuted}>
                     {t(
                       lockedPanelThicknessMm !== null
-                        ? 'rightPanel.constraints.panelFacesForXSpanHint'
-                        : 'rightPanel.constraints.panelPickTwoPlanesHint',
+                        ? 'rightPanel.limits.panelFacesForXSpanHint'
+                        : 'rightPanel.limits.panelPickTwoPlanesHint',
                     )}
                   </p>
                   <button
@@ -832,19 +843,19 @@ export function RightPanel({
                     className={styles.panelCaptureBtn}
                     onClick={() => capturePanelPlanePairForAxis('x')}
                   >
-                    {t('rightPanel.constraints.panelCapturePlanesX')}
+                    {t('rightPanel.limits.panelCapturePlanesX')}
                   </button>
                   {panelCapturedPairX ? (
                     <p className={styles.panelExtentsMeasured}>
-                      {t('rightPanel.constraints.panelCapturedPairOk', {
+                      {t('rightPanel.limits.panelCapturedPairOk', {
                         a: panelCapturedPairX.a,
                         b: panelCapturedPairX.b,
                       })}
                     </p>
                   ) : (
-                    <p className={styles.panelExtentsHintMuted}>{t('rightPanel.constraints.panelNotCapturedYet')}</p>
+                    <p className={styles.panelExtentsHintMuted}>{t('rightPanel.limits.panelNotCapturedYet')}</p>
                   )}
-                  <div className={styles.panelAxisLabel}>{t('rightPanel.constraints.panelAxisXLimitsTitle')}</div>
+                  <div className={styles.panelAxisLabel}>{t('rightPanel.limits.panelAxisXLimitsTitle')}</div>
                   <div className={styles.faceDistanceInputWrap}>
                     <input
                       className={styles.faceDistanceInput}
@@ -852,7 +863,7 @@ export function RightPanel({
                       inputMode="decimal"
                       value={panelXMax}
                       onChange={(e) => setPanelXMax(e.target.value)}
-                      placeholder={t('rightPanel.constraints.panelMaxPlaceholder')}
+                      placeholder={t('rightPanel.limits.panelMaxPlaceholder')}
                     />
                     <span className={styles.faceDistanceUnit}>mm</span>
                   </div>
@@ -862,7 +873,7 @@ export function RightPanel({
                       checked={panelXUseMin}
                       onChange={(e) => setPanelXUseMin(e.target.checked)}
                     />
-                    {t('rightPanel.constraints.panelRestrictMin')}
+                    {t('rightPanel.limits.panelRestrictMin')}
                   </label>
                   {panelXUseMin && (
                     <div className={styles.faceDistanceInputWrap}>
@@ -872,7 +883,7 @@ export function RightPanel({
                         inputMode="decimal"
                         value={panelXMin}
                         onChange={(e) => setPanelXMin(e.target.value)}
-                        placeholder={t('rightPanel.constraints.panelMinPlaceholder')}
+                        placeholder={t('rightPanel.limits.panelMinPlaceholder')}
                       />
                       <span className={styles.faceDistanceUnit}>mm</span>
                     </div>
@@ -884,16 +895,16 @@ export function RightPanel({
                     checked={panelYSameAsX}
                     onChange={(e) => setPanelYSameAsX(e.target.checked)}
                   />
-                  {t('rightPanel.constraints.panelYSameAsX')}
+                  {t('rightPanel.limits.panelYSameAsX')}
                 </label>
                 {!panelYSameAsX && (
                   <div className={styles.panelFieldGroup}>
-                    <div className={styles.panelAxisLabel}>{t('rightPanel.constraints.panelFacesForYTitle')}</div>
+                    <div className={styles.panelAxisLabel}>{t('rightPanel.limits.panelFacesForYTitle')}</div>
                     <p className={styles.panelExtentsHintMuted}>
                       {t(
                         lockedPanelThicknessMm !== null
-                          ? 'rightPanel.constraints.panelFacesForYSpanHint'
-                          : 'rightPanel.constraints.panelPickTwoPlanesHint',
+                          ? 'rightPanel.limits.panelFacesForYSpanHint'
+                          : 'rightPanel.limits.panelPickTwoPlanesHint',
                       )}
                     </p>
                     <button
@@ -901,19 +912,19 @@ export function RightPanel({
                       className={styles.panelCaptureBtn}
                       onClick={() => capturePanelPlanePairForAxis('y')}
                     >
-                      {t('rightPanel.constraints.panelCapturePlanesY')}
+                      {t('rightPanel.limits.panelCapturePlanesY')}
                     </button>
                     {panelCapturedPairY ? (
                       <p className={styles.panelExtentsMeasured}>
-                        {t('rightPanel.constraints.panelCapturedPairOk', {
+                        {t('rightPanel.limits.panelCapturedPairOk', {
                           a: panelCapturedPairY.a,
                           b: panelCapturedPairY.b,
                         })}
                       </p>
                     ) : (
-                      <p className={styles.panelExtentsHintMuted}>{t('rightPanel.constraints.panelNotCapturedYet')}</p>
+                      <p className={styles.panelExtentsHintMuted}>{t('rightPanel.limits.panelNotCapturedYet')}</p>
                     )}
-                    <div className={styles.panelAxisLabel}>{t('rightPanel.constraints.panelAxisYLimitsTitle')}</div>
+                    <div className={styles.panelAxisLabel}>{t('rightPanel.limits.panelAxisYLimitsTitle')}</div>
                     <div className={styles.faceDistanceInputWrap}>
                       <input
                         className={styles.faceDistanceInput}
@@ -921,7 +932,7 @@ export function RightPanel({
                         inputMode="decimal"
                         value={panelYMax}
                         onChange={(e) => setPanelYMax(e.target.value)}
-                        placeholder={t('rightPanel.constraints.panelMaxPlaceholder')}
+                        placeholder={t('rightPanel.limits.panelMaxPlaceholder')}
                       />
                       <span className={styles.faceDistanceUnit}>mm</span>
                     </div>
@@ -931,7 +942,7 @@ export function RightPanel({
                         checked={panelYUseMin}
                         onChange={(e) => setPanelYUseMin(e.target.checked)}
                       />
-                      {t('rightPanel.constraints.panelRestrictMin')}
+                      {t('rightPanel.limits.panelRestrictMin')}
                     </label>
                     {panelYUseMin && (
                       <div className={styles.faceDistanceInputWrap}>
@@ -941,7 +952,7 @@ export function RightPanel({
                           inputMode="decimal"
                           value={panelYMin}
                           onChange={(e) => setPanelYMin(e.target.value)}
-                          placeholder={t('rightPanel.constraints.panelMinPlaceholder')}
+                          placeholder={t('rightPanel.limits.panelMinPlaceholder')}
                         />
                         <span className={styles.faceDistanceUnit}>mm</span>
                       </div>
@@ -951,7 +962,7 @@ export function RightPanel({
               </div>
             )}
             <button type="button" className={styles.faceDistanceApply} onClick={handleAddConstraint}>
-              {t('rightPanel.constraints.add')}
+              {t('rightPanel.limits.add')}
             </button>
             {constraintAddErrorText !== null && (
               <p className={styles.faceDistanceError} role="alert">
@@ -960,7 +971,7 @@ export function RightPanel({
             )}
           </div>
           {faceConstraints.length === 0 ? (
-            <p className={styles.selectionListEmpty}>{t('rightPanel.constraints.empty')}</p>
+            <p className={styles.selectionListEmpty}>{t('rightPanel.limits.empty')}</p>
           ) : (
             <ul className={styles.selectionList}>
               {faceConstraints.map((item) => (
@@ -969,9 +980,9 @@ export function RightPanel({
                     {item.type.toUpperCase()}
                     {' - '}
                     {item.type === 'panel'
-                      ? `${formatPanelConstraintSummary(item)}${item.ySameAsX ? t('rightPanel.constraints.panelYSameBadge') : ''}${
+                      ? `${formatPanelConstraintSummary(item)}${item.ySameAsX ? t('rightPanel.limits.panelYSameBadge') : ''}${
                           item.panelMeasureMode === 'bboxExtents'
-                            ? ` · (${t('rightPanel.constraints.panelMeasureBboxBadge')})`
+                            ? ` · (${t('rightPanel.limits.panelMeasureBboxBadge')})`
                             : ` · X ${item.panelXElementAId ?? ''}↔${item.panelXElementBId ?? ''}; Y ${item.panelYElementAId ?? ''}↔${item.panelYElementBId ?? ''}`
                         }`
                       : item.type === 'profil'
@@ -981,7 +992,7 @@ export function RightPanel({
                               : ''
                           }`
                       : item.type === 'block'
-                        ? t('rightPanel.constraints.blocked')
+                        ? t('rightPanel.limits.blocked')
                         : `${item.valueMm} mm`}
                     {item.facePair ? ` (${item.facePair.a}, ${item.facePair.b})` : ''}
                   </span>
@@ -990,13 +1001,14 @@ export function RightPanel({
                     className={styles.constraintRemove}
                     onClick={() => handleRemoveConstraint(item.id)}
                   >
-                    {t('rightPanel.constraints.remove')}
+                    {t('rightPanel.limits.remove')}
                   </button>
                 </li>
               ))}
             </ul>
           )}
         </div>
+        )}
         <div className={styles.section}>
           <div className={styles.sectionTitle}>{t('rightPanel.scale')}</div>
           <p className={styles.placeholder}>{t('rightPanel.scaleHint')}</p>
