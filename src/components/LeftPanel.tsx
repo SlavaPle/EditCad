@@ -5,8 +5,11 @@ import { isSupportedExtension } from '../lib/loadModel'
 import type { ModelLoaderHandle } from './ModelLoader'
 import type { SaveFormat } from '../lib/saveModel'
 import type { PreparedElementConstraints } from '../lib/preparedElementFormat'
-import type { FaceConstraint } from '../features/face-constraints/model'
-import { formatPanelConstraintSummary } from '../features/face-constraints/model'
+import {
+  formatPanelConstraintSummary,
+  formatProfilStretchGapLabelMm,
+  type FaceConstraint,
+} from '../features/face-constraints/model'
 import styles from './LeftPanel.module.css'
 
 export interface LeftPanelProps {
@@ -135,7 +138,17 @@ export function LeftPanel({
                   <li key={item.id}>
                     {item.type.toUpperCase()}
                     {item.type === 'panel'
-                      ? ` ${formatPanelConstraintSummary(item)}${item.ySameAsX ? t('leftPanel.constraints.panelYSameBadge') : ''}`
+                      ? ` ${formatPanelConstraintSummary(item)}${item.ySameAsX ? t('leftPanel.constraints.panelYSameBadge') : ''}${
+                          item.panelMeasureMode === 'bboxExtents'
+                            ? ` (${t('leftPanel.constraints.panelMeasureBboxBadge')})`
+                            : ` · X ${item.panelXElementAId ?? ''}↔${item.panelXElementBId ?? ''}; Y ${item.panelYElementAId ?? ''}↔${item.panelYElementBId ?? ''}`
+                        }`
+                      : item.type === 'profil'
+                        ? ` ${formatProfilStretchGapLabelMm(item)}mm${
+                            item.frozen1?.elementAId && item.frozen1.elementBId && item.frozen2?.elementAId && item.frozen2.elementBId
+                              ? ` ‖${item.frozen1.elementAId}↔${item.frozen1.elementBId} ‖${item.frozen2.elementAId}↔${item.frozen2.elementBId}`
+                              : ''
+                          }`
                       : item.type === 'block'
                         ? ''
                         : ` ${item.valueMm}mm`}

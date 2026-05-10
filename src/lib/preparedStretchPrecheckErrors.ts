@@ -8,5 +8,6 @@ export type PreparedStretchPrecheckError =
   | 'constraintBrokenMin'
   | 'constraintBrokenMax'
   | 'constraintBrokenProfil'
+  | 'constraintBrokenProfilMin'
   | 'profilWrongTarget'
   | 'constraintPanelBroken'

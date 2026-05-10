@@ -22,6 +22,8 @@ import {
   type PreparedStretchPrecheckError,
 } from './lib/preparedStretchValidation'
 import type { FaceConstraint } from './features/face-constraints/model'
+import { clampStretchTargetMmForBasicConstraints } from './features/part-constraints/clampStretchTargetForBasicConstraints'
+import type { ApplyTwoFaceStretchOverlay } from './lib/applyStretchOverlay'
 import styles from './App.module.css'
 
 function getFileExtensionLower(name: string | null): string | null {
@@ -119,41 +121,74 @@ function App() {
   const handleApplyTwoFaceStretch = useCallback(
     (
       targetMm: number,
+      overlay?: ApplyTwoFaceStretchOverlay,
     ):
-      | { ok: true; geometry: BufferGeometry }
+      | { ok: true; geometry: BufferGeometry; effectiveTargetMm: number }
       | { ok: false; error: TwoFaceStretchError | PreparedStretchPrecheckError } => {
       if (!model) {
         return { ok: false, error: 'invalidGeometry' }
       }
-      const { faces } = selection
-      const mergedFaces = [...faces]
-      const seen = new Set(faces)
-      for (const fi of probableFaces) {
-        if (seen.has(fi)) continue
-        mergedFaces.push(fi)
-        seen.add(fi)
+      const faces = selection.faces
+      let mergedFaces: number[]
+      if (overlay?.mergedFaces?.length) {
+        mergedFaces = [...overlay.mergedFaces]
+      } else {
+        mergedFaces = [...faces]
+        const seen = new Set(faces)
+        for (const fi of probableFaces) {
+          if (seen.has(fi)) continue
+          mergedFaces.push(fi)
+          seen.add(fi)
+        }
       }
       if (mergedFaces.length === 0) {
         return { ok: false, error: 'invalidGeometry' }
       }
+
+      const faceConstraintsEffective =
+        overlay?.faceConstraints ?? preparedConstraints.faceConstraints ?? []
+      const modelElementsEffective = overlay?.modelElements ?? preparedConstraints.modelElements ?? []
+
+      const preparedEffective: PreparedElementConstraints = {
+        ...preparedConstraints,
+        faceConstraints: [...faceConstraintsEffective],
+        modelElements: [...modelElementsEffective],
+      }
+
+      const constraintsEvalLocked = constraintsLocked || overlay?.forceConstraintEvaluation === true
+
+      const { targetMm: resolvedTargetMm } = clampStretchTargetMmForBasicConstraints({
+        geometry: model,
+        mergedFaces,
+        rawTargetMm: targetMm,
+        faceConstraints: faceConstraintsEffective,
+        modelElements: modelElementsEffective,
+        constraintsLocked: constraintsEvalLocked,
+      })
+
       const pre = validatePreparedStretchPrecheck({
         model,
         mergedFaces,
-        targetMm,
-        prepared: preparedConstraints,
-        constraintsLocked,
+        targetMm: resolvedTargetMm,
+        prepared: preparedEffective,
+        constraintsLocked: constraintsEvalLocked,
       })
       if (!pre.ok) {
         return { ok: false, error: pre.error }
       }
-      const result = applyTwoFaceStretch(model, mergedFaces, targetMm)
+      const result = applyTwoFaceStretch(model, mergedFaces, resolvedTargetMm)
       if (result.ok) {
         if (result.geometry !== model) {
           setModel(result.geometry)
         }
         setGeometryRevision((n) => n + 1)
+        return {
+          ok: true,
+          geometry: result.geometry,
+          effectiveTargetMm: resolvedTargetMm,
+        }
       }
-      return result
+      return { ok: false, error: result.error }
     },
     [model, selection, probableFaces, preparedConstraints, constraintsLocked],
   )
@@ -244,6 +279,8 @@ function App() {
           probableFaces={probableFaces}
           model={model}
           geometryRevision={geometryRevision}
+          constraintsLocked={constraintsLocked}
+          preparedModelElements={preparedConstraints.modelElements ?? []}
           onApplyTwoFaceStretch={handleApplyTwoFaceStretch}
           faceConstraints={preparedFaceConstraints}
           onFaceConstraintsChange={handleFaceConstraintsChange}

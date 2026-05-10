@@ -36,9 +36,22 @@ export type ConstFaceConstraint = FaceConstraintBase & {
   edgeVertexPair?: ConstEdgeVertexPair
 }
 
+/** Jeden „zamrożony” wymiar w PROFIL (jak CONST): para elementów albo edgeVertexPair. */
+export type ProfilFrozenSlotStored = {
+  elementAId?: string
+  elementBId?: string
+  edgeVertexPair?: ConstEdgeVertexPair
+}
+
 export type ProfilFaceConstraint = FaceConstraintBase & {
   type: 'profil'
+  /** Górny limit rozciągnięcia na wskazanej parze (MAX). */
   valueMm: number
+  /** Dolny limit tej samej pary rozciągania (jak MIN); opcjonalny — combo 4 parametrów z dwoma zamrożeniami. */
+  stretchMinMm?: number
+  /** Dwa wymiary „śledzone” jak CONST; brak obu = stary zapis PROFIL (tylko MAX + para rozciągania). */
+  frozen1?: ProfilFrozenSlotStored
+  frozen2?: ProfilFrozenSlotStored
 }
 
 export type BlockFaceConstraint = FaceConstraintBase & {
@@ -51,6 +64,9 @@ export type PanelAxisBounds = {
   minMm?: number
 }
 
+/** PANEL: jak mierzone są szerokości X/Y — konkretne pary elementów albo stare pudło AABB. */
+export type PanelMeasureMode = 'facePairs' | 'bboxExtents'
+
 export type PanelFaceConstraint = FaceConstraintBase & {
   type: 'panel'
   thicknessMm: number
@@ -58,6 +74,12 @@ export type PanelFaceConstraint = FaceConstraintBase & {
   panelY: PanelAxisBounds
   /** Zapis w JSON: jawna informacja UI; dane w panelY są zwielokrotnione, gdy true. */
   ySameAsX: boolean
+  panelMeasureMode: PanelMeasureMode
+  /** Para elementów dla osi panelX — wymagane przy panelMeasureMode === 'facePairs'. */
+  panelXElementAId?: string
+  panelXElementBId?: string
+  panelYElementAId?: string
+  panelYElementBId?: string
 }
 
 export type FaceConstraint =
@@ -110,6 +132,42 @@ export function formatPanelConstraintSummary(panel: PanelFaceConstraint): string
   return `t=${panel.thicknessMm} mm · X:${sx} · Y:${sy}`
 }
 
+/** Zakres luzu rozciągania PROFIL: sam MAX albo MIN…MAX (mm). */
+export function formatProfilStretchGapLabelMm(c: ProfilFaceConstraint): string {
+  if (c.stretchMinMm !== undefined) return `${c.stretchMinMm}…${c.valueMm}`
+  return `${c.valueMm}`
+}
+
+function parseTrimmedPanelElementId(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
+  const s = value.trim()
+  return s.length > 0 ? s : undefined
+}
+
+function inferPanelMeasureModeFromIds(payload: Record<string, unknown>): PanelMeasureMode {
+  const xa = parseTrimmedPanelElementId(payload.panelXElementAId)
+  const xb = parseTrimmedPanelElementId(payload.panelXElementBId)
+  const ya = parseTrimmedPanelElementId(payload.panelYElementAId)
+  const yb = parseTrimmedPanelElementId(payload.panelYElementBId)
+  if (xa && xb && ya && yb) return 'facePairs'
+  return 'bboxExtents'
+}
+
+function resolvePanelMeasureModeRead(payload: Record<string, unknown>): PanelMeasureMode {
+  const ex = payload.panelMeasureMode
+  if (ex === 'bboxExtents' || ex === 'facePairs') return ex
+  return inferPanelMeasureModeFromIds(payload)
+}
+
+export function panelHasCompleteFacePairIds(c: PanelFaceConstraint): boolean {
+  return Boolean(
+    c.panelXElementAId?.trim() &&
+      c.panelXElementBId?.trim() &&
+      c.panelYElementAId?.trim() &&
+      c.panelYElementBId?.trim(),
+  )
+}
+
 function parsePanelAxisModern(value: unknown): PanelAxisBounds | null {
   if (!isObject(value)) return null
   if (!isPositiveNumber(value.maxMm)) return null
@@ -140,6 +198,61 @@ function hasPairBinding(constraint: FaceConstraint): boolean {
   return byFaces || byElements
 }
 
+function validConstEdgeFrozen(ev: ConstEdgeVertexPair): boolean {
+  return (
+    Number.isInteger(ev.va) &&
+    Number.isInteger(ev.vb) &&
+    ev.va >= 0 &&
+    ev.vb >= 0 &&
+    ev.va !== ev.vb
+  )
+}
+
+/** Czy wpis zamrożonego wymiaru PROFIL jest poprawny (para elementów albo obręcz krawędzi). */
+export function validateProfilFrozenSlotStored(slot: ProfilFrozenSlotStored): boolean {
+  const ev = slot.edgeVertexPair
+  const pairOk =
+    typeof slot.elementAId === 'string' &&
+    slot.elementAId.trim().length > 0 &&
+    typeof slot.elementBId === 'string' &&
+    slot.elementBId.trim().length > 0
+  const edgeOk = ev !== undefined && validConstEdgeFrozen(ev)
+  if (pairOk && edgeOk) return false
+  if (pairOk) return true
+  if (edgeOk) return true
+  return false
+}
+
+export function parseProfilFrozenSlotFromPayload(raw: unknown): ProfilFrozenSlotStored | undefined {
+  if (!isObject(raw)) return undefined
+  let edgeVertexPair: ConstEdgeVertexPair | undefined
+  const nestedEv = raw.edgeVertexPair
+  if (isObject(nestedEv)) {
+    const vaCand = typeof nestedEv.va === 'number' ? nestedEv.va : typeof nestedEv.a === 'number' ? nestedEv.a : undefined
+    const vbCand = typeof nestedEv.vb === 'number' ? nestedEv.vb : typeof nestedEv.b === 'number' ? nestedEv.b : undefined
+    if (
+      typeof vaCand === 'number' &&
+      typeof vbCand === 'number' &&
+      Number.isInteger(vaCand) &&
+      Number.isInteger(vbCand) &&
+      vaCand >= 0 &&
+      vbCand >= 0 &&
+      vaCand !== vbCand
+    ) {
+      edgeVertexPair = { va: vaCand, vb: vbCand }
+    }
+  }
+  const ea = typeof raw.elementAId === 'string' ? raw.elementAId.trim() : ''
+  const eb = typeof raw.elementBId === 'string' ? raw.elementBId.trim() : ''
+  const slot: ProfilFrozenSlotStored = {
+    elementAId: ea.length ? ea : undefined,
+    elementBId: eb.length ? eb : undefined,
+    edgeVertexPair,
+  }
+  if (!slot.elementAId && !slot.elementBId && !slot.edgeVertexPair) return undefined
+  return validateProfilFrozenSlotStored(slot) ? slot : undefined
+}
+
 export function validateFaceConstraint(constraint: FaceConstraint): boolean {
   if (!constraint.id.trim()) return false
   if (constraint.type !== 'block' && constraint.type !== 'panel') {
@@ -151,16 +264,38 @@ export function validateFaceConstraint(constraint: FaceConstraint): boolean {
   }
   if (constraint.type === 'block' && constraint.facePair !== null) return false
 
-  if (constraint.type === 'min' || constraint.type === 'max' || constraint.type === 'const' || constraint.type === 'profil') {
+  if (constraint.type === 'profil') {
+    if (!isPositiveNumber(constraint.valueMm)) return false
+    if (constraint.stretchMinMm !== undefined) {
+      if (!isPositiveNumber(constraint.stretchMinMm)) return false
+      if (constraint.stretchMinMm > constraint.valueMm) return false
+    }
+    const h1 = constraint.frozen1 !== undefined && constraint.frozen1 !== null
+    const h2 = constraint.frozen2 !== undefined && constraint.frozen2 !== null
+    if (h1 !== h2) return false
+    if (!h1 && !h2) return true
+    return !!(
+      constraint.frozen1 &&
+      constraint.frozen2 &&
+      validateProfilFrozenSlotStored(constraint.frozen1) &&
+      validateProfilFrozenSlotStored(constraint.frozen2)
+    )
+  }
+
+  if (constraint.type === 'min' || constraint.type === 'max' || constraint.type === 'const') {
     return isPositiveNumber(constraint.valueMm)
   }
 
   if (constraint.type === 'panel') {
-    return (
-      isPositiveNumber(constraint.thicknessMm) &&
-      validatePanelAxis(constraint.panelX) &&
-      validatePanelAxis(constraint.panelY)
-    )
+    if (
+      !isPositiveNumber(constraint.thicknessMm) ||
+      !validatePanelAxis(constraint.panelX) ||
+      !validatePanelAxis(constraint.panelY)
+    ) {
+      return false
+    }
+    if (constraint.panelMeasureMode === 'bboxExtents') return true
+    return constraint.panelMeasureMode === 'facePairs' && panelHasCompleteFacePairIds(constraint)
   }
 
   return true
@@ -211,7 +346,22 @@ export function parseFaceConstraint(value: unknown): FaceConstraint | null {
     }
     case 'profil': {
       if (!isPositiveNumber(value.valueMm)) return null
-      const out = { ...common, type: 'profil', valueMm: value.valueMm } as FaceConstraint
+      const frozen1 = parseProfilFrozenSlotFromPayload(value.frozen1)
+      const frozen2 = parseProfilFrozenSlotFromPayload(value.frozen2)
+      let stretchMinMm: number | undefined
+      const rawMin = value.stretchMinMm
+      if (rawMin !== undefined && rawMin !== null) {
+        if (!isPositiveNumber(rawMin)) return null
+        stretchMinMm = rawMin
+      }
+      const out: ProfilFaceConstraint = {
+        ...common,
+        type: 'profil',
+        valueMm: value.valueMm,
+        stretchMinMm,
+        frozen1,
+        frozen2,
+      }
       return validateFaceConstraint(out) ? out : null
     }
     case 'block': {
@@ -224,6 +374,13 @@ export function parseFaceConstraint(value: unknown): FaceConstraint | null {
       const panelY = parsePanelAxisModern(value.panelY)
       if (panelX && panelY) {
         const ySameAsX = typeof value.ySameAsX === 'boolean' ? value.ySameAsX : false
+        const xa = parseTrimmedPanelElementId(value.panelXElementAId)
+        const xb = parseTrimmedPanelElementId(value.panelXElementBId)
+        const ya = parseTrimmedPanelElementId(value.panelYElementAId)
+        const yb = parseTrimmedPanelElementId(value.panelYElementBId)
+        const mode = resolvePanelMeasureModeRead(value)
+        if (mode === 'facePairs' && !(xa && xb && ya && yb)) return null
+
         const out: PanelFaceConstraint = {
           ...common,
           type: 'panel',
@@ -231,6 +388,11 @@ export function parseFaceConstraint(value: unknown): FaceConstraint | null {
           panelX,
           panelY,
           ySameAsX,
+          panelMeasureMode: mode,
+          panelXElementAId: xa,
+          panelXElementBId: xb,
+          panelYElementAId: ya,
+          panelYElementBId: yb,
         }
         return validateFaceConstraint(out) ? out : null
       }
@@ -244,6 +406,7 @@ export function parseFaceConstraint(value: unknown): FaceConstraint | null {
         panelX: { minMm: minSizeMm.x, maxMm: maxSizeMm.x },
         panelY: { minMm: minSizeMm.y, maxMm: maxSizeMm.y },
         ySameAsX: false,
+        panelMeasureMode: 'bboxExtents',
       }
       return validateFaceConstraint(legacy) ? legacy : null
     }

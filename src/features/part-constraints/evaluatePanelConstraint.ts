@@ -1,46 +1,67 @@
+import { analyzeTwoFaceStretch } from '../../lib/twoFaceStretch'
+import { boundingBoxThicknessAndInPlaneSpansMm } from '../face-constraints/panelExtentsFromBBox'
 import type { PanelFaceConstraint } from '../face-constraints/model'
+import { measurePreparedElementPairGapMm } from './measurePairGapMm'
 import type { StretchConstraintEvalContext } from './stretchEvalTypes'
 import type { PreparedStretchPrecheckError } from '../../lib/preparedStretchPrecheckErrors'
 
 const EDGE_TOL_MM = 1.5
 const EPS = 1e-3
 
-function boxExtentsMm(geo: StretchConstraintEvalContext['geometryAfter']): [number, number, number] | null {
-  const bb = geo.boundingBox
-  if (!bb) return null
-  const sx = bb.max.x - bb.min.x
-  const sy = bb.max.y - bb.min.y
-  const sz = bb.max.z - bb.min.z
-  if (!(sx >= 0) || !(sy >= 0) || !(sz >= 0)) return null
-  return [sx, sy, sz]
+function axisOk(extent: number, bounds: PanelFaceConstraint['panelX']) {
+  if (!(extent > EPS)) return false
+  if (bounds.minMm !== undefined && extent + EPS < bounds.minMm) return false
+  if (extent > bounds.maxMm + EDGE_TOL_MM) return false
+  return true
+}
+
+function thicknessGapMm(
+  geo: StretchConstraintEvalContext['geometryAfter'],
+  merged: readonly number[],
+): number | null {
+  const an = analyzeTwoFaceStretch(geo, [...merged])
+  return an.ok ? an.gapMm : null
+}
+
+function evaluatePanelBBoxLegacy(ctx: StretchConstraintEvalContext, c: PanelFaceConstraint): PreparedStretchPrecheckError | null {
+  const triple = boundingBoxThicknessAndInPlaneSpansMm(ctx.geometryAfter)
+  if (!triple) return null
+  if (!axisOk(triple.inPlaneMinorMm, c.panelX)) return 'constraintPanelBroken'
+  if (!axisOk(triple.inPlaneMajorMm, c.panelY)) return 'constraintPanelBroken'
+  return null
 }
 
 /**
- * PANEL — uproszczony test oparty na AABB: grubość = najkrótsza krawędź pudła;
- * dwie dłuższe krawędzie porównujemy z panelX / panelY (minMm tylko jeśli jest w danych).
+ * PANEL — grubość wg odległości między głównymi płaszczyznami rozciągania (mergedFaces).
+ * Osie X/Y: albo konkretne pary elementów (`facePairs`), albo dziedziczna heurystyka pudła (`bboxExtents`).
  */
 export function evaluatePanelConstraint(
   ctx: StretchConstraintEvalContext,
   c: PanelFaceConstraint,
 ): PreparedStretchPrecheckError | null {
-  const extents = boxExtentsMm(ctx.geometryAfter)
-  if (!extents) return null
+  const tg = thicknessGapMm(ctx.geometryAfter, ctx.mergedFacesForEdit)
+  if (tg === null) return 'constraintPanelBroken'
+  if (Math.abs(tg - c.thicknessMm) > EDGE_TOL_MM) return 'constraintPanelBroken'
 
-  const [d0, d1, d2] = extents
-  const sorted = [d0, d1, d2].sort((x, y) => x - y)
-  const thick = sorted[0]!
-  const mid = sorted[1]!
-  const long = sorted[2]!
-
-  function axisOk(extent: number, bounds: PanelFaceConstraint['panelX']) {
-    if (!(extent > EPS)) return false
-    if (bounds.minMm !== undefined && extent + EPS < bounds.minMm) return false
-    if (extent > bounds.maxMm + EDGE_TOL_MM) return false
-    return true
+  if (c.panelMeasureMode === 'bboxExtents') {
+    const err = evaluatePanelBBoxLegacy(ctx, c)
+    return err ?? null
   }
 
-  if (Math.abs(thick - c.thicknessMm) > EDGE_TOL_MM) return 'constraintPanelBroken'
-  if (!axisOk(mid, c.panelX)) return 'constraintPanelBroken'
-  if (!axisOk(long, c.panelY)) return 'constraintPanelBroken'
+  const gx = measurePreparedElementPairGapMm(
+    ctx.geometryAfter,
+    c.panelXElementAId ?? '',
+    c.panelXElementBId ?? '',
+    ctx.elements,
+  )
+  const gy = measurePreparedElementPairGapMm(
+    ctx.geometryAfter,
+    c.panelYElementAId ?? '',
+    c.panelYElementBId ?? '',
+    ctx.elements,
+  )
+  if (gx === null || gy === null) return 'constraintPanelBroken'
+  if (!axisOk(gx, c.panelX)) return 'constraintPanelBroken'
+  if (!axisOk(gy, c.panelY)) return 'constraintPanelBroken'
   return null
 }

@@ -6,10 +6,8 @@ import { measureEdgeLengthMm } from './measureEdgeLengthMm'
 
 const EPS = 1e-3
 
-/**
- * CONST — wymiar nie może się zmienić (sprawdzamy do↔po, niezależnie od wybranej przez użytkownika pary przy rozciąganiu).
- */
-export function evaluateConstConstraint(
+/** PROFIL — syntetyczny CONST: bez zmiany wymiaru przed→po próbie rozciągnięcia. */
+export function evaluateConstGeometryInvariant(
   ctx: StretchConstraintEvalContext,
   c: ConstFaceConstraint,
 ): PreparedStretchPrecheckError | null {
@@ -25,4 +23,21 @@ export function evaluateConstConstraint(
   const afterGap = measureConstraintPairGapMm(ctx.geometryAfter, c, ctx.elements)
   if (beforeGap === null || afterGap === null) return null
   return Math.abs(afterGap - beforeGap) <= EPS ? null : 'constraintBrokenConst'
+}
+
+/** CONST użytkownika: wartość w pliku = nominalny zamos / długość krawędzi po edycji. */
+export function evaluateConstConstraint(
+  ctx: StretchConstraintEvalContext,
+  c: ConstFaceConstraint,
+): PreparedStretchPrecheckError | null {
+  if (c.edgeVertexPair) {
+    const { va, vb } = c.edgeVertexPair
+    const afterLen = measureEdgeLengthMm(ctx.geometryAfter, va, vb)
+    if (afterLen === null) return null
+    return Math.abs(afterLen - c.valueMm) <= EPS ? null : 'constraintBrokenConst'
+  }
+
+  const afterGap = measureConstraintPairGapMm(ctx.geometryAfter, c, ctx.elements)
+  if (afterGap === null) return null
+  return Math.abs(afterGap - c.valueMm) <= EPS ? null : 'constraintBrokenConst'
 }

@@ -9,6 +9,7 @@ export { resolveTriangleIndicesForConstraint } from './resolveConstraintFaces'
 export { measureConstraintPairGapMm } from './measurePairGapMm'
 export { measureEdgeLengthMm } from './measureEdgeLengthMm'
 export { mergedFacesMatchProfilElementPair } from './matchesProfilEditTarget'
+export { clampStretchTargetMmForBasicConstraints } from './clampStretchTargetForBasicConstraints'
 
 export {
   evaluateBlockConstraint,
@@ -19,13 +20,3 @@ export {
   evaluatePanelConstraint,
 }
 export { runConstraintEvaluationForStretch } from './runConstraintEvaluationForStretch'
-
-/** Właściwość mapująca typ ograniczenia na dedykowaną funkcję oceny (po symulowanym rozciągnięciu). */
-export const partConstraintEvaluators = {
-  evaluateBlockConstraint,
-  evaluateMinConstraint,
-  evaluateMaxConstraint,
-  evaluateConstConstraint,
-  evaluateProfilConstraint,
-  evaluatePanelConstraint,
-} as const
