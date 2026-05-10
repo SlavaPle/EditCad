@@ -17,13 +17,8 @@ import {
   stretchBasicEnvelopeForMergedPair,
   stretchInputDeviationKind,
 } from '../features/part-constraints/stretchBasicEnvelopeForMergedPair'
-import {
-  formatPanelConstraintSummary,
-  formatProfilStretchGapLabelMm,
-  type FaceConstraint,
-  type FaceConstraintType,
-  type PanelAxisBounds,
-} from '../features/face-constraints/model'
+import type { FaceConstraint, FaceConstraintType, PanelAxisBounds } from '../features/face-constraints/model'
+import { formatConstraintUiSummary } from '../features/face-constraints/formatConstraintUiSummary'
 import { removeFaceConstraint, upsertFaceConstraint } from '../features/face-constraints/store'
 import styles from './RightPanel.module.css'
 
@@ -978,27 +973,19 @@ export function RightPanel({
             <p className={styles.selectionListEmpty}>{t('rightPanel.limits.empty')}</p>
           ) : (
             <ul className={styles.selectionList}>
-              {faceConstraints.map((item) => (
-                <li key={item.id}>
+              {faceConstraints.map((item) => {
+                const { primary, tooltip } = formatConstraintUiSummary({
+                  constraint: item,
+                  geometry: model,
+                  modelElements: preparedModelElements,
+                  t,
+                })
+                return (
+                <li key={item.id} title={tooltip}>
                   <span>
                     {item.type.toUpperCase()}
-                    {' - '}
-                    {item.type === 'panel'
-                      ? `${formatPanelConstraintSummary(item)}${item.ySameAsX ? t('rightPanel.limits.panelYSameBadge') : ''}${
-                          item.panelMeasureMode === 'bboxExtents'
-                            ? ` · (${t('rightPanel.limits.panelMeasureBboxBadge')})`
-                            : ` · X ${item.panelXElementAId ?? ''}↔${item.panelXElementBId ?? ''}; Y ${item.panelYElementAId ?? ''}↔${item.panelYElementBId ?? ''}`
-                        }`
-                      : item.type === 'profil'
-                        ? `${formatProfilStretchGapLabelMm(item)} mm${
-                            item.frozen1?.elementAId && item.frozen1.elementBId && item.frozen2?.elementAId && item.frozen2.elementBId
-                              ? ` · ‖${item.frozen1.elementAId}↔${item.frozen1.elementBId} · ‖${item.frozen2.elementAId}↔${item.frozen2.elementBId}`
-                              : ''
-                          }`
-                      : item.type === 'block'
-                        ? t('rightPanel.limits.blocked')
-                        : `${item.valueMm} mm`}
-                    {item.facePair ? ` (${item.facePair.a}, ${item.facePair.b})` : ''}
+                    {' · '}
+                    {primary}
                   </span>
                   <button
                     type="button"
@@ -1008,7 +995,8 @@ export function RightPanel({
                     {t('rightPanel.limits.remove')}
                   </button>
                 </li>
-              ))}
+                )
+              })}
             </ul>
           )}
         </div>

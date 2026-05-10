@@ -1,4 +1,30 @@
 {
+  "limitsSummary": {
+    "tooltipId": "Идентификатор лимита: {{id}}",
+    "blockBody": "Изменение размеров запрещено.",
+    "meshVerticesPair": "Вершины сетки: {{va}} ↔ {{vb}}",
+    "basicWithEdge": "{{value}} мм · вершины {{va}} ↔ {{vb}}",
+    "basicValueMm": "{{value}} мм",
+    "measurementPair": "Элементы: {{pair}}",
+    "elementPairFull": "{{a}} ↔ {{b}}",
+    "facePairFull": "Грани STL (индексы треугольников): {{a}}, {{b}}",
+    "panelThickness": "Толщина {{mm}} мм",
+    "panelAxis": "{{axis}}: {{range}} мм",
+    "panelLead": "{{thickness}} · {{x}} · {{y}}",
+    "panelYSameBadge": " (Y=X)",
+    "panelMeasureBboxBadge": " (старое AABB)",
+    "panelMeasurePairs": "Пары измерения — X: {{x}}; Y: {{y}}",
+    "panelXPairFull": "Измерение X: {{a}} ↔ {{b}}",
+    "panelYPairFull": "Измерение Y: {{a}} ↔ {{b}}",
+    "profilLength": "Длина (мин/макс): {{range}} мм",
+    "profilSection": "Сечение профиля {{h}}×{{w}} мм",
+    "profilStretchPair": "Пара растяжения: {{pair}}",
+    "profilStretchPairFull": "Пара растяжения: {{a}} ↔ {{b}}",
+    "profilFrozenLabel1": "Заморозка 1",
+    "profilFrozenLabel2": "Заморозка 2",
+    "profilFrozenTooltipPair": "{{label}}: {{a}} ↔ {{b}}",
+    "profilFrozenTooltipEdge": "{{label}}: вершины сетки {{va}} ↔ {{vb}}"
+  },
   "app": {
     "title": "EditCad"
   },

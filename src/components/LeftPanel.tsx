@@ -4,12 +4,10 @@ import { ModelLoader } from './ModelLoader'
 import { isSupportedExtension } from '../lib/loadModel'
 import type { ModelLoaderHandle } from './ModelLoader'
 import type { SaveFormat } from '../lib/saveModel'
-import type { PreparedElementConstraints } from '../lib/preparedElementFormat'
-import {
-  formatPanelConstraintSummary,
-  formatProfilStretchGapLabelMm,
-  type FaceConstraint,
-} from '../features/face-constraints/model'
+import type { BufferGeometry } from 'three'
+import type { PreparedElementConstraints, PreparedModelElement } from '../lib/preparedElementFormat'
+import type { FaceConstraint } from '../features/face-constraints/model'
+import { formatConstraintUiSummary } from '../features/face-constraints/formatConstraintUiSummary'
 import styles from './LeftPanel.module.css'
 
 export interface LeftPanelProps {
@@ -29,6 +27,8 @@ export interface LeftPanelProps {
   faceConstraints: FaceConstraint[]
   constraintsLocked: boolean
   onConstraintsLockedChange: (next: boolean) => void
+  limitsSummaryGeometry: BufferGeometry | null
+  limitsSummaryModelElements: readonly PreparedModelElement[]
 }
 
 export function LeftPanel({
@@ -42,6 +42,8 @@ export function LeftPanel({
   faceConstraints,
   constraintsLocked,
   onConstraintsLockedChange,
+  limitsSummaryGeometry,
+  limitsSummaryModelElements,
 }: LeftPanelProps) {
   const { t } = useTranslation()
   const dropZoneRef = useRef<HTMLDivElement>(null)
@@ -134,31 +136,19 @@ export function LeftPanel({
               <p className={styles.placeholder}>{t('leftPanel.limits.empty')}</p>
             ) : (
               <ul className={styles.constraintsList}>
-                {faceConstraints.map((item) => (
-                  <li key={item.id}>
-                    {item.type.toUpperCase()}
-                    {item.type === 'panel'
-                      ? ` ${formatPanelConstraintSummary(item)}${item.ySameAsX ? t('leftPanel.limits.panelYSameBadge') : ''}${
-                          item.panelMeasureMode === 'bboxExtents'
-                            ? ` (${t('leftPanel.limits.panelMeasureBboxBadge')})`
-                            : ` · X ${item.panelXElementAId ?? ''}↔${item.panelXElementBId ?? ''}; Y ${item.panelYElementAId ?? ''}↔${item.panelYElementBId ?? ''}`
-                        }`
-                      : item.type === 'profil'
-                        ? ` ${formatProfilStretchGapLabelMm(item)}mm${
-                            item.frozen1?.elementAId && item.frozen1.elementBId && item.frozen2?.elementAId && item.frozen2.elementBId
-                              ? ` ‖${item.frozen1.elementAId}↔${item.frozen1.elementBId} ‖${item.frozen2.elementAId}↔${item.frozen2.elementBId}`
-                              : ''
-                          }`
-                      : item.type === 'block'
-                        ? ''
-                        : ` ${item.valueMm}mm`}
-                    {item.elementAId && item.elementBId
-                      ? ` (${item.elementAId} ↔ ${item.elementBId})`
-                      : item.facePair
-                        ? ` [${item.facePair.a}, ${item.facePair.b}]`
-                        : ''}
-                  </li>
-                ))}
+                {faceConstraints.map((item) => {
+                  const { primary, tooltip } = formatConstraintUiSummary({
+                    constraint: item,
+                    geometry: limitsSummaryGeometry,
+                    modelElements: limitsSummaryModelElements,
+                    t,
+                  })
+                  return (
+                    <li key={item.id} title={tooltip}>
+                      {item.type.toUpperCase()} · {primary}
+                    </li>
+                  )
+                })}
               </ul>
             )}
           </div>

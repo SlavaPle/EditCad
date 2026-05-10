@@ -1,4 +1,30 @@
 {
+  "limitsSummary": {
+    "tooltipId": "Constraint id: {{id}}",
+    "blockBody": "Size changes are blocked.",
+    "meshVerticesPair": "Mesh vertices: {{va}} ↔ {{vb}}",
+    "basicWithEdge": "{{value}} mm · mesh vertices {{va}} ↔ {{vb}}",
+    "basicValueMm": "{{value}} mm",
+    "measurementPair": "Elements: {{pair}}",
+    "elementPairFull": "{{a}} ↔ {{b}}",
+    "facePairFull": "STL faces (triangle indices): {{a}}, {{b}}",
+    "panelThickness": "Thickness {{mm}} mm",
+    "panelAxis": "{{axis}}: {{range}} mm",
+    "panelLead": "{{thickness}} · {{x}} · {{y}}",
+    "panelYSameBadge": " (Y=X)",
+    "panelMeasureBboxBadge": " (legacy AABB)",
+    "panelMeasurePairs": "Measurement pairs — X: {{x}}; Y: {{y}}",
+    "panelXPairFull": "X measurement: {{a}} ↔ {{b}}",
+    "panelYPairFull": "Y measurement: {{a}} ↔ {{b}}",
+    "profilLength": "Min/max length: {{range}} mm",
+    "profilSection": "Cross-section {{h}}×{{w}} mm",
+    "profilStretchPair": "Stretch pair: {{pair}}",
+    "profilStretchPairFull": "Stretch pair: {{a}} ↔ {{b}}",
+    "profilFrozenLabel1": "Frozen dimension 1",
+    "profilFrozenLabel2": "Frozen dimension 2",
+    "profilFrozenTooltipPair": "{{label}}: {{a}} ↔ {{b}}",
+    "profilFrozenTooltipEdge": "{{label}}: mesh vertices {{va}} ↔ {{vb}}"
+  },
   "app": {
     "title": "EditCad"
   },

@@ -264,6 +264,8 @@ function App() {
           faceConstraints={preparedFaceConstraints}
           constraintsLocked={constraintsLocked}
           onConstraintsLockedChange={setConstraintsLocked}
+          limitsSummaryGeometry={model}
+          limitsSummaryModelElements={preparedConstraints.modelElements ?? []}
         />
         <div className={styles.viewport}>
           <Viewer3D
