@@ -97,4 +97,170 @@ describe('resizeGeometryAfterConstraintMmEdit', () => {
     })
     expect(r.gapAdjusted).toBe(false)
   })
+
+  it('stretches when MIN rises above current gap', () => {
+    const geo = geometryTwoParallelPatches(10)
+    const c: FaceConstraint = {
+      id: 'lo',
+      type: 'min',
+      facePair: null,
+      elementAId: 'ea',
+      elementBId: 'eb',
+      valueMm: 16,
+    }
+    const prepared: PreparedElementConstraints = { ...pairPrepared, faceConstraints: [c] }
+    const r = resizeGeometryAfterConstraintMmEdit({
+      geometry: geo,
+      editedConstraint: c,
+      allConstraints: [c],
+      prepared,
+    })
+    expect(r.gapAdjusted).toBe(true)
+    if (!r.gapAdjusted) throw new Error('expected gap adjusted')
+    const an = analyzeTwoFaceStretch(r.geometry, mergedFourFaces)
+    expect(an.ok).toBe(true)
+    if (an.ok) expect(an.gapMm).toBeCloseTo(16, 3)
+  })
+
+  it('shrinks gap when MAX is reduced below current', () => {
+    const geo = geometryTwoParallelPatches(10)
+    const c: FaceConstraint = {
+      id: 'hi',
+      type: 'max',
+      facePair: null,
+      elementAId: 'ea',
+      elementBId: 'eb',
+      valueMm: 7,
+    }
+    const prepared: PreparedElementConstraints = { ...pairPrepared, faceConstraints: [c] }
+    const r = resizeGeometryAfterConstraintMmEdit({
+      geometry: geo,
+      editedConstraint: c,
+      allConstraints: [c],
+      prepared,
+    })
+    expect(r.gapAdjusted).toBe(true)
+    if (!r.gapAdjusted) throw new Error('expected gap adjusted')
+    const an = analyzeTwoFaceStretch(r.geometry, mergedFourFaces)
+    expect(an.ok).toBe(true)
+    if (an.ok) expect(an.gapMm).toBeCloseTo(7, 3)
+  })
+
+  it('shrinks PROFIL stretch gap when new MAX is below current gap', () => {
+    const geo = geometryTwoParallelPatches(10)
+    const c: FaceConstraint = {
+      id: 'pr',
+      type: 'profil',
+      facePair: null,
+      elementAId: 'ea',
+      elementBId: 'eb',
+      valueMm: 6,
+    }
+    const prepared: PreparedElementConstraints = { ...pairPrepared, faceConstraints: [c] }
+    const r = resizeGeometryAfterConstraintMmEdit({
+      geometry: geo,
+      editedConstraint: c,
+      allConstraints: [c],
+      prepared,
+    })
+    expect(r.gapAdjusted).toBe(true)
+    if (!r.gapAdjusted) throw new Error('expected gap adjusted')
+    const an = analyzeTwoFaceStretch(r.geometry, mergedFourFaces)
+    expect(an.ok).toBe(true)
+    if (an.ok) expect(an.gapMm).toBeCloseTo(6, 3)
+  })
+
+  it('widens PROFIL stretch gap when new MIN exceeds current gap', () => {
+    const geo = geometryTwoParallelPatches(8)
+    const c: FaceConstraint = {
+      id: 'pr2',
+      type: 'profil',
+      facePair: null,
+      elementAId: 'ea',
+      elementBId: 'eb',
+      valueMm: 100,
+      stretchMinMm: 13,
+    }
+    const prepared: PreparedElementConstraints = { ...pairPrepared, faceConstraints: [c] }
+    const r = resizeGeometryAfterConstraintMmEdit({
+      geometry: geo,
+      editedConstraint: c,
+      allConstraints: [c],
+      prepared,
+    })
+    expect(r.gapAdjusted).toBe(true)
+    if (!r.gapAdjusted) throw new Error('expected gap adjusted')
+    const an = analyzeTwoFaceStretch(r.geometry, mergedFourFaces)
+    expect(an.ok).toBe(true)
+    if (an.ok) expect(an.gapMm).toBeCloseTo(13, 3)
+  })
+
+  it('does not resize when CONST is edge-only binding', () => {
+    const geo = geometryTwoParallelPatches(10)
+    const c: FaceConstraint = {
+      id: 'ce',
+      type: 'const',
+      facePair: null,
+      valueMm: 5,
+      edgeVertexPair: { va: 0, vb: 1 },
+    }
+    const prepared: PreparedElementConstraints = { ...pairPrepared, faceConstraints: [c] }
+    const r = resizeGeometryAfterConstraintMmEdit({
+      geometry: geo,
+      editedConstraint: c,
+      allConstraints: [c],
+      prepared,
+    })
+    expect(r.gapAdjusted).toBe(false)
+  })
+
+  it('does not resize when BLOCK forbids validation', () => {
+    const geo = geometryTwoParallelPatches(10)
+    const co: FaceConstraint = {
+      id: 'co',
+      type: 'const',
+      facePair: null,
+      elementAId: 'ea',
+      elementBId: 'eb',
+      valueMm: 18,
+    }
+    const bl: FaceConstraint = { id: 'bk', type: 'block', facePair: null }
+    const list: FaceConstraint[] = [bl, co]
+    const prepared: PreparedElementConstraints = { ...pairPrepared, faceConstraints: list }
+    const r = resizeGeometryAfterConstraintMmEdit({
+      geometry: geo,
+      editedConstraint: co,
+      allConstraints: list,
+      prepared,
+    })
+    expect(r.gapAdjusted).toBe(false)
+  })
+
+  it('works with CONST bound by legacy facePair (no element ids)', () => {
+    const geo = geometryTwoParallelPatches(10)
+    const c: FaceConstraint = {
+      id: 'fk',
+      type: 'const',
+      facePair: { a: 0, b: 2 },
+      elementAId: undefined,
+      elementBId: undefined,
+      valueMm: 11,
+    }
+    const prepared: PreparedElementConstraints = {
+      mode: 'fixed',
+      faceConstraints: [c],
+      modelElements: [...pairPrepared.modelElements!],
+    }
+    const r = resizeGeometryAfterConstraintMmEdit({
+      geometry: geo,
+      editedConstraint: c,
+      allConstraints: [c],
+      prepared,
+    })
+    expect(r.gapAdjusted).toBe(true)
+    if (!r.gapAdjusted) throw new Error('expected gap adjusted')
+    const an = analyzeTwoFaceStretch(r.geometry, mergedFourFaces)
+    expect(an.ok).toBe(true)
+    if (an.ok) expect(an.gapMm).toBeCloseTo(11, 3)
+  })
 })
