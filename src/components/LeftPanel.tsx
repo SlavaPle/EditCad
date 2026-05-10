@@ -29,6 +29,7 @@ export interface LeftPanelProps {
   onConstraintsLockedChange: (next: boolean) => void
   limitsSummaryGeometry: BufferGeometry | null
   limitsSummaryModelElements: readonly PreparedModelElement[]
+  onHighlightLimitDependentFaces?: (constraint: FaceConstraint) => void
 }
 
 export function LeftPanel({
@@ -44,6 +45,7 @@ export function LeftPanel({
   onConstraintsLockedChange,
   limitsSummaryGeometry,
   limitsSummaryModelElements,
+  onHighlightLimitDependentFaces,
 }: LeftPanelProps) {
   const { t } = useTranslation()
   const dropZoneRef = useRef<HTMLDivElement>(null)
@@ -143,9 +145,20 @@ export function LeftPanel({
                     modelElements: limitsSummaryModelElements,
                     t,
                   })
+                  const hint = t('leftPanel.limits.selectLinkedFaces')
+                  const canNavigate = Boolean(onHighlightLimitDependentFaces && limitsSummaryGeometry)
                   return (
-                    <li key={item.id} title={tooltip}>
-                      {item.type.toUpperCase()} · {primary}
+                    <li key={item.id}>
+                      <button
+                        type="button"
+                        className={styles.constraintLimitButton}
+                        title={`${tooltip}\n\n${hint}`}
+                        aria-label={`${item.type.toUpperCase()} · ${primary}. ${hint}`}
+                        disabled={!canNavigate}
+                        onClick={() => canNavigate && onHighlightLimitDependentFaces!(item)}
+                      >
+                        {item.type.toUpperCase()} · {primary}
+                      </button>
                     </li>
                   )
                 })}

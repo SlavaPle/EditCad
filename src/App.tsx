@@ -7,7 +7,7 @@ import { RightPanel } from './components/RightPanel'
 import type { ModelLoaderHandle } from './components/ModelLoader'
 import { clearMeshTopologyCaches } from './features/model-selection/facePlaneSelection'
 import { DEFAULT_MODEL_SELECTION_PROXIMITY_FILTER } from './features/model-selection/types'
-import { createEmptySelection, type SelectionState } from './lib/selection'
+import { createEmptySelection, selectFaces, type SelectionState } from './lib/selection'
 import {
   ECDPRT_EXTENSION,
   saveGeometryAsEcdprtFile,
@@ -22,6 +22,7 @@ import {
   type PreparedStretchPrecheckError,
 } from './lib/preparedStretchValidation'
 import type { FaceConstraint } from './features/face-constraints/model'
+import { resolveConstraintDependentFaceIndices } from './features/part-constraints/resolveConstraintDependentFaces'
 import { clampStretchTargetMmForBasicConstraints } from './features/part-constraints/clampStretchTargetForBasicConstraints'
 import type { ApplyTwoFaceStretchOverlay } from './lib/applyStretchOverlay'
 import styles from './App.module.css'
@@ -71,6 +72,24 @@ function App() {
     setSelection(createEmptySelection())
     setProbableFaces([])
   }, [])
+
+  const handleHighlightLimitDependentFaces = useCallback(
+    (c: FaceConstraint) => {
+      if (!model) return
+      const faces = resolveConstraintDependentFaceIndices({
+        constraint: c,
+        geometry: model,
+        modelElements: preparedConstraints.modelElements ?? [],
+      })
+      setProbableFaces([])
+      if (faces.length === 0) {
+        clearAllSelection()
+        return
+      }
+      setSelection(selectFaces(createEmptySelection(), faces, 'replace'))
+    },
+    [model, preparedConstraints.modelElements, clearAllSelection],
+  )
 
   useEffect(() => {
     setSelection(createEmptySelection())
@@ -266,6 +285,7 @@ function App() {
           onConstraintsLockedChange={setConstraintsLocked}
           limitsSummaryGeometry={model}
           limitsSummaryModelElements={preparedConstraints.modelElements ?? []}
+          onHighlightLimitDependentFaces={handleHighlightLimitDependentFaces}
         />
         <div className={styles.viewport}>
           <Viewer3D

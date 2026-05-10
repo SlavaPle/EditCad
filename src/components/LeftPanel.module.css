@@ -91,11 +91,41 @@
 }
 
 .constraintsList li {
+  padding: 0;
+  margin-bottom: 4px;
+  border-radius: 4px;
+  background: transparent;
+  font-variant-numeric: tabular-nums;
+}
+
+.constraintLimitButton {
+  display: block;
+  width: 100%;
+  margin: 0;
   padding: 6px 8px;
   border-radius: 4px;
-  margin-bottom: 4px;
+  border: 1px solid transparent;
   background: #0f172a;
-  font-variant-numeric: tabular-nums;
+  color: inherit;
+  font: inherit;
+  font-variant-numeric: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.constraintLimitButton:hover:not(:disabled) {
+  border-color: #475569;
+  background: #1e293b;
+}
+
+.constraintLimitButton:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 1px;
+}
+
+.constraintLimitButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .constraintLock {

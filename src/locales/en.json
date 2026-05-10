@@ -48,6 +48,7 @@
     "file": "File",
     "limits": {
       "title": "Limits",
+      "selectLinkedFaces": "Show linked faces on the model",
       "empty": "No limits in this prepared part.",
       "onlyPrepared": "Limits are available only for ECDPRT files.",
       "locked": "Limits enforced",
