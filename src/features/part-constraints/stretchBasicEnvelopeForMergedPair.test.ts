@@ -113,6 +113,26 @@ describe('stretchBasicEnvelopeForMergedPair', () => {
     expect(e!.pinConstMm).toBeNull()
   })
 
+  it('uses single minmax constraint for lower and upper', () => {
+    const list: FaceConstraint[] = [
+      {
+        id: 'b',
+        type: 'minmax',
+        facePair: null,
+        elementAId: 'ea',
+        elementBId: 'eb',
+        minMm: 6,
+        maxMm: 40,
+      },
+    ]
+    const e = stretchBasicEnvelopeForMergedPair(geo, mergedFourFaces, list, pairElements)
+    expect(e).not.toBeNull()
+    expect(e!.matchedConstraintCount).toBe(1)
+    expect(e!.lower).toBe(6)
+    expect(e!.upper).toBe(40)
+    expect(e!.pinConstMm).toBeNull()
+  })
+
   it('sets pin CONST for matching pair', () => {
     const list: FaceConstraint[] = [
       {
@@ -237,6 +257,41 @@ describe('clampStretchTargetMmForBasicConstraints', () => {
     })
     expect(r.targetMm).toBe(8)
     expect(r.adjusted).toBe(true)
+  })
+
+  it('clamps inside MINMAX when matched', () => {
+    const list: FaceConstraint[] = [
+      {
+        id: 'b',
+        type: 'minmax',
+        facePair: null,
+        elementAId: 'ea',
+        elementBId: 'eb',
+        minMm: 10,
+        maxMm: 30,
+      },
+    ]
+    const high = clampStretchTargetMmForBasicConstraints({
+      geometry: geo,
+      mergedFaces: mergedFourFaces,
+      rawTargetMm: 99,
+      faceConstraints: list,
+      modelElements: pairElements,
+      constraintsLocked: true,
+    })
+    expect(high.targetMm).toBe(30)
+    expect(high.adjusted).toBe(true)
+
+    const low = clampStretchTargetMmForBasicConstraints({
+      geometry: geo,
+      mergedFaces: mergedFourFaces,
+      rawTargetMm: 5,
+      faceConstraints: list,
+      modelElements: pairElements,
+      constraintsLocked: true,
+    })
+    expect(low.targetMm).toBe(10)
+    expect(low.adjusted).toBe(true)
   })
 
   it('clamps up to MIN when matched', () => {

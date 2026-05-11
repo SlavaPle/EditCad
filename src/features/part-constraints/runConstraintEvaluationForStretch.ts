@@ -10,6 +10,7 @@ import { evaluateMaxConstraint } from './evaluateMaxConstraint'
 import { evaluateConstConstraint } from './evaluateConstConstraint'
 import { evaluateProfilConstraint } from './evaluateProfilConstraint'
 import { evaluatePanelConstraint } from './evaluatePanelConstraint'
+import { evaluateMinMaxConstraint } from './evaluateMinMaxConstraint'
 
 export function runConstraintEvaluationForStretch(
   ctx: StretchConstraintEvalContext,
@@ -18,6 +19,8 @@ export function runConstraintEvaluationForStretch(
   switch (c.type) {
     case 'block':
       return evaluateBlockConstraint(c)
+    case 'minmax':
+      return evaluateMinMaxConstraint(ctx, c)
     case 'min':
       return evaluateMinConstraint(ctx, c)
     case 'max':

@@ -37,13 +37,18 @@ export function stretchBasicEnvelopeForMergedPair(
   }
 
   for (const c of faceConstraints) {
-    if (c.type !== 'min' && c.type !== 'max' && c.type !== 'const') continue
+    if (c.type !== 'min' && c.type !== 'max' && c.type !== 'minmax' && c.type !== 'const') continue
     if (!mergedFacesMatchConstraintStretchPair(geometry, mergedFaces, elems, c)) continue
     if (c.type === 'const' && c.edgeVertexPair) continue
 
     matchedConstraintCount += 1
     if (c.type === 'const') {
       pinConstMm = c.valueMm
+      continue
+    }
+    if (c.type === 'minmax') {
+      lower = Math.max(lower, c.minMm)
+      upper = Math.min(upper, c.maxMm)
       continue
     }
     if (c.type === 'min') lower = Math.max(lower, c.valueMm)

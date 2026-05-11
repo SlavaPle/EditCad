@@ -105,6 +105,21 @@ export function formatConstraintUiSummary(params: {
     return { primary: t('limitsSummary.blockBody'), tooltip: tooltipParts.join('\n') }
   }
 
+  if (c.type === 'minmax') {
+    const primary = t('limitsSummary.minMaxRangeMm', {
+      min: formatMmLabel(c.minMm),
+      max: formatMmLabel(c.maxMm),
+    })
+    const pair = elementPairSnippet(c.elementAId, c.elementBId, tooltipParts, 'limitsSummary.elementPairFull', t)
+    if (c.facePair) {
+      tooltipParts.push(t('limitsSummary.facePairFull', { a: c.facePair.a, b: c.facePair.b }))
+    }
+    return {
+      primary: pair ? `${primary} · ${t('limitsSummary.measurementPair', { pair })}` : primary,
+      tooltip: tooltipParts.join('\n'),
+    }
+  }
+
   if (c.type === 'const' && c.edgeVertexPair) {
     const { va, vb } = c.edgeVertexPair
     tooltipParts.push(t('limitsSummary.meshVerticesPair', { va, vb }))

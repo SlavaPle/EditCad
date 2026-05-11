@@ -10,6 +10,7 @@ import {
   selectionSupportsTwoFaceStretchProximity,
   type SelectionState,
 } from '../lib/selection'
+import { parsePositiveMm } from '../lib/parsePositiveMm'
 import type { PreparedStretchPrecheckError } from '../lib/preparedStretchValidation'
 import type { PreparedModelElement } from '../lib/preparedElementFormat'
 import { boundingBoxThicknessAndInPlaneSpansMm } from '../features/face-constraints/panelExtentsFromBBox'
@@ -49,23 +50,12 @@ export interface RightPanelProps {
   onMergeModelElements: (elements: readonly PreparedModelElement[]) => void
 }
 
-function parsePositiveMm(raw: string): number | null {
-  const normalized = raw.replace(',', '.').trim()
-  if (normalized === '') return null
-  const n = Number.parseFloat(normalized)
-  if (!Number.isFinite(n) || n <= 0) return null
-  return n
-}
-
-/** Cele zamosu po „Add”: jak Apply (CONST = pole, MIN/MAX dopasują zakres). */
-function naiveStretchMmAfterAddingBasicConstraint(
-  constraintType: 'min' | 'max' | 'const',
-  valueMm: number,
+function naiveStretchMmAfterAddingMinMax(
   currentGapMm: number,
+  minMm: number,
+  maxMm: number,
 ): number {
-  if (constraintType === 'const') return valueMm
-  if (constraintType === 'max') return Math.min(currentGapMm, valueMm)
-  return Math.max(currentGapMm, valueMm)
+  return Math.min(Math.max(currentGapMm, minMm), maxMm)
 }
 
 function naiveStretchMmAfterAddingProfil(
@@ -132,8 +122,11 @@ export function RightPanel({
   const [panelSpanYInput, setPanelSpanYInput] = useState('')
   const [applyError, setApplyError] = useState<string | null>(null)
   const [panelSpanApplyError, setPanelSpanApplyError] = useState<string | null>(null)
-  const [constraintType, setConstraintType] = useState<FaceConstraintType>('min')
+  const [constraintType, setConstraintType] = useState<FaceConstraintType>('minmax')
   const prevConstraintTypeRef = useRef(constraintType)
+  const [boundsUseMin, setBoundsUseMin] = useState(false)
+  const [boundsMinMmInput, setBoundsMinMmInput] = useState('')
+  const [boundsMaxMmInput, setBoundsMaxMmInput] = useState('')
   const [constraintValue, setConstraintValue] = useState('')
   const [panelXUseMin, setPanelXUseMin] = useState(false)
   const [panelXMin, setPanelXMin] = useState('')
@@ -294,6 +287,13 @@ export function RightPanel({
       setProfilFrozenSlot2Ids(null)
       setProfilStretchUseMin(false)
       setProfilStretchMinMm('')
+    }
+  }, [constraintType])
+
+  useEffect(() => {
+    if (constraintType !== 'minmax') {
+      setBoundsUseMin(false)
+      setBoundsMinMmInput('')
     }
   }, [constraintType])
 
@@ -658,6 +658,84 @@ export function RightPanel({
       return
     }
 
+    if (constraintType === 'minmax') {
+      if (!facePair || !model) {
+        setConstraintError('needTwoFaces')
+        return
+      }
+      const maxMm = parsePositiveMm(boundsMaxMmInput)
+      if (maxMm === null) {
+        setConstraintError('invalidValue')
+        return
+      }
+      let minMm = 0
+      if (boundsUseMin) {
+        const parsedMin = parsePositiveMm(boundsMinMmInput)
+        if (parsedMin === null) {
+          setConstraintError('invalidValue')
+          return
+        }
+        minMm = parsedMin
+      }
+      if (minMm > maxMm + 1e-9) {
+        setConstraintError('invalidRange')
+        return
+      }
+      const patchesMx = partitionSelectionIntoCoplanarPatches(model, facesForStretch)
+      if (patchesMx.length !== 2) {
+        setConstraintError('needTwoPlanarGroups')
+        return
+      }
+      const pidMx = Date.now()
+      const randMx = Math.random().toString(36).slice(2, 6)
+      const elementAIdMx = `el-${pidMx}-${randMx}-a`
+      const elementBIdMx = `el-${pidMx}-${randMx}-b`
+      const uaMx = [...patchesMx[0]!]
+      const ubMx = [...patchesMx[1]!]
+      uaMx.sort((x, y) => x - y)
+      ubMx.sort((x, y) => x - y)
+      const repAMx = uaMx[0]!
+      const repBMx = ubMx[0]!
+      const nextMx: FaceConstraint = {
+        id,
+        type: 'minmax',
+        facePair: { a: repAMx, b: repBMx },
+        elementAId: elementAIdMx,
+        elementBId: elementBIdMx,
+        minMm,
+        maxMm,
+      }
+      const nextListMx = upsertFaceConstraint(faceConstraints, nextMx)
+      const extraElsMx = [
+        { id: elementAIdMx, faceIndices: uaMx },
+        { id: elementBIdMx, faceIndices: ubMx },
+      ]
+      const gapAnMx = analyzeTwoFaceStretch(model, facesForStretch)
+      if (!gapAnMx.ok) {
+        setConstraintError('needTwoPlanarGroups')
+        return
+      }
+      const rawMmMx = naiveStretchMmAfterAddingMinMax(gapAnMx.gapMm, minMm, maxMm)
+      const stretchResMx = onApplyTwoFaceStretch(rawMmMx, {
+        mergedFaces: [...facesForStretch],
+        faceConstraints: nextListMx,
+        modelElements: [...preparedModelElements, ...extraElsMx],
+        forceConstraintEvaluation: true,
+      })
+      if (!stretchResMx.ok) {
+        setConstraintError(stretchResMx.error)
+        return
+      }
+      onMergeModelElements(extraElsMx)
+      onFaceConstraintsChange(nextListMx)
+      setTargetInput(String(Number(stretchResMx.effectiveTargetMm.toFixed(6))))
+      return
+    }
+
+    if (constraintType !== 'const') {
+      return
+    }
+
     if (!facePair || !model) {
       setConstraintError('needTwoFaces')
       return
@@ -676,20 +754,20 @@ export function RightPanel({
     const rand = Math.random().toString(36).slice(2, 6)
     const elementAId = `el-${pid}-${rand}-a`
     const elementBId = `el-${pid}-${rand}-b`
-    const ua = [...patches[0]]
-    const ub = [...patches[1]]
+    const ua = [...patches[0]!]
+    const ub = [...patches[1]!]
     ua.sort((x, y) => x - y)
     ub.sort((x, y) => x - y)
     const repA = ua[0]!
     const repB = ub[0]!
     const next: FaceConstraint = {
       id,
-      type: constraintType,
+      type: 'const',
       facePair: { a: repA, b: repB },
       elementAId,
       elementBId,
       valueMm,
-    } as FaceConstraint
+    }
     const nextList = upsertFaceConstraint(faceConstraints, next)
     const extraEls = [
       { id: elementAId, faceIndices: ua },
@@ -700,7 +778,7 @@ export function RightPanel({
       setConstraintError('needTwoPlanarGroups')
       return
     }
-    const rawMm = naiveStretchMmAfterAddingBasicConstraint(constraintType as 'min' | 'max' | 'const', valueMm, gapAn.gapMm)
+    const rawMm = valueMm
     const stretchRes = onApplyTwoFaceStretch(rawMm, {
       mergedFaces: [...facesForStretch],
       faceConstraints: nextList,
@@ -717,6 +795,9 @@ export function RightPanel({
   }, [
     constraintType,
     constraintValue,
+    boundsUseMin,
+    boundsMinMmInput,
+    boundsMaxMmInput,
     faceConstraints,
     facePair,
     facesForStretch,
@@ -1016,16 +1097,60 @@ export function RightPanel({
               value={constraintType}
               onChange={(e) => setConstraintType(e.target.value as FaceConstraintType)}
             >
-              <option value="min">MIN</option>
-              <option value="max">MAX</option>
-              <option value="const">CONST</option>
-              <option value="profil">PROFIL</option>
-              <option value="block">BLOCK</option>
-              <option value="panel">PANEL</option>
+              <option value="minmax">{t('rightPanel.limits.optionMinMax')}</option>
+              <option value="const">{t('rightPanel.limits.optionConst')}</option>
+              <option value="profil">{t('rightPanel.limits.optionProfil')}</option>
+              <option value="block">{t('rightPanel.limits.optionBlock')}</option>
+              <option value="panel">{t('rightPanel.limits.optionPanel')}</option>
             </select>
-            {constraintType !== 'block' &&
-              constraintType !== 'panel' &&
-              constraintType !== 'profil' && (
+            {constraintType === 'minmax' && (
+              <div className={styles.minMaxBoundsInputs}>
+                <label className={styles.panelCheckboxRow}>
+                  <input
+                    type="checkbox"
+                    checked={boundsUseMin}
+                    onChange={(e) => setBoundsUseMin(e.target.checked)}
+                  />
+                  {t('rightPanel.limits.boundsUseMin')}
+                </label>
+                {boundsUseMin && (
+                  <div className={styles.faceDistanceInputWrap}>
+                    <label className={styles.visuallyHidden} htmlFor="limit-bounds-min">
+                      {t('rightPanel.limits.boundsMinMm')}
+                    </label>
+                    <input
+                      id="limit-bounds-min"
+                      className={styles.faceDistanceInput}
+                      type="text"
+                      inputMode="decimal"
+                      value={boundsMinMmInput}
+                      onChange={(e) => setBoundsMinMmInput(e.target.value)}
+                      placeholder={t('rightPanel.limits.boundsMinMmPlaceholder')}
+                      title={t('rightPanel.limits.boundsMinMmHint')}
+                      aria-label={t('rightPanel.limits.boundsMinMm')}
+                    />
+                    <span className={styles.faceDistanceUnit}>{t('rightPanel.limits.boundsUnitMin')}</span>
+                  </div>
+                )}
+                <div className={styles.faceDistanceInputWrap}>
+                  <label className={styles.visuallyHidden} htmlFor="limit-bounds-max">
+                    {t('rightPanel.limits.boundsMaxMm')}
+                  </label>
+                  <input
+                    id="limit-bounds-max"
+                    className={styles.faceDistanceInput}
+                    type="text"
+                    inputMode="decimal"
+                    value={boundsMaxMmInput}
+                    onChange={(e) => setBoundsMaxMmInput(e.target.value)}
+                    placeholder={t('rightPanel.limits.boundsMaxMm')}
+                    aria-label={t('rightPanel.limits.boundsMaxMm')}
+                  />
+                  <span className={styles.faceDistanceUnit}>{t('rightPanel.limits.boundsUnitMax')}</span>
+                </div>
+              </div>
+            )}
+            {constraintType === 'const' && (
               <div className={styles.faceDistanceInputWrap}>
                 <input
                   className={styles.faceDistanceInput}

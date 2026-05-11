@@ -23,7 +23,8 @@
     "profilFrozenLabel1": "Заморозка 1",
     "profilFrozenLabel2": "Заморозка 2",
     "profilFrozenTooltipPair": "{{label}}: {{a}} ↔ {{b}}",
-    "profilFrozenTooltipEdge": "{{label}}: вершины сетки {{va}} ↔ {{vb}}"
+    "profilFrozenTooltipEdge": "{{label}}: вершины сетки {{va}} ↔ {{vb}}",
+    "minMaxRangeMm": "Диапазон {{min}}…{{max}} мм"
   },
   "app": {
     "title": "EditCad"
@@ -64,6 +65,9 @@
       "editInvalidValue": "Введите корректные положительные миллиметры.",
       "editInvalid": "Значения не подходят для этого типа лимита.",
       "editRangeOrder": "MIN не должен быть больше MAX.",
+      "editMinMaxUseMin": "Минимальное расстояние (MIN)",
+      "editMinMaxMin": "Минимум (мм)",
+      "editMinMaxMax": "Максимум (мм)",
       "empty": "В этой подготовленной детали нет лимитов.",
       "onlyPrepared": "Лимиты доступны только для файлов ECDPRT.",
       "locked": "Лимиты учитываются",
@@ -141,7 +145,19 @@
     "limits": {
       "title": "Лимиты граней",
       "waitingStretchSelection": "Режим лимитов включён. Выберите две противоположные плоских области (грани или рёбра, не только вершины), как в разделе расстояния между гранями — затем задайте лимиты здесь.",
-      "hint": "Добавляйте MIN/MAX/CONST, PROFIL (2× заморозка + необязательный MIN/MAX зазора растяжения), BLOCK, PANEL — лимиты по выбранным граням.",
+      "hint": "Лимит MIN/MAX (один лимит: MIN по чекбоксу, MAX обязателен), CONST, PROFIL (2× заморозка и при необходимости зазор MIN…MAX растяжения), BLOCK или PANEL — по выделению.",
+      "optionMinMax": "MIN / MAX (диапазон)",
+      "optionConst": "CONST",
+      "optionProfil": "PROFIL",
+      "optionBlock": "BLOCK",
+      "optionPanel": "PANEL",
+      "boundsUseMin": "Минимальное расстояние (MIN)",
+      "boundsMinMm": "Минимум (мм)",
+      "boundsMinMmPlaceholder": "MIN (мм)",
+      "boundsMinMmHint": "Строго положительное расстояние в миллиметрах.",
+      "boundsMaxMm": "Максимум (мм)",
+      "boundsUnitMin": "мм · MIN",
+      "boundsUnitMax": "мм · MAX",
       "locked": "Лимиты учитываются",
       "unlocked": "Лимиты не учитываются",
       "type": "Тип лимита",

@@ -15,7 +15,7 @@ export function mergedFacesMatchConstraintStretchPair(
   elements: readonly PreparedModelElement[],
   c: FaceConstraint,
 ): boolean {
-  if (c.type !== 'min' && c.type !== 'max' && c.type !== 'const') return false
+  if (c.type !== 'min' && c.type !== 'max' && c.type !== 'minmax' && c.type !== 'const') return false
 
   const ea = c.elementAId?.trim()
   const eb = c.elementBId?.trim()

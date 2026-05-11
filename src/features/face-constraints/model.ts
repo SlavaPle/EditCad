@@ -1,4 +1,4 @@
-export type FaceConstraintType = 'min' | 'max' | 'const' | 'profil' | 'block' | 'panel'
+export type FaceConstraintType = 'min' | 'max' | 'minmax' | 'const' | 'profil' | 'block' | 'panel'
 
 export type FaceRefPair = {
   a: number
@@ -22,6 +22,13 @@ export type MinFaceConstraint = FaceConstraintBase & {
 export type MaxFaceConstraint = FaceConstraintBase & {
   type: 'max'
   valueMm: number
+}
+
+/** Jedna para: dolna i górna granica zazoru (MIN domyślnie 0 przy imporcie lub w UI). */
+export type MinMaxFaceConstraint = FaceConstraintBase & {
+  type: 'minmax'
+  minMm: number
+  maxMm: number
 }
 
 /** Opcjonalnie: długość między dwoma wierzchołkami siatki (np. „rebro” A) zamiast odległości między łatami. */
@@ -85,6 +92,7 @@ export type PanelFaceConstraint = FaceConstraintBase & {
 export type FaceConstraint =
   | MinFaceConstraint
   | MaxFaceConstraint
+  | MinMaxFaceConstraint
   | ConstFaceConstraint
   | ProfilFaceConstraint
   | BlockFaceConstraint
@@ -282,6 +290,12 @@ export function validateFaceConstraint(constraint: FaceConstraint): boolean {
     )
   }
 
+  if (constraint.type === 'minmax') {
+    const minOk = typeof constraint.minMm === 'number' && Number.isFinite(constraint.minMm) && constraint.minMm >= 0
+    if (!minOk || !isPositiveNumber(constraint.maxMm)) return false
+    return constraint.minMm <= constraint.maxMm + 1e-9
+  }
+
   if (constraint.type === 'min' || constraint.type === 'max' || constraint.type === 'const') {
     return isPositiveNumber(constraint.valueMm)
   }
@@ -315,6 +329,17 @@ export function parseFaceConstraint(value: unknown): FaceConstraint | null {
     case 'max': {
       if (!isPositiveNumber(value.valueMm)) return null
       const out = { ...common, type: value.type, valueMm: value.valueMm } as MinFaceConstraint | MaxFaceConstraint
+      return validateFaceConstraint(out) ? out : null
+    }
+    case 'minmax': {
+      let minMm = 0
+      const rawMin = value.minMm
+      if (rawMin !== undefined && rawMin !== null) {
+        if (typeof rawMin !== 'number' || !Number.isFinite(rawMin) || rawMin < 0) return null
+        minMm = rawMin
+      }
+      if (!isPositiveNumber(value.maxMm)) return null
+      const out: MinMaxFaceConstraint = { ...common, type: 'minmax', minMm, maxMm: value.maxMm }
       return validateFaceConstraint(out) ? out : null
     }
     case 'const': {

@@ -23,7 +23,8 @@
     "profilFrozenLabel1": "Frozen dimension 1",
     "profilFrozenLabel2": "Frozen dimension 2",
     "profilFrozenTooltipPair": "{{label}}: {{a}} ↔ {{b}}",
-    "profilFrozenTooltipEdge": "{{label}}: mesh vertices {{va}} ↔ {{vb}}"
+    "profilFrozenTooltipEdge": "{{label}}: mesh vertices {{va}} ↔ {{vb}}",
+    "minMaxRangeMm": "{{min}}…{{max}} mm range"
   },
   "app": {
     "title": "EditCad"
@@ -64,6 +65,9 @@
       "editInvalidValue": "Enter valid positive millimetres.",
       "editInvalid": "Values do not satisfy this limit type.",
       "editRangeOrder": "MIN must not exceed MAX.",
+      "editMinMaxUseMin": "Minimum distance (MIN)",
+      "editMinMaxMin": "Minimum (mm)",
+      "editMinMaxMax": "Maximum (mm)",
       "empty": "No limits in this prepared part.",
       "onlyPrepared": "Limits are available only for ECDPRT files.",
       "locked": "Limits enforced",
@@ -141,7 +145,19 @@
     "limits": {
       "title": "Face limits",
       "waitingStretchSelection": "Limits placement is on. Select two opposite planar regions (faces or edges—no vertices-only selection), same workflow as Distance between faces, then add limits here.",
-      "hint": "Add MIN/MAX/CONST/PROFIL (2× frozen + optional MIN/MAX stretch band), BLOCK, PANEL limits on selected faces.",
+      "hint": "Add a MIN/MAX range (one limit: optional MIN via checkbox, required MAX), CONST, PROFIL (2× frozen + optional stretch band), BLOCK, or PANEL on selected faces.",
+      "optionMinMax": "MIN / MAX (range)",
+      "optionConst": "CONST",
+      "optionProfil": "PROFIL",
+      "optionBlock": "BLOCK",
+      "optionPanel": "PANEL",
+      "boundsUseMin": "Minimum distance (MIN)",
+      "boundsMinMm": "Minimum (mm)",
+      "boundsMinMmPlaceholder": "MIN (mm)",
+      "boundsMinMmHint": "Strictly positive distance in millimetres.",
+      "boundsMaxMm": "Maximum (mm)",
+      "boundsUnitMin": "mm · min bound",
+      "boundsUnitMax": "mm · max bound",
       "locked": "Limits enforced",
       "unlocked": "Limits not enforced",
       "type": "Limit type",

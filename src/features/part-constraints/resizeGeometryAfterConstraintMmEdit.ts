@@ -70,6 +70,16 @@ function desiredGapMmForEditedConstraint(params: {
     return t
   }
 
+  if (edited.type === 'minmax') {
+    if (!mergedFacesMatchConstraintStretchPair(geometry, mergedFaces, elems, edited)) {
+      return null
+    }
+    let t = currentGapMm
+    if (t < edited.minMm) t = edited.minMm
+    if (t > edited.maxMm) t = edited.maxMm
+    return t
+  }
+
   if (edited.type !== 'min' && edited.type !== 'max' && edited.type !== 'const') {
     return null
   }

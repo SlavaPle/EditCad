@@ -99,6 +99,34 @@ describe('face constraints model', () => {
     expect(parsed.elementBId).toBe('eb')
   })
 
+  it('accepts minmax with default lower bound zero when minMm omitted', () => {
+    const parsed = parseFaceConstraint({
+      id: 'c-mm',
+      type: 'minmax',
+      facePair: null,
+      elementAId: 'ea',
+      elementBId: 'eb',
+      maxMm: 40,
+    })
+    expect(parsed).not.toBeNull()
+    if (!parsed || parsed.type !== 'minmax') return
+    expect(parsed.minMm).toBe(0)
+    expect(parsed.maxMm).toBe(40)
+  })
+
+  it('rejects minmax when minMm exceeds maxMm', () => {
+    const parsed = parseFaceConstraint({
+      id: 'c-mm-bad',
+      type: 'minmax',
+      facePair: null,
+      elementAId: 'ea',
+      elementBId: 'eb',
+      minMm: 50,
+      maxMm: 10,
+    })
+    expect(parsed).toBeNull()
+  })
+
   it('maps legacy panel to bbox measure mode', () => {
     const parsed = parseFaceConstraint({
       id: 'c5',

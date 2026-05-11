@@ -5,6 +5,7 @@ import type {
   FaceConstraint,
   MaxFaceConstraint,
   MinFaceConstraint,
+  MinMaxFaceConstraint,
   PanelAxisBounds,
   PanelFaceConstraint,
   ProfilFaceConstraint,
@@ -38,6 +39,10 @@ export function LeftPanelLimitInlineEditor({ constraint: c, onSave, onDelete }: 
     return <ScalarLimitEditor constraint={c} onSave={onSave} onDelete={onDelete} />
   }
 
+  if (c.type === 'minmax') {
+    return <MinMaxLimitEditor constraint={c} onSave={onSave} onDelete={onDelete} />
+  }
+
   if (c.type === 'const') {
     return <ScalarLimitEditor constraint={c} onSave={onSave} onDelete={onDelete} />
   }
@@ -51,6 +56,107 @@ export function LeftPanelLimitInlineEditor({ constraint: c, onSave, onDelete }: 
   }
 
   return null
+}
+
+function MinMaxLimitEditor({
+  constraint: c,
+  onSave,
+  onDelete,
+}: {
+  constraint: MinMaxFaceConstraint
+  onSave: (next: FaceConstraint) => void
+  onDelete: () => void
+}) {
+  const { t } = useTranslation()
+  const [useMin, setUseMin] = useState(c.minMm > 1e-9)
+  const [minStr, setMinStr] = useState(c.minMm > 1e-9 ? String(c.minMm) : '')
+  const [maxStr, setMaxStr] = useState(String(c.maxMm))
+  const [error, setError] = useState<string | null>(null)
+
+  const handleSave = useCallback(() => {
+    const maxMm = parsePositiveMm(maxStr)
+    if (maxMm === null) {
+      setError(t('leftPanel.limits.editInvalidValue'))
+      return
+    }
+    let minMm = 0
+    if (useMin) {
+      const parsedMin = parsePositiveMm(minStr)
+      if (parsedMin === null) {
+        setError(t('leftPanel.limits.editInvalidValue'))
+        return
+      }
+      minMm = parsedMin
+    }
+    if (minMm > maxMm + 1e-9) {
+      setError(t('leftPanel.limits.editRangeOrder'))
+      return
+    }
+    const next: MinMaxFaceConstraint = { ...c, minMm, maxMm }
+    if (!validateFaceConstraint(next)) {
+      setError(t('leftPanel.limits.editInvalid'))
+      return
+    }
+    setError(null)
+    onSave(next)
+  }, [c, useMin, minStr, maxStr, onSave, t])
+
+  return (
+    <div className={styles.limitEditor}>
+      <div className={styles.limitEditorTitle}>{t('leftPanel.limits.editTitle')}</div>
+      <label className={styles.limitEditorCheck}>
+        <input type="checkbox" checked={useMin} onChange={(e) => setUseMin(e.target.checked)} />
+        {t('leftPanel.limits.editMinMaxUseMin')}
+      </label>
+      {useMin && (
+        <>
+          <label className={styles.limitEditorLabel} htmlFor="limit-edit-minmax-min">
+            {t('leftPanel.limits.editMinMaxMin')}
+          </label>
+          <div className={styles.limitEditorRow}>
+            <input
+              id="limit-edit-minmax-min"
+              className={styles.limitEditorInput}
+              type="text"
+              inputMode="decimal"
+              value={minStr}
+              onChange={(e) => setMinStr(e.target.value)}
+              aria-invalid={Boolean(error)}
+            />
+            <span className={styles.limitEditorUnit}>mm</span>
+          </div>
+        </>
+      )}
+      <label className={styles.limitEditorLabel} htmlFor="limit-edit-minmax-max">
+        {t('leftPanel.limits.editMinMaxMax')}
+      </label>
+      <div className={styles.limitEditorRow}>
+        <input
+          id="limit-edit-minmax-max"
+          className={styles.limitEditorInput}
+          type="text"
+          inputMode="decimal"
+          value={maxStr}
+          onChange={(e) => setMaxStr(e.target.value)}
+          aria-invalid={Boolean(error)}
+        />
+        <span className={styles.limitEditorUnit}>mm</span>
+      </div>
+      {error && (
+        <p className={styles.limitEditorError} role="alert">
+          {error}
+        </p>
+      )}
+      <div className={styles.limitEditorActions}>
+        <button type="button" className={styles.limitEditorApply} onClick={handleSave}>
+          {t('leftPanel.limits.saveChanges')}
+        </button>
+        <button type="button" className={styles.limitEditorDelete} onClick={onDelete}>
+          {t('leftPanel.limits.deleteLimit')}
+        </button>
+      </div>
+    </div>
+  )
 }
 
 function ScalarLimitEditor({
