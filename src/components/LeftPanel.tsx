@@ -150,31 +150,7 @@ export function LeftPanel({
                 </span>
               </button>
             </div>
-            {limitsInstallActive && hasModel && onLimitsInstallConstraintTypeChange && (
-              <div className={styles.limitsInstallTypeBlock}>
-                <p className={styles.limitsInstallTypeHint}>{t('leftPanel.limits.installTypeHint')}</p>
-                <label className={styles.limitsInstallTypeLabel} htmlFor="left-limits-install-type">
-                  {t('rightPanel.limits.type')}
-                </label>
-                <select
-                  id="left-limits-install-type"
-                  className={styles.limitsInstallTypeSelect}
-                  value={limitsInstallConstraintType}
-                  onChange={(e) =>
-                    onLimitsInstallConstraintTypeChange(e.target.value as FaceConstraintType)
-                  }
-                >
-                  <option value="minmax">{t('rightPanel.limits.optionMinMax')}</option>
-                  <option value="const">{t('rightPanel.limits.optionConst')}</option>
-                  <option value="profil">{t('rightPanel.limits.optionProfil')}</option>
-                  <option value="block">{t('rightPanel.limits.optionBlock')}</option>
-                  <option value="panel">{t('rightPanel.limits.optionPanel')}</option>
-                </select>
-              </div>
-            )}
-            {currentFileFormat !== 'ecdprt' ? (
-              <p className={styles.placeholder}>{t('leftPanel.limits.onlyPrepared')}</p>
-            ) : faceConstraints.length === 0 ? (
+            {faceConstraints.length === 0 ? (
               <p className={styles.placeholder}>{t('leftPanel.limits.empty')}</p>
             ) : (
               <Fragment>
