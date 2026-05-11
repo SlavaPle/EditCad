@@ -23,6 +23,7 @@ import {
 } from './lib/preparedStretchValidation'
 import type { FaceConstraint, FaceConstraintType } from './features/face-constraints/model'
 import { removeFaceConstraint, replaceFaceConstraintById } from './features/face-constraints/store'
+import { collectDimensionOccupancy } from './features/face-constraints/limitDimensionSlots'
 import { resizeGeometryAfterConstraintMmEdit } from './features/part-constraints/resizeGeometryAfterConstraintMmEdit'
 import { resolveConstraintDependentFaceIndices } from './features/part-constraints/resolveConstraintDependentFaces'
 import { clampStretchTargetMmForBasicConstraints } from './features/part-constraints/clampStretchTargetForBasicConstraints'
@@ -75,6 +76,7 @@ function App() {
   const clearAllSelection = useCallback(() => {
     setSelection(createEmptySelection())
     setProbableFaces([])
+    setLimitsInstallActive(false)
   }, [])
 
   const handleRestoreFaceSelection = useCallback((faceTriangleIndices: readonly number[]) => {
@@ -156,6 +158,24 @@ function App() {
   }, [])
 
   const preparedFaceConstraints = preparedConstraints.faceConstraints ?? []
+
+  const limitsAddDisabled = (() => {
+    if (!model) return false
+    if (preparedFaceConstraints.length >= 3) return true
+    const occ = collectDimensionOccupancy(
+      model,
+      preparedConstraints.modelElements ?? [],
+      preparedFaceConstraints,
+    )
+    if (occ.hasFull) return true
+    return occ.occupied.size >= 3
+  })()
+
+  useEffect(() => {
+    if (!limitsInstallActive) return
+    if (!limitsAddDisabled) return
+    setLimitsInstallActive(false)
+  }, [limitsAddDisabled, limitsInstallActive])
 
   useEffect(() => {
     if (focusedLimitConstraintId === null) return
@@ -337,7 +357,8 @@ function App() {
         onSaveAsModelClick={handleSaveAsModelClick}
         hasModel={!!model}
         limitsInstallActive={limitsInstallActive}
-        onToggleLimitsInstall={() => setLimitsInstallActive(true)}
+        limitsAddDisabled={limitsAddDisabled}
+        onToggleLimitsInstall={() => setLimitsInstallActive((v) => !v)}
       />
       <div className={styles.main}>
         <LeftPanel
