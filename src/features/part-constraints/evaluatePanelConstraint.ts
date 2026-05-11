@@ -39,7 +39,11 @@ export function evaluatePanelConstraint(
   ctx: StretchConstraintEvalContext,
   c: PanelFaceConstraint,
 ): PreparedStretchPrecheckError | null {
-  const thicknessTriangles = ctx.panelThicknessMergedFaces ?? ctx.mergedFacesForEdit
+  const thicknessTriangles = ctx.panelThicknessMergedFaces
+  if (!thicknessTriangles || thicknessTriangles.length === 0) {
+    // Ten PANEL nie dotyczy bieżącej edycji (brak pary grubości w kontekście).
+    return null
+  }
 
   const tg = thicknessGapMm(ctx.geometryAfter, thicknessTriangles)
   if (tg === null) return 'constraintPanelBroken'

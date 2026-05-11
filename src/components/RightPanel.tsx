@@ -1027,51 +1027,15 @@ export function RightPanel({
         </div>
         {!limitsInstallActive && faceStretchSelection && model && (
           <div className={styles.section}>
-            <div className={styles.sectionTitle}>
-              {matchingPanelThicknessConstraint !== null
-                ? t('rightPanel.faceDistance.titlePanel')
-                : matchingProfilStretchConstraint !== null
-                  ? t('rightPanel.faceDistance.titleProfileStretch')
-                  : t('rightPanel.faceDistance.title')}
-            </div>
-            <p className={styles.faceDistanceHint}>
-              {matchingPanelThicknessConstraint !== null
-                ? t('rightPanel.faceDistance.hintPanelThicknessAxis')
-                : matchingProfilStretchConstraint !== null
-                  ? t('rightPanel.faceDistance.hintProfilStretch')
-                  : t('rightPanel.faceDistance.hint')}
-            </p>
+            <div className={styles.sectionTitle}>{t('rightPanel.faceDistance.title')}</div>
+            <p className={styles.faceDistanceHint}>{t('rightPanel.faceDistance.hint')}</p>
             {analysis && analysis.ok && (
               <p className={styles.faceDistanceCurrent}>
-                {matchingPanelThicknessConstraint !== null
-                  ? t('rightPanel.faceDistance.currentPanelThickness', {
-                      value: Number(analysis.gapMm.toFixed(4)),
-                    })
-                  : matchingProfilStretchConstraint !== null
-                    ? t('rightPanel.faceDistance.currentProfileStretchGap', {
-                        value: Number(analysis.gapMm.toFixed(4)),
-                      })
-                    : t('rightPanel.faceDistance.current', {
-                        value: Number(analysis.gapMm.toFixed(4)),
-                      })}
+                {t('rightPanel.faceDistance.current', {
+                  value: Number(analysis.gapMm.toFixed(4)),
+                })}
               </p>
             )}
-            {matchingPanelThicknessConstraint?.panelMeasureMode === 'bboxExtents' &&
-              panelBBoxTriple &&
-              analysis?.ok && (
-                <>
-                  <p className={styles.faceDistanceBoundHint} role="status">
-                    {t('rightPanel.faceDistance.panelBBoxSpanMinor', {
-                      value: Number(panelBBoxTriple.inPlaneMinorMm.toFixed(4)),
-                    })}
-                  </p>
-                  <p className={styles.faceDistanceBoundHint} role="status">
-                    {t('rightPanel.faceDistance.panelBBoxSpanMajor', {
-                      value: Number(panelBBoxTriple.inPlaneMajorMm.toFixed(4)),
-                    })}
-                  </p>
-                </>
-              )}
             {analysis && !analysis.ok && (
               <p className={styles.faceDistanceError} role="alert">
                 {t(`rightPanel.faceDistance.errors.${analysis.error}`)}
@@ -1080,11 +1044,7 @@ export function RightPanel({
             {analysis?.ok && (
               <div className={styles.faceDistanceRow}>
                 <label className={styles.faceDistanceLabel} htmlFor="face-distance-mm">
-                  {matchingPanelThicknessConstraint !== null
-                    ? t('rightPanel.faceDistance.targetThickness')
-                    : matchingProfilStretchConstraint !== null
-                      ? t('rightPanel.faceDistance.targetProfilStretch')
-                      : t('rightPanel.faceDistance.targetLabel')}
+                  {t('rightPanel.faceDistance.targetLabel')}
                 </label>
                 <div className={styles.faceDistanceInputWrap}>
                   <input
@@ -1137,75 +1097,6 @@ export function RightPanel({
                 })}
               </p>
             )}
-            {matchingPanelThicknessConstraint?.panelMeasureMode === 'facePairs' &&
-              spanXStretchAnalysis?.ok && (
-                <div className={styles.panelSpanBlock}>
-                  <div className={styles.faceDistanceRow}>
-                    <label className={styles.faceDistanceLabel} htmlFor="panel-span-x-mm">
-                      {t('rightPanel.faceDistance.targetPanelSpanX')}
-                    </label>
-                    <div className={styles.faceDistanceInputWrap}>
-                      <input
-                        id="panel-span-x-mm"
-                        className={styles.faceDistanceInput}
-                        type="text"
-                        inputMode="decimal"
-                        value={panelSpanXInput}
-                        onChange={(e) => setPanelSpanXInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key !== 'Enter') return
-                          e.preventDefault()
-                          handleApplyPanelSpan('x')
-                        }}
-                        aria-invalid={panelSpanApplyError === 'invalidTarget'}
-                      />
-                      <span className={styles.faceDistanceUnit}>mm</span>
-                    </div>
-                    <button type="button" className={styles.faceDistanceApply} onClick={() => handleApplyPanelSpan('x')}>
-                      {t('rightPanel.faceDistance.apply')}
-                    </button>
-                  </div>
-                  <p className={styles.faceDistanceCurrent}>
-                    {t('rightPanel.faceDistance.currentSpanX', {
-                      value: Number(spanXStretchAnalysis.gapMm.toFixed(4)),
-                    })}
-                  </p>
-                  {spanYStretchAnalysis?.ok && (
-                    <>
-                      <div className={styles.faceDistanceRow}>
-                        <label className={styles.faceDistanceLabel} htmlFor="panel-span-y-mm">
-                          {t('rightPanel.faceDistance.targetPanelSpanY')}
-                        </label>
-                        <div className={styles.faceDistanceInputWrap}>
-                          <input
-                            id="panel-span-y-mm"
-                            className={styles.faceDistanceInput}
-                            type="text"
-                            inputMode="decimal"
-                            value={panelSpanYInput}
-                            onChange={(e) => setPanelSpanYInput(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key !== 'Enter') return
-                              e.preventDefault()
-                              handleApplyPanelSpan('y')
-                            }}
-                            aria-invalid={panelSpanApplyError === 'invalidTarget'}
-                          />
-                          <span className={styles.faceDistanceUnit}>mm</span>
-                        </div>
-                        <button type="button" className={styles.faceDistanceApply} onClick={() => handleApplyPanelSpan('y')}>
-                          {t('rightPanel.faceDistance.apply')}
-                        </button>
-                      </div>
-                      <p className={styles.faceDistanceCurrent}>
-                        {t('rightPanel.faceDistance.currentSpanY', {
-                          value: Number(spanYStretchAnalysis.gapMm.toFixed(4)),
-                        })}
-                      </p>
-                    </>
-                  )}
-                </div>
-              )}
             {applyError && (
               <p className={styles.faceDistanceError} role="alert">
                 {t(`rightPanel.faceDistance.errors.${applyError}`)}
