@@ -10,6 +10,7 @@ import {
   selectionSupportsTwoFaceStretchProximity,
   type SelectionState,
 } from '../lib/selection'
+import { parseMinMaxBoundsForm } from '../lib/minMaxBoundsForm'
 import { parsePositiveMm } from '../lib/parsePositiveMm'
 import type { PreparedStretchPrecheckError } from '../lib/preparedStretchValidation'
 import type { PreparedModelElement } from '../lib/preparedElementFormat'
@@ -663,24 +664,16 @@ export function RightPanel({
         setConstraintError('needTwoFaces')
         return
       }
-      const maxMm = parsePositiveMm(boundsMaxMmInput)
-      if (maxMm === null) {
-        setConstraintError('invalidValue')
+      const boundsParsed = parseMinMaxBoundsForm({
+        useMinBound: boundsUseMin,
+        minMmInput: boundsMinMmInput,
+        maxMmInput: boundsMaxMmInput,
+      })
+      if (!boundsParsed.ok) {
+        setConstraintError(boundsParsed.reason === 'invalidRange' ? 'invalidRange' : 'invalidValue')
         return
       }
-      let minMm = 0
-      if (boundsUseMin) {
-        const parsedMin = parsePositiveMm(boundsMinMmInput)
-        if (parsedMin === null) {
-          setConstraintError('invalidValue')
-          return
-        }
-        minMm = parsedMin
-      }
-      if (minMm > maxMm + 1e-9) {
-        setConstraintError('invalidRange')
-        return
-      }
+      const { minMm, maxMm } = boundsParsed
       const patchesMx = partitionSelectionIntoCoplanarPatches(model, facesForStretch)
       if (patchesMx.length !== 2) {
         setConstraintError('needTwoPlanarGroups')

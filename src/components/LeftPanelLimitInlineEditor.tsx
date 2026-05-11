@@ -11,6 +11,7 @@ import type {
   ProfilFaceConstraint,
 } from '../features/face-constraints/model'
 import { validateFaceConstraint } from '../features/face-constraints/model'
+import { parseMinMaxBoundsForm } from '../lib/minMaxBoundsForm'
 import { parsePositiveMm } from '../lib/parsePositiveMm'
 import styles from './LeftPanel.module.css'
 
@@ -74,24 +75,18 @@ function MinMaxLimitEditor({
   const [error, setError] = useState<string | null>(null)
 
   const handleSave = useCallback(() => {
-    const maxMm = parsePositiveMm(maxStr)
-    if (maxMm === null) {
-      setError(t('leftPanel.limits.editInvalidValue'))
+    const parsed = parseMinMaxBoundsForm({
+      useMinBound: useMin,
+      minMmInput: minStr,
+      maxMmInput: maxStr,
+    })
+    if (!parsed.ok) {
+      setError(
+        parsed.reason === 'invalidRange' ? t('leftPanel.limits.editRangeOrder') : t('leftPanel.limits.editInvalidValue'),
+      )
       return
     }
-    let minMm = 0
-    if (useMin) {
-      const parsedMin = parsePositiveMm(minStr)
-      if (parsedMin === null) {
-        setError(t('leftPanel.limits.editInvalidValue'))
-        return
-      }
-      minMm = parsedMin
-    }
-    if (minMm > maxMm + 1e-9) {
-      setError(t('leftPanel.limits.editRangeOrder'))
-      return
-    }
+    const { minMm, maxMm } = parsed
     const next: MinMaxFaceConstraint = { ...c, minMm, maxMm }
     if (!validateFaceConstraint(next)) {
       setError(t('leftPanel.limits.editInvalid'))
