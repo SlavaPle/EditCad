@@ -88,21 +88,26 @@ export function formatConstraintUiSummary(params: {
   geometry: BufferGeometry | null
   modelElements: readonly PreparedModelElement[] | undefined
   t: TFunction
+  detailLevel?: 'full' | 'compact'
 }): { primary: string; tooltip: string } {
-  const { constraint: c, geometry, modelElements: elements, t } = params
+  const { constraint: c, geometry, modelElements: elements, t, detailLevel = 'full' } = params
+  const compact = detailLevel === 'compact'
   const tooltipParts: string[] = []
-  tooltipParts.push(t('limitsSummary.tooltipId', { id: c.id }))
+  if (!compact) {
+    tooltipParts.push(t('limitsSummary.tooltipId', { id: c.id }))
+  }
 
   if (c.type === 'panel') {
-    return formatPanelSummary(c, t, tooltipParts)
+    return formatPanelSummary(c, t, tooltipParts, compact)
   }
 
   if (c.type === 'profil') {
-    return formatProfilSummary(c, geometry, elements, t, tooltipParts)
+    return formatProfilSummary(c, geometry, elements, t, tooltipParts, compact)
   }
 
   if (c.type === 'block') {
-    return { primary: t('limitsSummary.blockBody'), tooltip: tooltipParts.join('\n') }
+    const primary = t('limitsSummary.blockBody')
+    return { primary, tooltip: compact ? primary : tooltipParts.join('\n') }
   }
 
   if (c.type === 'minmax') {
@@ -110,40 +115,41 @@ export function formatConstraintUiSummary(params: {
       min: formatMmLabel(c.minMm),
       max: formatMmLabel(c.maxMm),
     })
-    const pair = elementPairSnippet(c.elementAId, c.elementBId, tooltipParts, 'limitsSummary.elementPairFull', t)
-    if (c.facePair) {
+    const pair = compact ? undefined : elementPairSnippet(c.elementAId, c.elementBId, tooltipParts, 'limitsSummary.elementPairFull', t)
+    if (!compact && c.facePair) {
       tooltipParts.push(t('limitsSummary.facePairFull', { a: c.facePair.a, b: c.facePair.b }))
     }
     return {
       primary: pair ? `${primary} · ${t('limitsSummary.measurementPair', { pair })}` : primary,
-      tooltip: tooltipParts.join('\n'),
+      tooltip: compact ? primary : tooltipParts.join('\n'),
     }
   }
 
   if (c.type === 'const' && c.edgeVertexPair) {
+    if (compact) {
+      const primary = t('limitsSummary.basicValueMm', { value: formatMmLabel(c.valueMm) })
+      return { primary, tooltip: primary }
+    }
     const { va, vb } = c.edgeVertexPair
     tooltipParts.push(t('limitsSummary.meshVerticesPair', { va, vb }))
-    const primary = t('limitsSummary.basicWithEdge', {
-      value: formatMmLabel(c.valueMm),
-      va,
-      vb,
-    })
+    const primary = t('limitsSummary.basicWithEdge', { value: formatMmLabel(c.valueMm), va, vb })
     return { primary, tooltip: tooltipParts.join('\n') }
   }
 
   const valuePart = t('limitsSummary.basicValueMm', { value: formatMmLabel(c.valueMm) })
-  const pair = elementPairSnippet(c.elementAId, c.elementBId, tooltipParts, 'limitsSummary.elementPairFull', t)
-  if (c.facePair) {
+  const pair = compact ? undefined : elementPairSnippet(c.elementAId, c.elementBId, tooltipParts, 'limitsSummary.elementPairFull', t)
+  if (!compact && c.facePair) {
     tooltipParts.push(t('limitsSummary.facePairFull', { a: c.facePair.a, b: c.facePair.b }))
   }
   const primary = pair ? `${valuePart} · ${t('limitsSummary.measurementPair', { pair })}` : valuePart
-  return { primary, tooltip: tooltipParts.join('\n') }
+  return { primary, tooltip: compact ? primary : tooltipParts.join('\n') }
 }
 
 function formatPanelSummary(
   c: PanelFaceConstraint,
   t: TFunction,
   tooltipParts: string[],
+  compact: boolean,
 ): { primary: string; tooltip: string } {
   const thickness = t('limitsSummary.panelThickness', { mm: formatMmLabel(c.thicknessMm) })
   const x = t('limitsSummary.panelAxis', {
@@ -155,10 +161,10 @@ function formatPanelSummary(
     range: formatPanelAxisMm(c.panelY),
   })
   let primary = t('limitsSummary.panelLead', { thickness, x, y })
-  if (c.ySameAsX) primary += t('limitsSummary.panelYSameBadge')
-  if (c.panelMeasureMode === 'bboxExtents') {
+  if (!compact && c.ySameAsX) primary += t('limitsSummary.panelYSameBadge')
+  if (!compact && c.panelMeasureMode === 'bboxExtents') {
     primary += t('limitsSummary.panelMeasureBboxBadge')
-  } else {
+  } else if (!compact) {
     const xa = elementPairSnippet(
       c.panelXElementAId,
       c.panelXElementBId,
@@ -177,10 +183,10 @@ function formatPanelSummary(
       primary += ` · ${t('limitsSummary.panelMeasurePairs', { x: xa, y: ya })}`
     }
   }
-  if (c.facePair) {
+  if (!compact && c.facePair) {
     tooltipParts.push(t('limitsSummary.facePairFull', { a: c.facePair.a, b: c.facePair.b }))
   }
-  return { primary, tooltip: tooltipParts.join('\n') }
+  return { primary, tooltip: compact ? primary : tooltipParts.join('\n') }
 }
 
 function formatProfilSummary(
@@ -189,10 +195,11 @@ function formatProfilSummary(
   elements: readonly PreparedModelElement[] | undefined,
   t: TFunction,
   tooltipParts: string[],
+  compact: boolean,
 ): { primary: string; tooltip: string } {
   const stretchRange = formatProfilStretchGapLabelMm(c)
   const lengthStr = t('limitsSummary.profilLength', { range: stretchRange })
-  appendProfilTechnicalTooltip(c, t, tooltipParts)
+  if (!compact) appendProfilTechnicalTooltip(c, t, tooltipParts)
 
   const dims = profilSectionDimsMm(c, geometry, elements)
   let primary: string
@@ -206,7 +213,9 @@ function formatProfilSummary(
     primary = lengthStr
   }
 
-  const stretchPair = elementPairSnippet(
+  const stretchPair = compact
+    ? undefined
+    : elementPairSnippet(
     c.elementAId,
     c.elementBId,
     tooltipParts,
@@ -217,9 +226,9 @@ function formatProfilSummary(
     primary += ` · ${t('limitsSummary.profilStretchPair', { pair: stretchPair })}`
   }
 
-  if (c.facePair) {
+  if (!compact && c.facePair) {
     tooltipParts.push(t('limitsSummary.facePairFull', { a: c.facePair.a, b: c.facePair.b }))
   }
 
-  return { primary, tooltip: tooltipParts.join('\n') }
+  return { primary, tooltip: compact ? primary : tooltipParts.join('\n') }
 }

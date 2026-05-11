@@ -33,6 +33,7 @@ import {
   type FaceConstraintType,
   type PanelAxisBounds,
 } from '../features/face-constraints/model'
+import { checkConstraintCanBeAddedByDimensionSlots } from '../features/face-constraints/limitDimensionSlots'
 import { formatConstraintUiSummary } from '../features/face-constraints/formatConstraintUiSummary'
 import { removeFaceConstraint, upsertFaceConstraint } from '../features/face-constraints/store'
 import styles from './RightPanel.module.css'
@@ -76,6 +77,12 @@ function naiveStretchMmAfterAddingProfil(
 ): number {
   const floor = typeof minMm === 'number' && Number.isFinite(minMm) && minMm > 0 ? minMm : 1e-4
   return Math.min(Math.max(currentGapMm, floor), maxMm)
+}
+
+function mapDimensionSlotError(reason: 'fullConstraintExists' | 'slotAlreadyOccupied' | 'needTwoPlanarGroups'): string {
+  if (reason === 'slotAlreadyOccupied') return 'dimensionSlotOccupied'
+  if (reason === 'needTwoPlanarGroups') return 'needTwoPlanarGroups'
+  return 'dimensionFullOccupied'
 }
 
 export function RightPanel({
@@ -556,12 +563,30 @@ export function RightPanel({
     setConstraintError(null)
 
     if (constraintType === 'block') {
+      if (faceConstraints.length > 0) {
+        setConstraintError('dimensionFullOccupied')
+        return
+      }
       const next: FaceConstraint = { id, type: 'block', facePair: null }
       onFaceConstraintsChange(upsertFaceConstraint(faceConstraints, next))
       return
     }
 
     if (constraintType === 'panel') {
+      if (!model) {
+        setConstraintError('needTwoFaces')
+        return
+      }
+      const panelCheck = checkConstraintCanBeAddedByDimensionSlots({
+        geometry: model,
+        modelElements: preparedModelElements,
+        existing: faceConstraints,
+        nextType: 'panel',
+      })
+      if (!panelCheck.ok) {
+        setConstraintError(mapDimensionSlotError(panelCheck.reason))
+        return
+      }
       if (panelSpanPickArm !== null) {
         setConstraintError('panelFinishOrCancelSpanPick')
         return
@@ -665,6 +690,16 @@ export function RightPanel({
     if (constraintType === 'profil') {
       if (!model) {
         setConstraintError('needTwoFaces')
+        return
+      }
+      const profilCheck = checkConstraintCanBeAddedByDimensionSlots({
+        geometry: model,
+        modelElements: preparedModelElements,
+        existing: faceConstraints,
+        nextType: 'profil',
+      })
+      if (!profilCheck.ok) {
+        setConstraintError(mapDimensionSlotError(profilCheck.reason))
         return
       }
       if (profilFrozenPickArm !== null) {
@@ -771,6 +806,17 @@ export function RightPanel({
         setConstraintError('needTwoPlanarGroups')
         return
       }
+      const minMaxCheck = checkConstraintCanBeAddedByDimensionSlots({
+        geometry: model,
+        modelElements: preparedModelElements,
+        existing: faceConstraints,
+        nextType: 'minmax',
+        nextMergedFaces: facesForStretch,
+      })
+      if (!minMaxCheck.ok) {
+        setConstraintError(mapDimensionSlotError(minMaxCheck.reason))
+        return
+      }
       const pidMx = Date.now()
       const randMx = Math.random().toString(36).slice(2, 6)
       const elementAIdMx = `el-${pidMx}-${randMx}-a`
@@ -833,6 +879,17 @@ export function RightPanel({
     const patches = partitionSelectionIntoCoplanarPatches(model, facesForStretch)
     if (patches.length !== 2) {
       setConstraintError('needTwoPlanarGroups')
+      return
+    }
+    const constCheck = checkConstraintCanBeAddedByDimensionSlots({
+      geometry: model,
+      modelElements: preparedModelElements,
+      existing: faceConstraints,
+      nextType: 'const',
+      nextMergedFaces: facesForStretch,
+    })
+    if (!constCheck.ok) {
+      setConstraintError(mapDimensionSlotError(constCheck.reason))
       return
     }
     const pid = Date.now()
@@ -968,7 +1025,7 @@ export function RightPanel({
             </ul>
           )}
         </div>
-        {faceStretchSelection && model && (
+        {!limitsInstallActive && faceStretchSelection && model && (
           <div className={styles.section}>
             <div className={styles.sectionTitle}>
               {matchingPanelThicknessConstraint !== null
@@ -1190,6 +1247,43 @@ export function RightPanel({
         <div className={styles.section}>
           <div className={styles.sectionTitle}>{t('rightPanel.limits.title')}</div>
           <p className={styles.faceDistanceHint}>{t('rightPanel.limits.hint')}</p>
+          {analysis?.ok && (
+            <>
+              <p className={styles.faceDistanceCurrent}>
+                {t('rightPanel.limits.activePairDistance', { value: Number(analysis.gapMm.toFixed(4)) })}
+              </p>
+              <div className={styles.faceDistanceRow}>
+                <label className={styles.faceDistanceLabel} htmlFor="limits-active-distance-mm">
+                  {t('rightPanel.faceDistance.targetLabel')}
+                </label>
+                <div className={styles.faceDistanceInputWrap}>
+                  <input
+                    id="limits-active-distance-mm"
+                    className={styles.faceDistanceInput}
+                    type="text"
+                    inputMode="decimal"
+                    value={targetInput}
+                    onChange={(e) => setTargetInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Enter') return
+                      e.preventDefault()
+                      handleApply()
+                    }}
+                    aria-invalid={applyError === 'invalidTarget'}
+                  />
+                  <span className={styles.faceDistanceUnit}>mm</span>
+                </div>
+                <button type="button" className={styles.faceDistanceApply} onClick={handleApply}>
+                  {t('rightPanel.faceDistance.apply')}
+                </button>
+              </div>
+            </>
+          )}
+          {applyError && (
+            <p className={styles.faceDistanceError} role="alert">
+              {t(`rightPanel.faceDistance.errors.${applyError}`)}
+            </p>
+          )}
           <div className={styles.faceDistanceRow}>
             <label className={styles.faceDistanceLabel} htmlFor="constraint-type">
               {t('rightPanel.limits.type')}

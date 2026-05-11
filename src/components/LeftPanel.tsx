@@ -180,11 +180,12 @@ export function LeftPanel({
               <Fragment>
                 <ul className={styles.constraintsList}>
                   {faceConstraints.map((item) => {
-                    const { primary, tooltip } = formatConstraintUiSummary({
+                    const { primary } = formatConstraintUiSummary({
                       constraint: item,
                       geometry: limitsSummaryGeometry,
                       modelElements: limitsSummaryModelElements,
                       t,
+                      detailLevel: 'compact',
                     })
                     const hint = t('leftPanel.limits.selectLinkedFaces')
                     const isSelected = !constraintsLocked && focusedLimitConstraintId === item.id
@@ -193,7 +194,7 @@ export function LeftPanel({
                         <button
                           type="button"
                           className={`${styles.constraintLimitButton}${isSelected ? ` ${styles.constraintLimitButtonSelected}` : ''}`}
-                          title={`${tooltip}\n\n${hint}`}
+                          title={`${primary}\n\n${hint}`}
                           aria-label={`${item.type.toUpperCase()} · ${primary}. ${hint}`}
                           disabled={!onLimitRowClick}
                           onClick={() => onLimitRowClick?.(item)}

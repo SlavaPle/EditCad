@@ -24,7 +24,9 @@ export type TwoFaceStretchError =
   | 'needSecondPlanarFace'
   | 'tooManyPlanarGroups'
 
-export type TwoFaceStretchAnalysis = { ok: true; gapMm: number } | { ok: false; error: TwoFaceStretchError }
+export type TwoFaceStretchAnalysis =
+  | { ok: true; gapMm: number; axis: { x: number; y: number; z: number } }
+  | { ok: false; error: TwoFaceStretchError }
 
 function triangleVertexIndices(geometry: BufferGeometry, faceIndex: number): [number, number, number] {
   const index = geometry.getIndex()
@@ -214,6 +216,7 @@ export function analyzeTwoFaceStretch(
   return {
     ok: true,
     gapMm: Math.abs(gapInfo.gapSigned),
+    axis: { x: axis.x, y: axis.y, z: axis.z },
   }
 }
 

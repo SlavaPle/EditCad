@@ -146,7 +146,8 @@
     "limits": {
       "title": "Face limits",
       "waitingStretchSelection": "Limits placement is on. Select two opposite planar regions (faces or edges—no vertices-only selection), same workflow as Distance between faces, then add limits here.",
-      "hint": "Add a MIN/MAX range (one limit: optional MIN via checkbox, required MAX), CONST, PROFIL (stretch pair first, then two frozen plane pairs via Select → Confirm), BLOCK, or PANEL on selected faces.",
+      "hint": "Add MINMAX (single range with optional MIN and required MAX), CONST, PROFIL, BLOCK, or PANEL on selected faces.",
+      "activePairDistance": "Active pair distance: {{value}} mm",
       "optionMinMax": "MIN / MAX (range)",
       "optionConst": "CONST",
       "optionProfil": "PROFIL",
@@ -223,7 +224,9 @@
         "needProfilFrozenDims": "Set both frozen dimensions (pick → confirm each) before adding PROFIL.",
         "needProfilStretchLocked": "Press \"Select frozen dimension 1\" while the stretch pair is valid to lock it before adding PROFIL.",
         "needProfilFrozen1First": "Set frozen dimension 1 before frozen dimension 2.",
-        "profilFinishOrCancelFrozenPick": "Confirm or cancel the current frozen-dimension pick before continuing."
+        "profilFinishOrCancelFrozenPick": "Confirm or cancel the current frozen-dimension pick before continuing.",
+        "dimensionSlotOccupied": "A limit already exists for this model dimension. Choose another pair direction.",
+        "dimensionFullOccupied": "Existing limits already occupy all model dimensions. Remove them first."
       }
     },
     "scale": "Scale",
