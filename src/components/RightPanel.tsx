@@ -15,12 +15,10 @@ import { parseMinMaxBoundsForm } from '../lib/minMaxBoundsForm'
 import { parsePositiveMm } from '../lib/parsePositiveMm'
 import type { PreparedStretchPrecheckError } from '../lib/preparedStretchValidation'
 import type { PreparedModelElement } from '../lib/preparedElementFormat'
-import { boundingBoxThicknessAndInPlaneSpansMm } from '../features/face-constraints/panelExtentsFromBBox'
 import {
   findMatchingPanelThicknessConstraint,
   findMatchingProfilStretchConstraint,
 } from '../features/part-constraints/findMatchingPartConstraintDimensions'
-import { mergeTrianglesForPreparedElementPair } from '../features/part-constraints/mergeFacesForPreparedElementPair'
 import { MIN_STRETCH_GAP_FLOOR_MM } from '../features/part-constraints/stretchBasicEnvelopeForMergedPair'
 import { mergedFacesMatchConstraintStretchPair } from '../features/part-constraints/matchesConstraintStretchPair'
 import {
@@ -60,6 +58,8 @@ export interface RightPanelProps {
   onMergeModelElements: (elements: readonly PreparedModelElement[]) => void
   /** Po zatwierdzeniu zamrożonej pary: przywróć zaznaczenie pary rozciągania (PROFIL). */
   onRestoreFaceSelection?: (faceTriangleIndices: readonly number[]) => void
+  /** Jednorazowy tryb Limits: po udanym dodaniu wyłącz tryb. */
+  onLimitsInstallDone?: () => void
 }
 
 function naiveStretchMmAfterAddingMinMax(
@@ -100,6 +100,7 @@ export function RightPanel({
   onFaceConstraintsChange,
   onMergeModelElements,
   onRestoreFaceSelection,
+  onLimitsInstallDone,
 }: RightPanelProps) {
   const { t, i18n } = useTranslation()
   const rows = useMemo(
@@ -139,8 +140,6 @@ export function RightPanel({
   ])
 
   const [targetInput, setTargetInput] = useState('')
-  const [panelSpanXInput, setPanelSpanXInput] = useState('')
-  const [panelSpanYInput, setPanelSpanYInput] = useState('')
   const [applyError, setApplyError] = useState<string | null>(null)
   const [panelSpanApplyError, setPanelSpanApplyError] = useState<string | null>(null)
   const constraintType = limitsInstallConstraintType
@@ -213,54 +212,7 @@ export function RightPanel({
     matchingPanelThicknessConstraint,
   ])
 
-  const panelThicknessInvariantTriangles = useMemo((): readonly number[] | null => {
-    if (!matchingPanelThicknessConstraint || !faceStretchSelection || facesForStretch.length === 0)
-      return null
-    return [...facesForStretch]
-  }, [matchingPanelThicknessConstraint, faceStretchSelection, facesForStretch])
-
-  const panelSpanXTriangles = useMemo(() => {
-    if (
-      !matchingPanelThicknessConstraint ||
-      matchingPanelThicknessConstraint.panelMeasureMode !== 'facePairs'
-    )
-      return null
-    const xa = matchingPanelThicknessConstraint.panelXElementAId
-    const xb = matchingPanelThicknessConstraint.panelXElementBId
-    if (!xa?.trim() || !xb?.trim()) return null
-    return mergeTrianglesForPreparedElementPair(preparedModelElements, xa, xb)
-  }, [matchingPanelThicknessConstraint, preparedModelElements])
-
-  const panelSpanYTriangles = useMemo(() => {
-    if (
-      !matchingPanelThicknessConstraint ||
-      matchingPanelThicknessConstraint.panelMeasureMode !== 'facePairs'
-    )
-      return null
-    const ya = matchingPanelThicknessConstraint.panelYElementAId
-    const yb = matchingPanelThicknessConstraint.panelYElementBId
-    if (!ya?.trim() || !yb?.trim()) return null
-    return mergeTrianglesForPreparedElementPair(preparedModelElements, ya, yb)
-  }, [matchingPanelThicknessConstraint, preparedModelElements])
-
-  const spanXStretchAnalysis = useMemo(() => {
-    if (!model || !panelSpanXTriangles?.length) return null
-    return analyzeTwoFaceStretch(model, panelSpanXTriangles)
-  }, [model, geometryRevision, panelSpanXTriangles])
-
-  const spanYStretchAnalysis = useMemo(() => {
-    if (!model || !panelSpanYTriangles?.length) return null
-    return analyzeTwoFaceStretch(model, panelSpanYTriangles)
-  }, [model, geometryRevision, panelSpanYTriangles])
-
-  const panelBBoxTriple = useMemo(() => {
-    if (
-      !matchingPanelThicknessConstraint ||
-      matchingPanelThicknessConstraint.panelMeasureMode !== 'bboxExtents'
-    )
-      return null
-    return boundingBoxThicknessAndInPlaneSpansMm(model)
-  }, [matchingPanelThicknessConstraint, model, geometryRevision])
+  // panelThicknessInvariantTriangles is only used when editing PANEL spans; kept for future extensions
 
   const stretchDistanceBoundHint = useMemo(() => {
     if (!stretchEnvelope || stretchEnvelope.matchedConstraintCount === 0) return null
@@ -354,17 +306,6 @@ export function RightPanel({
     setTargetInput(String(Number(analysis.gapMm.toFixed(6))))
   }, [analysis, constStretchNominalMm])
 
-  useEffect(() => {
-    if (!spanXStretchAnalysis?.ok) return
-    const s = String(Number(spanXStretchAnalysis.gapMm.toFixed(6)))
-    setPanelSpanXInput(s)
-  }, [spanXStretchAnalysis, geometryRevision])
-
-  useEffect(() => {
-    if (!spanYStretchAnalysis?.ok) return
-    setPanelSpanYInput(String(Number(spanYStretchAnalysis.gapMm.toFixed(6))))
-  }, [spanYStretchAnalysis, geometryRevision])
-
   const handleApply = useCallback(() => {
     const mm = parsePositiveMm(targetInput)
     if (mm === null) {
@@ -382,46 +323,7 @@ export function RightPanel({
     }
   }, [onApplyTwoFaceStretch, targetInput])
 
-  const handleApplyPanelSpan = useCallback(
-    (axis: 'x' | 'y') => {
-      setPanelSpanApplyError(null)
-      const raw = axis === 'x' ? panelSpanXInput : panelSpanYInput
-      const mm = parsePositiveMm(raw)
-      if (mm === null) {
-        setPanelSpanApplyError('invalidTarget')
-        return
-      }
-      const merged = axis === 'x' ? panelSpanXTriangles : panelSpanYTriangles
-      if (!merged?.length || !panelThicknessInvariantTriangles?.length) {
-        setPanelSpanApplyError('invalidGeometry')
-        return
-      }
-      const overlay: ApplyTwoFaceStretchOverlay = {
-        mergedFaces: merged,
-        panelThicknessMergedFaces: [...panelThicknessInvariantTriangles],
-      }
-      const result = onApplyTwoFaceStretch(mm, overlay)
-      if (!result.ok) {
-        setPanelSpanApplyError(result.error)
-        return
-      }
-      setPanelSpanApplyError(null)
-      const formatted = String(Number(result.effectiveTargetMm.toFixed(6)))
-      if (axis === 'x') {
-        setPanelSpanXInput(formatted)
-      } else {
-        setPanelSpanYInput(formatted)
-      }
-    },
-    [
-      panelSpanXInput,
-      panelSpanYInput,
-      panelSpanXTriangles,
-      panelSpanYTriangles,
-      panelThicknessInvariantTriangles,
-      onApplyTwoFaceStretch,
-    ],
-  )
+  // spanX/Y helpers and handleApplyPanelSpan are no longer used in simplified Distance UI
 
   const facePair =
     facesForStretch.length >= 2 ? { a: Math.min(facesForStretch[0], facesForStretch[1]), b: Math.max(facesForStretch[0], facesForStretch[1]) } : null
@@ -569,6 +471,7 @@ export function RightPanel({
       }
       const next: FaceConstraint = { id, type: 'block', facePair: null }
       onFaceConstraintsChange(upsertFaceConstraint(faceConstraints, next))
+      onLimitsInstallDone?.()
       return
     }
 
@@ -684,6 +587,7 @@ export function RightPanel({
         panelYElementBId: yb,
       }
       onFaceConstraintsChange(upsertFaceConstraint(faceConstraints, next))
+      onLimitsInstallDone?.()
       return
     }
 
@@ -783,6 +687,7 @@ export function RightPanel({
       onMergeModelElements(extraEls)
       onFaceConstraintsChange(nextList)
       setTargetInput(String(Number(stretchRes.effectiveTargetMm.toFixed(6))))
+      onLimitsInstallDone?.()
       return
     }
 
@@ -860,6 +765,7 @@ export function RightPanel({
       onMergeModelElements(extraElsMx)
       onFaceConstraintsChange(nextListMx)
       setTargetInput(String(Number(stretchResMx.effectiveTargetMm.toFixed(6))))
+      onLimitsInstallDone?.()
       return
     }
 
@@ -934,6 +840,7 @@ export function RightPanel({
     onMergeModelElements(extraEls)
     onFaceConstraintsChange(nextList)
     setTargetInput(String(Number(stretchRes.effectiveTargetMm.toFixed(6))))
+    onLimitsInstallDone?.()
   }, [
     constraintType,
     constraintValue,

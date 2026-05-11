@@ -337,7 +337,7 @@ function App() {
         onSaveAsModelClick={handleSaveAsModelClick}
         hasModel={!!model}
         limitsInstallActive={limitsInstallActive}
-        onToggleLimitsInstall={() => setLimitsInstallActive((v) => !v)}
+        onToggleLimitsInstall={() => setLimitsInstallActive(true)}
       />
       <div className={styles.main}>
         <LeftPanel
@@ -388,6 +388,7 @@ function App() {
           onFaceConstraintsChange={handleFaceConstraintsChange}
           onMergeModelElements={handleMergeModelElements}
           onRestoreFaceSelection={handleRestoreFaceSelection}
+          onLimitsInstallDone={() => setLimitsInstallActive(false)}
         />
       </div>
     </div>

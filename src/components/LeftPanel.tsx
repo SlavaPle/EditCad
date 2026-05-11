@@ -56,9 +56,7 @@ export function LeftPanel({
   focusedLimitConstraintId = null,
   onReplaceLimitConstraint,
   onRemoveLimitConstraint,
-  limitsInstallActive = false,
-  limitsInstallConstraintType = 'minmax',
-  onLimitsInstallConstraintTypeChange,
+  // limitsInstallActive, limitsInstallConstraintType, onLimitsInstallConstraintTypeChange — используются только справа
 }: LeftPanelProps) {
   const { t } = useTranslation()
   const dropZoneRef = useRef<HTMLDivElement>(null)
