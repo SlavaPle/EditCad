@@ -79,7 +79,7 @@ export type PanelFaceConstraint = FaceConstraintBase & {
   thicknessMm: number
   panelX: PanelAxisBounds
   panelY: PanelAxisBounds
-  /** Zapis w JSON: jawna informacja UI; dane w panelY są zwielokrotnione, gdy true. */
+  /** JSON/UI: gdy true — granice mm osi Y = jak panelX; pary pomiarowe X/Y mogą być różne. */
   ySameAsX: boolean
   panelMeasureMode: PanelMeasureMode
   /** Para elementów dla osi panelX — wymagane przy panelMeasureMode === 'facePairs'. */
@@ -173,6 +173,38 @@ export function panelHasCompleteFacePairIds(c: PanelFaceConstraint): boolean {
       c.panelXElementBId?.trim() &&
       c.panelYElementAId?.trim() &&
       c.panelYElementBId?.trim(),
+  )
+}
+
+/** Pary elementów X i Y muszą być różne (ta sama para id w dowolnej kolejności = ten sam pomiar). */
+export function arePanelSpanPreparedPairIdsDistinct(
+  xa: string,
+  xb: string,
+  ya: string,
+  yb: string,
+): boolean {
+  const ta = xa.trim()
+  const tb = xb.trim()
+  const ua = ya.trim()
+  const ub = yb.trim()
+  if (!ta || !tb || !ua || !ub) return false
+  const sx = new Set([ta, tb])
+  const sy = new Set([ua, ub])
+  if (sx.size !== 2 || sy.size !== 2) return false
+  if (sx.size !== sy.size) return true
+  for (const id of sx) {
+    if (!sy.has(id)) return true
+  }
+  return false
+}
+
+function panelXYFacePairsAreDistinctPreparedElements(c: PanelFaceConstraint): boolean {
+  if (c.panelMeasureMode !== 'facePairs' || !panelHasCompleteFacePairIds(c)) return true
+  return arePanelSpanPreparedPairIdsDistinct(
+    c.panelXElementAId!,
+    c.panelXElementBId!,
+    c.panelYElementAId!,
+    c.panelYElementBId!,
   )
 }
 
@@ -309,7 +341,8 @@ export function validateFaceConstraint(constraint: FaceConstraint): boolean {
       return false
     }
     if (constraint.panelMeasureMode === 'bboxExtents') return true
-    return constraint.panelMeasureMode === 'facePairs' && panelHasCompleteFacePairIds(constraint)
+    if (constraint.panelMeasureMode !== 'facePairs' || !panelHasCompleteFacePairIds(constraint)) return false
+    return panelXYFacePairsAreDistinctPreparedElements(constraint)
   }
 
   return true

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  arePanelSpanPreparedPairIdsDistinct,
   formatProfilStretchGapLabelMm,
   parseFaceConstraint,
   parseFaceConstraintList,
@@ -181,6 +182,31 @@ describe('face constraints model', () => {
     expect(parsed.panelMeasureMode).toBe('facePairs')
   })
 
+  it('rejects panel facePairs when X and Y use the same prepared-element pair', () => {
+    expect(
+      parseFaceConstraint({
+        id: 'dup-pair',
+        type: 'panel',
+        facePair: null,
+        thicknessMm: 4,
+        panelX: { maxMm: 10 },
+        panelY: { maxMm: 20 },
+        ySameAsX: false,
+        panelMeasureMode: 'facePairs',
+        panelXElementAId: 'p1',
+        panelXElementBId: 'p2',
+        panelYElementAId: 'p2',
+        panelYElementBId: 'p1',
+      }),
+    ).toBeNull()
+  })
+
+  it('arePanelSpanPreparedPairIdsDistinct treats unordered pairs', () => {
+    expect(arePanelSpanPreparedPairIdsDistinct('a', 'b', 'c', 'd')).toBe(true)
+    expect(arePanelSpanPreparedPairIdsDistinct('a', 'b', 'a', 'b')).toBe(false)
+    expect(arePanelSpanPreparedPairIdsDistinct('a', 'b', 'b', 'a')).toBe(false)
+  })
+
   it('rejects explicit facePairs without all ids', () => {
     expect(
       parseFaceConstraint({
@@ -214,7 +240,7 @@ describe('face constraints model', () => {
     expect(parsed.panelMeasureMode).toBe('bboxExtents')
   })
 
-  it('accepts panel with ySameAsX and duplicated ids', () => {
+  it('accepts panel with ySameAsX and distinct Y face-pair ids', () => {
     const parsed = parseFaceConstraint({
       id: 'c5c',
       type: 'panel',
@@ -226,12 +252,14 @@ describe('face constraints model', () => {
       panelMeasureMode: 'facePairs',
       panelXElementAId: 'p1',
       panelXElementBId: 'p2',
-      panelYElementAId: 'p1',
-      panelYElementBId: 'p2',
+      panelYElementAId: 'p3',
+      panelYElementBId: 'p4',
     })
     expect(parsed).not.toBeNull()
     if (!parsed || parsed.type !== 'panel') return
     expect(parsed.panelY).toEqual(parsed.panelX)
+    expect(parsed.panelYElementAId).toBe('p3')
+    expect(parsed.panelYElementBId).toBe('p4')
   })
 
   it('parses legacy profil without frozen slots', () => {

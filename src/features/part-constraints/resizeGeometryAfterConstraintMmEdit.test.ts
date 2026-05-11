@@ -85,10 +85,18 @@ describe('resizeGeometryAfterConstraintMmEdit', () => {
       panelMeasureMode: 'facePairs',
       panelXElementAId: 'ea',
       panelXElementBId: 'eb',
-      panelYElementAId: 'ea',
-      panelYElementBId: 'eb',
+      panelYElementAId: 'ec',
+      panelYElementBId: 'ed',
     }
-    const prepared: PreparedElementConstraints = { ...pairPrepared, faceConstraints: [c] }
+    const prepared: PreparedElementConstraints = {
+      ...pairPrepared,
+      modelElements: [
+        ...(pairPrepared.modelElements ?? []),
+        { id: 'ec', faceIndices: [0, 2] },
+        { id: 'ed', faceIndices: [1, 3] },
+      ],
+      faceConstraints: [c],
+    }
     const r = resizeGeometryAfterConstraintMmEdit({
       geometry: geo,
       editedConstraint: c,

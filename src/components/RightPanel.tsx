@@ -27,7 +27,12 @@ import {
   stretchBasicEnvelopeForMergedPair,
   stretchInputDeviationKind,
 } from '../features/part-constraints/stretchBasicEnvelopeForMergedPair'
-import type { FaceConstraint, FaceConstraintType, PanelAxisBounds } from '../features/face-constraints/model'
+import {
+  arePanelSpanPreparedPairIdsDistinct,
+  type FaceConstraint,
+  type FaceConstraintType,
+  type PanelAxisBounds,
+} from '../features/face-constraints/model'
 import { formatConstraintUiSummary } from '../features/face-constraints/formatConstraintUiSummary'
 import { removeFaceConstraint, upsertFaceConstraint } from '../features/face-constraints/store'
 import styles from './RightPanel.module.css'
@@ -148,6 +153,9 @@ export function RightPanel({
   const [frozenThicknessFaces, setFrozenThicknessFaces] = useState<number[] | null>(null)
   const [panelCapturedPairX, setPanelCapturedPairX] = useState<{ a: string; b: string } | null>(null)
   const [panelCapturedPairY, setPanelCapturedPairY] = useState<{ a: string; b: string } | null>(null)
+  const [panelSpanPickArm, setPanelSpanPickArm] = useState<null | 'x' | 'y'>(null)
+  /** Przywracanie zaznaczenia pary grubości po zatwierdzeniu pary X/Y (jak PROFIL). */
+  const [panelThicknessTrianglesSnapshot, setPanelThicknessTrianglesSnapshot] = useState<number[] | null>(null)
   const [constraintError, setConstraintError] = useState<string | null>(null)
   const [profilFrozenSlot1Ids, setProfilFrozenSlot1Ids] = useState<{ a: string; b: string } | null>(null)
   const [profilFrozenSlot2Ids, setProfilFrozenSlot2Ids] = useState<{ a: string; b: string } | null>(null)
@@ -216,25 +224,17 @@ export function RightPanel({
     return mergeTrianglesForPreparedElementPair(preparedModelElements, xa, xb)
   }, [matchingPanelThicknessConstraint, preparedModelElements])
 
-  const thicknessPanelYBakedSameAsX = matchingPanelThicknessConstraint?.ySameAsX === true
-
   const panelSpanYTriangles = useMemo(() => {
     if (
       !matchingPanelThicknessConstraint ||
       matchingPanelThicknessConstraint.panelMeasureMode !== 'facePairs'
     )
       return null
-    if (thicknessPanelYBakedSameAsX) return panelSpanXTriangles
     const ya = matchingPanelThicknessConstraint.panelYElementAId
     const yb = matchingPanelThicknessConstraint.panelYElementBId
     if (!ya?.trim() || !yb?.trim()) return null
     return mergeTrianglesForPreparedElementPair(preparedModelElements, ya, yb)
-  }, [
-    matchingPanelThicknessConstraint,
-    preparedModelElements,
-    panelSpanXTriangles,
-    thicknessPanelYBakedSameAsX,
-  ])
+  }, [matchingPanelThicknessConstraint, preparedModelElements])
 
   const spanXStretchAnalysis = useMemo(() => {
     if (!model || !panelSpanXTriangles?.length) return null
@@ -242,9 +242,9 @@ export function RightPanel({
   }, [model, geometryRevision, panelSpanXTriangles])
 
   const spanYStretchAnalysis = useMemo(() => {
-    if (!model || thicknessPanelYBakedSameAsX || !panelSpanYTriangles?.length) return null
+    if (!model || !panelSpanYTriangles?.length) return null
     return analyzeTwoFaceStretch(model, panelSpanYTriangles)
-  }, [model, geometryRevision, panelSpanYTriangles, thicknessPanelYBakedSameAsX])
+  }, [model, geometryRevision, panelSpanYTriangles])
 
   const panelBBoxTriple = useMemo(() => {
     if (
@@ -317,10 +317,14 @@ export function RightPanel({
       setFrozenThicknessFaces(null)
       setPanelCapturedPairX(null)
       setPanelCapturedPairY(null)
+      setPanelSpanPickArm(null)
+      setPanelThicknessTrianglesSnapshot(null)
     } else if (prev !== 'panel') {
       setFrozenThicknessFaces(null)
       setPanelCapturedPairX(null)
       setPanelCapturedPairY(null)
+      setPanelSpanPickArm(null)
+      setPanelThicknessTrianglesSnapshot(null)
     }
     prevConstraintTypeRef.current = constraintType
   }, [constraintType])
@@ -347,13 +351,12 @@ export function RightPanel({
     if (!spanXStretchAnalysis?.ok) return
     const s = String(Number(spanXStretchAnalysis.gapMm.toFixed(6)))
     setPanelSpanXInput(s)
-    if (thicknessPanelYBakedSameAsX) setPanelSpanYInput(s)
-  }, [spanXStretchAnalysis, geometryRevision, thicknessPanelYBakedSameAsX])
+  }, [spanXStretchAnalysis, geometryRevision])
 
   useEffect(() => {
-    if (thicknessPanelYBakedSameAsX || !spanYStretchAnalysis?.ok) return
+    if (!spanYStretchAnalysis?.ok) return
     setPanelSpanYInput(String(Number(spanYStretchAnalysis.gapMm.toFixed(6))))
-  }, [spanYStretchAnalysis, thicknessPanelYBakedSameAsX, geometryRevision])
+  }, [spanYStretchAnalysis, geometryRevision])
 
   const handleApply = useCallback(() => {
     const mm = parsePositiveMm(targetInput)
@@ -381,12 +384,7 @@ export function RightPanel({
         setPanelSpanApplyError('invalidTarget')
         return
       }
-      const merged =
-        axis === 'x'
-          ? panelSpanXTriangles
-          : thicknessPanelYBakedSameAsX
-            ? panelSpanXTriangles
-            : panelSpanYTriangles
+      const merged = axis === 'x' ? panelSpanXTriangles : panelSpanYTriangles
       if (!merged?.length || !panelThicknessInvariantTriangles?.length) {
         setPanelSpanApplyError('invalidGeometry')
         return
@@ -404,7 +402,6 @@ export function RightPanel({
       const formatted = String(Number(result.effectiveTargetMm.toFixed(6)))
       if (axis === 'x') {
         setPanelSpanXInput(formatted)
-        if (thicknessPanelYBakedSameAsX) setPanelSpanYInput(formatted)
       } else {
         setPanelSpanYInput(formatted)
       }
@@ -414,7 +411,6 @@ export function RightPanel({
       panelSpanYInput,
       panelSpanXTriangles,
       panelSpanYTriangles,
-      thicknessPanelYBakedSameAsX,
       panelThicknessInvariantTriangles,
       onApplyTwoFaceStretch,
     ],
@@ -496,27 +492,63 @@ export function RightPanel({
     ],
   )
 
-  const capturePanelPlanePairForAxis = useCallback(
+  const cancelPanelSpanPick = useCallback(() => {
+    setConstraintError(null)
+    setPanelSpanPickArm(null)
+    setPanelThicknessTrianglesSnapshot(null)
+  }, [])
+
+  const handlePanelAxisPairPress = useCallback(
     (axis: 'x' | 'y') => {
       setConstraintError(null)
       if (!model) {
         setConstraintError('needTwoFaces')
         return
       }
-      const c = captureFrozenPlanePairFromTriangles(model, facesForStretch, {
-        idPrefix: 'pel',
-        slotTag: axis === 'x' ? 'x' : 'y',
-      })
-      if (!c.ok) {
-        setConstraintError('needTwoPlanarGroups')
+      if (panelSpanPickArm !== null && panelSpanPickArm !== axis) {
+        setConstraintError('panelFinishOrCancelSpanPick')
         return
       }
-      onMergeModelElements([...c.elements])
-      const pair = { a: c.elementAId, b: c.elementBId }
-      if (axis === 'x') setPanelCapturedPairX(pair)
-      else setPanelCapturedPairY(pair)
+      if (lockedPanelThicknessMm === null || !frozenThicknessFaces?.length) {
+        setConstraintError('needPanelThickness')
+        return
+      }
+      if (panelSpanPickArm === axis) {
+        const c = captureFrozenPlanePairFromTriangles(model, facesForStretch, {
+          idPrefix: 'pel',
+          slotTag: axis,
+        })
+        if (!c.ok) {
+          setConstraintError('needTwoPlanarGroups')
+          return
+        }
+        onMergeModelElements([...c.elements])
+        const pair = { a: c.elementAId, b: c.elementBId }
+        if (axis === 'x') setPanelCapturedPairX(pair)
+        else setPanelCapturedPairY(pair)
+        setPanelSpanPickArm(null)
+        const snap = panelThicknessTrianglesSnapshot
+        setPanelThicknessTrianglesSnapshot(null)
+        if (snap?.length && onRestoreFaceSelection) {
+          onRestoreFaceSelection(snap)
+        }
+        return
+      }
+      if (panelThicknessTrianglesSnapshot === null) {
+        setPanelThicknessTrianglesSnapshot([...frozenThicknessFaces])
+      }
+      setPanelSpanPickArm(axis)
     },
-    [facesForStretch, model, onMergeModelElements],
+    [
+      facesForStretch,
+      frozenThicknessFaces,
+      lockedPanelThicknessMm,
+      model,
+      onMergeModelElements,
+      onRestoreFaceSelection,
+      panelSpanPickArm,
+      panelThicknessTrianglesSnapshot,
+    ],
   )
 
   const handleAddConstraint = useCallback(() => {
@@ -530,6 +562,10 @@ export function RightPanel({
     }
 
     if (constraintType === 'panel') {
+      if (panelSpanPickArm !== null) {
+        setConstraintError('panelFinishOrCancelSpanPick')
+        return
+      }
       if (lockedPanelThicknessMm === null) {
         setConstraintError('needPanelThickness')
         return
@@ -538,8 +574,19 @@ export function RightPanel({
         setConstraintError('needPanelCapturedX')
         return
       }
-      if (!panelYSameAsX && !panelCapturedPairY) {
+      if (!panelCapturedPairY) {
         setConstraintError('needPanelCapturedY')
+        return
+      }
+      if (
+        !arePanelSpanPreparedPairIdsDistinct(
+          panelCapturedPairX.a,
+          panelCapturedPairX.b,
+          panelCapturedPairY.a,
+          panelCapturedPairY.b,
+        )
+      ) {
+        setConstraintError('needPanelDistinctXYPairs')
         return
       }
       const maxX = parsePositiveMm(panelXMax)
@@ -595,9 +642,8 @@ export function RightPanel({
 
       const xa = panelCapturedPairX.a
       const xb = panelCapturedPairX.b
-      const yPair = panelCapturedPairY
-      const ya = panelYSameAsX ? xa : yPair!.a
-      const yb = panelYSameAsX ? xb : yPair!.b
+      const ya = panelCapturedPairY.a
+      const yb = panelCapturedPairY.b
       const next: FaceConstraint = {
         id,
         type: 'panel',
@@ -847,6 +893,7 @@ export function RightPanel({
     onMergeModelElements,
     panelCapturedPairX,
     panelCapturedPairY,
+    panelSpanPickArm,
     lockedPanelThicknessMm,
     panelXMax,
     panelXMin,
@@ -1038,9 +1085,7 @@ export function RightPanel({
                 <div className={styles.panelSpanBlock}>
                   <div className={styles.faceDistanceRow}>
                     <label className={styles.faceDistanceLabel} htmlFor="panel-span-x-mm">
-                      {thicknessPanelYBakedSameAsX
-                        ? t('rightPanel.faceDistance.targetPanelInPlaneUnified')
-                        : t('rightPanel.faceDistance.targetPanelSpanX')}
+                      {t('rightPanel.faceDistance.targetPanelSpanX')}
                     </label>
                     <div className={styles.faceDistanceInputWrap}>
                       <input
@@ -1068,7 +1113,7 @@ export function RightPanel({
                       value: Number(spanXStretchAnalysis.gapMm.toFixed(4)),
                     })}
                   </p>
-                  {!thicknessPanelYBakedSameAsX && spanYStretchAnalysis?.ok && (
+                  {spanYStretchAnalysis?.ok && (
                     <>
                       <div className={styles.faceDistanceRow}>
                         <label className={styles.faceDistanceLabel} htmlFor="panel-span-y-mm">
@@ -1355,10 +1400,16 @@ export function RightPanel({
                   </p>
                   <button
                     type="button"
-                    className={styles.panelCaptureBtn}
-                    onClick={() => capturePanelPlanePairForAxis('x')}
+                    className={
+                      panelSpanPickArm === 'x'
+                        ? `${styles.panelCaptureBtn} ${styles.panelCaptureBtnActive}`
+                        : styles.panelCaptureBtn
+                    }
+                    onClick={() => handlePanelAxisPairPress('x')}
                   >
-                    {t('rightPanel.limits.panelCapturePlanesX')}
+                    {panelSpanPickArm === 'x'
+                      ? t('rightPanel.limits.panelConfirmPlanesX')
+                      : t('rightPanel.limits.panelSelectPlanesX')}
                   </button>
                   {panelCapturedPairX ? (
                     <p className={styles.panelExtentsMeasured}>
@@ -1369,6 +1420,16 @@ export function RightPanel({
                     </p>
                   ) : (
                     <p className={styles.panelExtentsHintMuted}>{t('rightPanel.limits.panelNotCapturedYet')}</p>
+                  )}
+                  {panelSpanPickArm === 'x' && (
+                    <>
+                      <p className={styles.panelExtentsHintMuted} role="status">
+                        {t('rightPanel.limits.panelSpanArmHintX')}
+                      </p>
+                      <button type="button" className={styles.panelCaptureBtnSecondary} onClick={cancelPanelSpanPick}>
+                        {t('rightPanel.limits.panelSpanCancelPick')}
+                      </button>
+                    </>
                   )}
                   <div className={styles.panelAxisLabel}>{t('rightPanel.limits.panelAxisXLimitsTitle')}</div>
                   <div className={styles.faceDistanceInputWrap}>
@@ -1404,76 +1465,94 @@ export function RightPanel({
                     </div>
                   )}
                 </div>
-                <label className={styles.panelCheckboxRow}>
-                  <input
-                    type="checkbox"
-                    checked={panelYSameAsX}
-                    onChange={(e) => setPanelYSameAsX(e.target.checked)}
-                  />
-                  {t('rightPanel.limits.panelYSameAsX')}
-                </label>
-                {!panelYSameAsX && (
-                  <div className={styles.panelFieldGroup}>
-                    <div className={styles.panelAxisLabel}>{t('rightPanel.limits.panelFacesForYTitle')}</div>
-                    <p className={styles.panelExtentsHintMuted}>
-                      {t(
-                        lockedPanelThicknessMm !== null
-                          ? 'rightPanel.limits.panelFacesForYSpanHint'
-                          : 'rightPanel.limits.panelPickTwoPlanesHint',
-                      )}
-                    </p>
-                    <button
-                      type="button"
-                      className={styles.panelCaptureBtn}
-                      onClick={() => capturePanelPlanePairForAxis('y')}
-                    >
-                      {t('rightPanel.limits.panelCapturePlanesY')}
-                    </button>
-                    {panelCapturedPairY ? (
-                      <p className={styles.panelExtentsMeasured}>
-                        {t('rightPanel.limits.panelCapturedPairOk', {
-                          a: panelCapturedPairY.a,
-                          b: panelCapturedPairY.b,
-                        })}
-                      </p>
-                    ) : (
-                      <p className={styles.panelExtentsHintMuted}>{t('rightPanel.limits.panelNotCapturedYet')}</p>
+                <div className={styles.panelFieldGroup}>
+                  <div className={styles.panelAxisLabel}>{t('rightPanel.limits.panelFacesForYTitle')}</div>
+                  <p className={styles.panelExtentsHintMuted}>
+                    {t(
+                      lockedPanelThicknessMm !== null
+                        ? 'rightPanel.limits.panelFacesForYSpanHint'
+                        : 'rightPanel.limits.panelPickTwoPlanesHint',
                     )}
-                    <div className={styles.panelAxisLabel}>{t('rightPanel.limits.panelAxisYLimitsTitle')}</div>
-                    <div className={styles.faceDistanceInputWrap}>
-                      <input
-                        className={styles.faceDistanceInput}
-                        type="text"
-                        inputMode="decimal"
-                        value={panelYMax}
-                        onChange={(e) => setPanelYMax(e.target.value)}
-                        placeholder={t('rightPanel.limits.panelMaxPlaceholder')}
-                      />
-                      <span className={styles.faceDistanceUnit}>mm</span>
-                    </div>
-                    <label className={styles.panelCheckboxRow}>
-                      <input
-                        type="checkbox"
-                        checked={panelYUseMin}
-                        onChange={(e) => setPanelYUseMin(e.target.checked)}
-                      />
-                      {t('rightPanel.limits.panelRestrictMin')}
-                    </label>
-                    {panelYUseMin && (
+                  </p>
+                  <button
+                    type="button"
+                    className={
+                      panelSpanPickArm === 'y'
+                        ? `${styles.panelCaptureBtn} ${styles.panelCaptureBtnActive}`
+                        : styles.panelCaptureBtn
+                    }
+                    onClick={() => handlePanelAxisPairPress('y')}
+                  >
+                    {panelSpanPickArm === 'y'
+                      ? t('rightPanel.limits.panelConfirmPlanesY')
+                      : t('rightPanel.limits.panelSelectPlanesY')}
+                  </button>
+                  {panelCapturedPairY ? (
+                    <p className={styles.panelExtentsMeasured}>
+                      {t('rightPanel.limits.panelCapturedPairOk', {
+                        a: panelCapturedPairY.a,
+                        b: panelCapturedPairY.b,
+                      })}
+                    </p>
+                  ) : (
+                    <p className={styles.panelExtentsHintMuted}>{t('rightPanel.limits.panelNotCapturedYet')}</p>
+                  )}
+                  {panelSpanPickArm === 'y' && (
+                    <>
+                      <p className={styles.panelExtentsHintMuted} role="status">
+                        {t('rightPanel.limits.panelSpanArmHintY')}
+                      </p>
+                      <button type="button" className={styles.panelCaptureBtnSecondary} onClick={cancelPanelSpanPick}>
+                        {t('rightPanel.limits.panelSpanCancelPick')}
+                      </button>
+                    </>
+                  )}
+                  <label className={styles.panelCheckboxRow}>
+                    <input
+                      type="checkbox"
+                      checked={panelYSameAsX}
+                      onChange={(e) => setPanelYSameAsX(e.target.checked)}
+                    />
+                    {t('rightPanel.limits.panelYSameAsX')}
+                  </label>
+                  {!panelYSameAsX && (
+                    <>
+                      <div className={styles.panelAxisLabel}>{t('rightPanel.limits.panelAxisYLimitsTitle')}</div>
                       <div className={styles.faceDistanceInputWrap}>
                         <input
                           className={styles.faceDistanceInput}
                           type="text"
                           inputMode="decimal"
-                          value={panelYMin}
-                          onChange={(e) => setPanelYMin(e.target.value)}
-                          placeholder={t('rightPanel.limits.panelMinPlaceholder')}
+                          value={panelYMax}
+                          onChange={(e) => setPanelYMax(e.target.value)}
+                          placeholder={t('rightPanel.limits.panelMaxPlaceholder')}
                         />
                         <span className={styles.faceDistanceUnit}>mm</span>
                       </div>
-                    )}
-                  </div>
-                )}
+                      <label className={styles.panelCheckboxRow}>
+                        <input
+                          type="checkbox"
+                          checked={panelYUseMin}
+                          onChange={(e) => setPanelYUseMin(e.target.checked)}
+                        />
+                        {t('rightPanel.limits.panelRestrictMin')}
+                      </label>
+                      {panelYUseMin && (
+                        <div className={styles.faceDistanceInputWrap}>
+                          <input
+                            className={styles.faceDistanceInput}
+                            type="text"
+                            inputMode="decimal"
+                            value={panelYMin}
+                            onChange={(e) => setPanelYMin(e.target.value)}
+                            placeholder={t('rightPanel.limits.panelMinPlaceholder')}
+                          />
+                          <span className={styles.faceDistanceUnit}>mm</span>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
             )}
             <button type="button" className={styles.faceDistanceApply} onClick={handleAddConstraint}>
