@@ -154,6 +154,28 @@
   border-color: #64748b;
 }
 
+.panelCaptureBtnActive {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.35);
+}
+
+.panelCaptureBtnSecondary {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #475569;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.panelCaptureBtnSecondary:hover {
+  color: #e2e8f0;
+  border-color: #64748b;
+}
+
 .panelSpanBlock {
   margin-top: 0.75rem;
 }

@@ -76,6 +76,11 @@ function App() {
     setProbableFaces([])
   }, [])
 
+  const handleRestoreFaceSelection = useCallback((faceTriangleIndices: readonly number[]) => {
+    setProbableFaces([])
+    setSelection(selectFaces(createEmptySelection(), faceTriangleIndices, 'replace'))
+  }, [])
+
   const handleLimitRowClick = useCallback(
     (c: FaceConstraint) => {
       if (!constraintsLocked) {
@@ -370,6 +375,7 @@ function App() {
           faceConstraints={preparedFaceConstraints}
           onFaceConstraintsChange={handleFaceConstraintsChange}
           onMergeModelElements={handleMergeModelElements}
+          onRestoreFaceSelection={handleRestoreFaceSelection}
         />
       </div>
     </div>

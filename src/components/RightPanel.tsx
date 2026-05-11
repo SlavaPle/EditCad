@@ -10,6 +10,7 @@ import {
   selectionSupportsTwoFaceStretchProximity,
   type SelectionState,
 } from '../lib/selection'
+import { captureFrozenPlanePairFromTriangles } from '../features/model-selection/frozenPlanePairCapture'
 import { parseMinMaxBoundsForm } from '../lib/minMaxBoundsForm'
 import { parsePositiveMm } from '../lib/parsePositiveMm'
 import type { PreparedStretchPrecheckError } from '../lib/preparedStretchValidation'
@@ -49,6 +50,8 @@ export interface RightPanelProps {
   faceConstraints: FaceConstraint[]
   onFaceConstraintsChange: (next: FaceConstraint[]) => void
   onMergeModelElements: (elements: readonly PreparedModelElement[]) => void
+  /** Po zatwierdzeniu zamrożonej pary: przywróć zaznaczenie pary rozciągania (PROFIL). */
+  onRestoreFaceSelection?: (faceTriangleIndices: readonly number[]) => void
 }
 
 function naiveStretchMmAfterAddingMinMax(
@@ -80,6 +83,7 @@ export function RightPanel({
   faceConstraints,
   onFaceConstraintsChange,
   onMergeModelElements,
+  onRestoreFaceSelection,
 }: RightPanelProps) {
   const { t, i18n } = useTranslation()
   const rows = useMemo(
@@ -143,6 +147,9 @@ export function RightPanel({
   const [constraintError, setConstraintError] = useState<string | null>(null)
   const [profilFrozenSlot1Ids, setProfilFrozenSlot1Ids] = useState<{ a: string; b: string } | null>(null)
   const [profilFrozenSlot2Ids, setProfilFrozenSlot2Ids] = useState<{ a: string; b: string } | null>(null)
+  /** Zapis pary rozciągania z momentu pierwszego „Select frozen 1”; add PROFIL używa tego zamiast bieżącego zaznaczenia. */
+  const [profilStretchTrianglesSnapshot, setProfilStretchTrianglesSnapshot] = useState<number[] | null>(null)
+  const [profilFrozenPickArm, setProfilFrozenPickArm] = useState<null | 1 | 2>(null)
   const [profilStretchUseMin, setProfilStretchUseMin] = useState(false)
   const [profilStretchMinMm, setProfilStretchMinMm] = useState('')
 
@@ -288,6 +295,8 @@ export function RightPanel({
       setProfilFrozenSlot2Ids(null)
       setProfilStretchUseMin(false)
       setProfilStretchMinMm('')
+      setProfilStretchTrianglesSnapshot(null)
+      setProfilFrozenPickArm(null)
     }
   }, [constraintType])
 
@@ -418,36 +427,69 @@ export function RightPanel({
   const lockedPanelThicknessMm =
     lockedThicknessAnalysis?.ok === true ? Number(lockedThicknessAnalysis.gapMm.toFixed(6)) : null
 
-  const captureProfilFrozenDimension = useCallback(
+  const cancelProfilFrozenPick = useCallback(() => {
+    setConstraintError(null)
+    setProfilFrozenPickArm(null)
+  }, [])
+
+  const handleProfilFrozenSlotPress = useCallback(
     (which: 1 | 2) => {
       setConstraintError(null)
       if (!model) {
         setConstraintError('needTwoFaces')
         return
       }
-      const patches = partitionSelectionIntoCoplanarPatches(model, facesForStretch)
-      if (patches.length !== 2) {
-        setConstraintError('needTwoPlanarGroups')
+      if (profilFrozenPickArm !== null && profilFrozenPickArm !== which) {
+        setConstraintError('profilFinishOrCancelFrozenPick')
         return
       }
-      const pid = Date.now()
-      const rand = Math.random().toString(36).slice(2, 6)
-      const tag = which === 1 ? 'fz1' : 'fz2'
-      const elementAId = `prz-${pid}-${rand}-${tag}-a`
-      const elementBId = `prz-${pid}-${rand}-${tag}-b`
-      const ua = [...patches[0]!]
-      const ub = [...patches[1]!]
-      ua.sort((x, y) => x - y)
-      ub.sort((x, y) => x - y)
-      onMergeModelElements([
-        { id: elementAId, faceIndices: ua },
-        { id: elementBId, faceIndices: ub },
-      ])
-      const pair = { a: elementAId, b: elementBId }
-      if (which === 1) setProfilFrozenSlot1Ids(pair)
-      else setProfilFrozenSlot2Ids(pair)
+      if (profilFrozenPickArm === which) {
+        const captured = captureFrozenPlanePairFromTriangles(model, facesForStretch, {
+          idPrefix: 'prz',
+          slotTag: which === 1 ? 'fz1' : 'fz2',
+        })
+        if (!captured.ok) {
+          setConstraintError('needTwoPlanarGroups')
+          return
+        }
+        onMergeModelElements([...captured.elements])
+        const pair = { a: captured.elementAId, b: captured.elementBId }
+        if (which === 1) setProfilFrozenSlot1Ids(pair)
+        else setProfilFrozenSlot2Ids(pair)
+        setProfilFrozenPickArm(null)
+        const snap = profilStretchTrianglesSnapshot
+        if (snap?.length && onRestoreFaceSelection) {
+          onRestoreFaceSelection(snap)
+        }
+        return
+      }
+      if (which === 2 && !profilFrozenSlot1Ids) {
+        setConstraintError('needProfilFrozen1First')
+        return
+      }
+      if (which === 1 && profilStretchTrianglesSnapshot === null) {
+        if (!faceStretchSelection || !analysis?.ok) {
+          setConstraintError('needTwoPlanarGroups')
+          return
+        }
+        setProfilStretchTrianglesSnapshot([...facesForStretch])
+      } else if (which === 2 && profilStretchTrianglesSnapshot === null) {
+        setConstraintError('needProfilFrozen1First')
+        return
+      }
+      setProfilFrozenPickArm(which)
     },
-    [facesForStretch, model, onMergeModelElements],
+    [
+      analysis,
+      faceStretchSelection,
+      facesForStretch,
+      model,
+      onMergeModelElements,
+      onRestoreFaceSelection,
+      profilFrozenPickArm,
+      profilFrozenSlot1Ids,
+      profilStretchTrianglesSnapshot,
+    ],
   )
 
   const capturePanelPlanePairForAxis = useCallback(
@@ -457,25 +499,16 @@ export function RightPanel({
         setConstraintError('needTwoFaces')
         return
       }
-      const patches = partitionSelectionIntoCoplanarPatches(model, facesForStretch)
-      if (patches.length !== 2) {
+      const c = captureFrozenPlanePairFromTriangles(model, facesForStretch, {
+        idPrefix: 'pel',
+        slotTag: axis === 'x' ? 'x' : 'y',
+      })
+      if (!c.ok) {
         setConstraintError('needTwoPlanarGroups')
         return
       }
-      const pid = Date.now()
-      const rand = Math.random().toString(36).slice(2, 6)
-      const tag = axis === 'x' ? 'x' : 'y'
-      const elementAId = `pel-${pid}-${rand}-${tag}-a`
-      const elementBId = `pel-${pid}-${rand}-${tag}-b`
-      const ua = [...patches[0]!]
-      const ub = [...patches[1]!]
-      ua.sort((x, y) => x - y)
-      ub.sort((x, y) => x - y)
-      onMergeModelElements([
-        { id: elementAId, faceIndices: ua },
-        { id: elementBId, faceIndices: ub },
-      ])
-      const pair = { a: elementAId, b: elementBId }
+      onMergeModelElements([...c.elements])
+      const pair = { a: c.elementAId, b: c.elementBId }
       if (axis === 'x') setPanelCapturedPairX(pair)
       else setPanelCapturedPairY(pair)
     },
@@ -580,8 +613,17 @@ export function RightPanel({
     }
 
     if (constraintType === 'profil') {
-      if (!facePair || !model) {
+      if (!model) {
         setConstraintError('needTwoFaces')
+        return
+      }
+      if (profilFrozenPickArm !== null) {
+        setConstraintError('profilFinishOrCancelFrozenPick')
+        return
+      }
+      const stretchPick = profilStretchTrianglesSnapshot
+      if (!stretchPick?.length) {
+        setConstraintError('needProfilStretchLocked')
         return
       }
       if (!profilFrozenSlot1Ids || !profilFrozenSlot2Ids) {
@@ -606,7 +648,7 @@ export function RightPanel({
         }
         stretchMinMm = minMm
       }
-      const patches = partitionSelectionIntoCoplanarPatches(model, facesForStretch)
+      const patches = partitionSelectionIntoCoplanarPatches(model, stretchPick)
       if (patches.length !== 2) {
         setConstraintError('needTwoPlanarGroups')
         return
@@ -637,14 +679,14 @@ export function RightPanel({
         { id: stretchAId, faceIndices: ua },
         { id: stretchBId, faceIndices: ub },
       ]
-      const gapAn = analyzeTwoFaceStretch(model, facesForStretch)
+      const gapAn = analyzeTwoFaceStretch(model, stretchPick)
       if (!gapAn.ok) {
         setConstraintError('needTwoPlanarGroups')
         return
       }
       const rawMm = naiveStretchMmAfterAddingProfil(gapAn.gapMm, valueMm, stretchMinMm)
       const stretchRes = onApplyTwoFaceStretch(rawMm, {
-        mergedFaces: [...facesForStretch],
+        mergedFaces: [...stretchPick],
         faceConstraints: nextList,
         modelElements: [...preparedModelElements, ...extraEls],
         forceConstraintEvaluation: true,
@@ -809,8 +851,10 @@ export function RightPanel({
     panelYMin,
     panelYSameAsX,
     panelYUseMin,
+    profilFrozenPickArm,
     profilFrozenSlot1Ids,
     profilFrozenSlot2Ids,
+    profilStretchTrianglesSnapshot,
     profilStretchUseMin,
     profilStretchMinMm,
   ])
@@ -1159,6 +1203,69 @@ export function RightPanel({
             {constraintType === 'profil' && (
               <div className={styles.panelConstraintFields}>
                 <p className={styles.panelWorkflowHint}>{t('rightPanel.limits.profilWorkflowIntro')}</p>
+                <div className={styles.panelFieldGroup}>
+                  <div className={styles.panelAxisLabel}>{t('rightPanel.limits.profilFrozenDimsTitle')}</div>
+                  <p className={styles.panelExtentsHintMuted}>{t('rightPanel.limits.profilFrozenPickHint')}</p>
+                  {profilStretchTrianglesSnapshot && (
+                    <p className={styles.panelExtentsMeasured}>{t('rightPanel.limits.profilStretchPairLocked')}</p>
+                  )}
+                  <button
+                    type="button"
+                    className={
+                      profilFrozenPickArm === 1
+                        ? `${styles.panelCaptureBtn} ${styles.panelCaptureBtnActive}`
+                        : styles.panelCaptureBtn
+                    }
+                    onClick={() => handleProfilFrozenSlotPress(1)}
+                  >
+                    {profilFrozenPickArm === 1
+                      ? t('rightPanel.limits.profilConfirmFrozen1')
+                      : t('rightPanel.limits.profilSelectFrozen1')}
+                  </button>
+                  {profilFrozenSlot1Ids ? (
+                    <p className={styles.panelExtentsMeasured}>
+                      {t('rightPanel.limits.panelCapturedPairOk', {
+                        a: profilFrozenSlot1Ids.a,
+                        b: profilFrozenSlot1Ids.b,
+                      })}
+                    </p>
+                  ) : (
+                    <p className={styles.panelExtentsHintMuted}>{t('rightPanel.limits.panelNotCapturedYet')}</p>
+                  )}
+                  <button
+                    type="button"
+                    className={
+                      profilFrozenPickArm === 2
+                        ? `${styles.panelCaptureBtn} ${styles.panelCaptureBtnActive}`
+                        : styles.panelCaptureBtn
+                    }
+                    onClick={() => handleProfilFrozenSlotPress(2)}
+                  >
+                    {profilFrozenPickArm === 2
+                      ? t('rightPanel.limits.profilConfirmFrozen2')
+                      : t('rightPanel.limits.profilSelectFrozen2')}
+                  </button>
+                  {profilFrozenSlot2Ids ? (
+                    <p className={styles.panelExtentsMeasured}>
+                      {t('rightPanel.limits.panelCapturedPairOk', {
+                        a: profilFrozenSlot2Ids.a,
+                        b: profilFrozenSlot2Ids.b,
+                      })}
+                    </p>
+                  ) : (
+                    <p className={styles.panelExtentsHintMuted}>{t('rightPanel.limits.panelNotCapturedYet')}</p>
+                  )}
+                  {profilFrozenPickArm !== null && (
+                    <>
+                      <p className={styles.panelExtentsHintMuted} role="status">
+                        {t('rightPanel.limits.profilFrozenArmHint', { n: profilFrozenPickArm })}
+                      </p>
+                      <button type="button" className={styles.panelCaptureBtnSecondary} onClick={cancelProfilFrozenPick}>
+                        {t('rightPanel.limits.profilFrozenCancelPick')}
+                      </button>
+                    </>
+                  )}
+                </div>
                 <div className={styles.faceDistanceInputWrap}>
                   <input
                     className={styles.faceDistanceInput}
@@ -1191,37 +1298,7 @@ export function RightPanel({
                     <span className={styles.faceDistanceUnit}>mm</span>
                   </div>
                 )}
-                <div className={styles.panelFieldGroup}>
-                  <div className={styles.panelAxisLabel}>{t('rightPanel.limits.profilFrozenDimsTitle')}</div>
-                  <p className={styles.panelExtentsHintMuted}>{t('rightPanel.limits.profilFrozenPickHint')}</p>
-                  <button type="button" className={styles.panelCaptureBtn} onClick={() => captureProfilFrozenDimension(1)}>
-                    {t('rightPanel.limits.profilCaptureFrozen1')}
-                  </button>
-                  {profilFrozenSlot1Ids ? (
-                    <p className={styles.panelExtentsMeasured}>
-                      {t('rightPanel.limits.panelCapturedPairOk', {
-                        a: profilFrozenSlot1Ids.a,
-                        b: profilFrozenSlot1Ids.b,
-                      })}
-                    </p>
-                  ) : (
-                    <p className={styles.panelExtentsHintMuted}>{t('rightPanel.limits.panelNotCapturedYet')}</p>
-                  )}
-                  <button type="button" className={styles.panelCaptureBtn} onClick={() => captureProfilFrozenDimension(2)}>
-                    {t('rightPanel.limits.profilCaptureFrozen2')}
-                  </button>
-                  {profilFrozenSlot2Ids ? (
-                    <p className={styles.panelExtentsMeasured}>
-                      {t('rightPanel.limits.panelCapturedPairOk', {
-                        a: profilFrozenSlot2Ids.a,
-                        b: profilFrozenSlot2Ids.b,
-                      })}
-                    </p>
-                  ) : (
-                    <p className={styles.panelExtentsHintMuted}>{t('rightPanel.limits.panelNotCapturedYet')}</p>
-                  )}
-                  <p className={styles.panelExtentsHintMuted}>{t('rightPanel.limits.profilStretchAfterFrozenHint')}</p>
-                </div>
+                <p className={styles.panelExtentsHintMuted}>{t('rightPanel.limits.profilStretchAfterFrozenHint')}</p>
               </div>
             )}
             {constraintType === 'panel' && (
