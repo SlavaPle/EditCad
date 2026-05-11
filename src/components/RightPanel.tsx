@@ -40,6 +40,8 @@ export interface RightPanelProps {
   constraintsLocked: boolean
   /** Aktywny przycisk „Limits” na zakładce Edit — pokazuje formularz na panelu */
   limitsInstallActive: boolean
+  limitsInstallConstraintType: FaceConstraintType
+  onLimitsInstallConstraintTypeChange: (next: FaceConstraintType) => void
   preparedModelElements: readonly PreparedModelElement[]
   onApplyTwoFaceStretch: (
     targetMm: number,
@@ -78,6 +80,8 @@ export function RightPanel({
   geometryRevision,
   constraintsLocked,
   limitsInstallActive,
+  limitsInstallConstraintType,
+  onLimitsInstallConstraintTypeChange,
   preparedModelElements,
   onApplyTwoFaceStretch,
   faceConstraints,
@@ -127,7 +131,7 @@ export function RightPanel({
   const [panelSpanYInput, setPanelSpanYInput] = useState('')
   const [applyError, setApplyError] = useState<string | null>(null)
   const [panelSpanApplyError, setPanelSpanApplyError] = useState<string | null>(null)
-  const [constraintType, setConstraintType] = useState<FaceConstraintType>('minmax')
+  const constraintType = limitsInstallConstraintType
   const prevConstraintTypeRef = useRef(constraintType)
   const [boundsUseMin, setBoundsUseMin] = useState(false)
   const [boundsMinMmInput, setBoundsMinMmInput] = useState('')
@@ -1118,6 +1122,23 @@ export function RightPanel({
           <div className={styles.section}>
             <div className={styles.sectionTitle}>{t('rightPanel.limits.title')}</div>
             <p className={styles.limitsInstallToolbarHint}>{t('rightPanel.limits.waitingStretchSelection')}</p>
+            <div className={styles.faceDistanceRow}>
+              <label className={styles.faceDistanceLabel} htmlFor="constraint-type-wait">
+                {t('rightPanel.limits.type')}
+              </label>
+              <select
+                id="constraint-type-wait"
+                className={styles.faceDistanceInput}
+                value={constraintType}
+                onChange={(e) => onLimitsInstallConstraintTypeChange(e.target.value as FaceConstraintType)}
+              >
+                <option value="minmax">{t('rightPanel.limits.optionMinMax')}</option>
+                <option value="const">{t('rightPanel.limits.optionConst')}</option>
+                <option value="profil">{t('rightPanel.limits.optionProfil')}</option>
+                <option value="block">{t('rightPanel.limits.optionBlock')}</option>
+                <option value="panel">{t('rightPanel.limits.optionPanel')}</option>
+              </select>
+            </div>
           </div>
         )}
         {model && limitsInstallActive && faceStretchSelection && (
@@ -1132,7 +1153,7 @@ export function RightPanel({
               id="constraint-type"
               className={styles.faceDistanceInput}
               value={constraintType}
-              onChange={(e) => setConstraintType(e.target.value as FaceConstraintType)}
+              onChange={(e) => onLimitsInstallConstraintTypeChange(e.target.value as FaceConstraintType)}
             >
               <option value="minmax">{t('rightPanel.limits.optionMinMax')}</option>
               <option value="const">{t('rightPanel.limits.optionConst')}</option>

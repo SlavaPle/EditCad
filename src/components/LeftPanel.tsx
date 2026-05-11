@@ -6,7 +6,7 @@ import type { ModelLoaderHandle } from './ModelLoader'
 import type { SaveFormat } from '../lib/saveModel'
 import type { BufferGeometry } from 'three'
 import type { PreparedElementConstraints, PreparedModelElement } from '../lib/preparedElementFormat'
-import type { FaceConstraint } from '../features/face-constraints/model'
+import type { FaceConstraint, FaceConstraintType } from '../features/face-constraints/model'
 import { formatConstraintUiSummary } from '../features/face-constraints/formatConstraintUiSummary'
 import { LeftPanelLimitInlineEditor } from './LeftPanelLimitInlineEditor'
 import styles from './LeftPanel.module.css'
@@ -34,6 +34,9 @@ export interface LeftPanelProps {
   focusedLimitConstraintId?: string | null
   onReplaceLimitConstraint?: (next: FaceConstraint) => void
   onRemoveLimitConstraint?: (id: string) => void
+  limitsInstallActive?: boolean
+  limitsInstallConstraintType?: FaceConstraintType
+  onLimitsInstallConstraintTypeChange?: (next: FaceConstraintType) => void
 }
 
 export function LeftPanel({
@@ -53,6 +56,9 @@ export function LeftPanel({
   focusedLimitConstraintId = null,
   onReplaceLimitConstraint,
   onRemoveLimitConstraint,
+  limitsInstallActive = false,
+  limitsInstallConstraintType = 'minmax',
+  onLimitsInstallConstraintTypeChange,
 }: LeftPanelProps) {
   const { t } = useTranslation()
   const dropZoneRef = useRef<HTMLDivElement>(null)
@@ -144,6 +150,28 @@ export function LeftPanel({
                 </span>
               </button>
             </div>
+            {limitsInstallActive && hasModel && onLimitsInstallConstraintTypeChange && (
+              <div className={styles.limitsInstallTypeBlock}>
+                <p className={styles.limitsInstallTypeHint}>{t('leftPanel.limits.installTypeHint')}</p>
+                <label className={styles.limitsInstallTypeLabel} htmlFor="left-limits-install-type">
+                  {t('rightPanel.limits.type')}
+                </label>
+                <select
+                  id="left-limits-install-type"
+                  className={styles.limitsInstallTypeSelect}
+                  value={limitsInstallConstraintType}
+                  onChange={(e) =>
+                    onLimitsInstallConstraintTypeChange(e.target.value as FaceConstraintType)
+                  }
+                >
+                  <option value="minmax">{t('rightPanel.limits.optionMinMax')}</option>
+                  <option value="const">{t('rightPanel.limits.optionConst')}</option>
+                  <option value="profil">{t('rightPanel.limits.optionProfil')}</option>
+                  <option value="block">{t('rightPanel.limits.optionBlock')}</option>
+                  <option value="panel">{t('rightPanel.limits.optionPanel')}</option>
+                </select>
+              </div>
+            )}
             {currentFileFormat !== 'ecdprt' ? (
               <p className={styles.placeholder}>{t('leftPanel.limits.onlyPrepared')}</p>
             ) : faceConstraints.length === 0 ? (

@@ -49,6 +49,7 @@
     "file": "File",
     "limits": {
       "title": "Limits",
+      "installTypeHint": "Choose the limit type to add. Fields and the add action stay on the right panel once you pick faces.",
       "selectLinkedFaces": "Show linked faces on the model",
       "pickLimitToEdit": "Unlock limits, then click a limit to edit or delete it.",
       "editTitle": "Selected limit",

@@ -21,7 +21,7 @@ import {
   validatePreparedStretchPrecheck,
   type PreparedStretchPrecheckError,
 } from './lib/preparedStretchValidation'
-import type { FaceConstraint } from './features/face-constraints/model'
+import type { FaceConstraint, FaceConstraintType } from './features/face-constraints/model'
 import { removeFaceConstraint, replaceFaceConstraintById } from './features/face-constraints/store'
 import { resizeGeometryAfterConstraintMmEdit } from './features/part-constraints/resizeGeometryAfterConstraintMmEdit'
 import { resolveConstraintDependentFaceIndices } from './features/part-constraints/resolveConstraintDependentFaces'
@@ -69,6 +69,7 @@ function App() {
   const [constraintsLocked, setConstraintsLocked] = useState(true)
   const [focusedLimitConstraintId, setFocusedLimitConstraintId] = useState<string | null>(null)
   const [limitsInstallActive, setLimitsInstallActive] = useState(false)
+  const [limitsInstallConstraintType, setLimitsInstallConstraintType] = useState<FaceConstraintType>('minmax')
   const modelLoaderRef = useRef<ModelLoaderHandle>(null)
 
   const clearAllSelection = useCallback(() => {
@@ -115,6 +116,12 @@ function App() {
   useEffect(() => {
     if (constraintsLocked) setFocusedLimitConstraintId(null)
   }, [constraintsLocked])
+
+  useEffect(() => {
+    if (!limitsInstallActive) {
+      setLimitsInstallConstraintType('minmax')
+    }
+  }, [limitsInstallActive])
 
   const handleModelLoad = (
     geometry: BufferGeometry,
@@ -350,6 +357,9 @@ function App() {
           focusedLimitConstraintId={focusedLimitConstraintId}
           onReplaceLimitConstraint={handleReplaceLimitConstraint}
           onRemoveLimitConstraint={handleRemoveLimitConstraint}
+          limitsInstallActive={limitsInstallActive}
+          limitsInstallConstraintType={limitsInstallConstraintType}
+          onLimitsInstallConstraintTypeChange={setLimitsInstallConstraintType}
         />
         <div className={styles.viewport}>
           <Viewer3D
@@ -370,6 +380,8 @@ function App() {
           geometryRevision={geometryRevision}
           constraintsLocked={constraintsLocked}
           limitsInstallActive={limitsInstallActive}
+          limitsInstallConstraintType={limitsInstallConstraintType}
+          onLimitsInstallConstraintTypeChange={setLimitsInstallConstraintType}
           preparedModelElements={preparedConstraints.modelElements ?? []}
           onApplyTwoFaceStretch={handleApplyTwoFaceStretch}
           faceConstraints={preparedFaceConstraints}
