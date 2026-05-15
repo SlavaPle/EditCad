@@ -145,6 +145,14 @@ describe('preparedElementFormat', () => {
     expect(result.file.appearance).toBeUndefined()
   })
 
+  it('rejects invalid appearance field', () => {
+    const result = validatePreparedElementFile({
+      ...createBaseFile(),
+      appearance: { surface: 'texture', color: 'blue', opacity: 1, texture: { kind: 'default' } },
+    })
+    expect(result.ok).toBe(false)
+  })
+
   it('rejects duplicate modelElements id', () => {
     const result = validatePreparedElementFile({
       ...createBaseFile(),

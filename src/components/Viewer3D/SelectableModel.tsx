@@ -28,6 +28,7 @@ import {
   usesModelEdgeLines,
   type ModelDisplayMode,
 } from '../../features/viewer-display/modelDisplayMode'
+import { getBodyTransparencyRenderState } from '../../features/viewer-display/bodyTransparencySettings'
 import { FatLineSegments } from './FatLineSegments'
 import type { ModelAppearance } from '../../features/viewer-display/modelAppearance'
 import { TexturedBodyMaterial } from './TexturedBodyMaterial'
@@ -177,6 +178,10 @@ export function SelectableModel({
   const showSolidBody = isSolidBodyDisplayMode(displayMode)
   const showTextured = displayMode === 'solidTextured'
   const showModelEdges = usesModelEdgeLines(displayMode)
+  const bodyTransparency = useMemo(
+    () => getBodyTransparencyRenderState(appearance.opacity),
+    [appearance.opacity],
+  )
 
   const modelEdgeLinePositions = useMemo(() => {
     if (!showModelEdges) return null
@@ -665,13 +670,14 @@ export function SelectableModel({
             <meshStandardMaterial
               color={appearance.color}
               emissive="#6b7f95"
-              emissiveIntensity={0.42}
+              emissiveIntensity={bodyTransparency.meshStandardEmissiveIntensity}
               metalness={0}
               roughness={0.72}
               envMapIntensity={0}
-              transparent={appearance.opacity < 1}
-              opacity={appearance.opacity}
-              depthWrite={appearance.opacity >= 1}
+              transparent={bodyTransparency.transparent}
+              opacity={bodyTransparency.opacity}
+              depthWrite={bodyTransparency.depthWrite}
+              side={bodyTransparency.doubleSided ? DoubleSide : undefined}
             />
           )
         ) : (
