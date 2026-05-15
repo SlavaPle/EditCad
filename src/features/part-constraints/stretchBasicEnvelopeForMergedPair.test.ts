@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { BufferGeometry, Float32BufferAttribute, Uint16BufferAttribute } from 'three'
 import type { FaceConstraint } from '../face-constraints/model'
 import type { PreparedModelElement } from '../../lib/preparedElementFormat'
-import { clampStretchTargetMmForBasicConstraints } from './clampStretchTargetForBasicConstraints'
+import {
+  clampStretchTargetMmForBasicConstraints,
+  stretchTargetLockedViolationError,
+} from './clampStretchTargetForBasicConstraints'
 import {
   MIN_STRETCH_GAP_FLOOR_MM,
   stretchBasicEnvelopeForMergedPair,
@@ -172,6 +175,27 @@ describe('stretchBasicEnvelopeForMergedPair', () => {
     ]
     const e = stretchBasicEnvelopeForMergedPair(geo, mergedFourFaces, list, pairElements)
     expect(e!.matchedConstraintCount).toBe(0)
+  })
+})
+
+describe('stretchTargetLockedViolationError', () => {
+  it('returns null when raw matches resolved', () => {
+    expect(stretchTargetLockedViolationError(10, 10, null)).toBeNull()
+  })
+
+  it('maps CONST pin to lockedExact', () => {
+    const env = stretchBasicEnvelopeForMergedPair(geometryTwoParallelPatches(10), mergedFourFaces, [], pairElements)!
+    const withConst = { ...env, pinConstMm: 12, matchedConstraintCount: 1 }
+    expect(stretchTargetLockedViolationError(20, 12, withConst)).toBe('lockedExact')
+  })
+
+  it('maps clamp-up to lockedMin and clamp-down to lockedMax', () => {
+    expect(stretchTargetLockedViolationError(5, 20, null)).toBe('lockedMin')
+    expect(stretchTargetLockedViolationError(50, 8, null)).toBe('lockedMax')
+  })
+
+  it('treats near-equal raw and resolved as no violation', () => {
+    expect(stretchTargetLockedViolationError(10, 10 + 1e-5, null)).toBeNull()
   })
 })
 

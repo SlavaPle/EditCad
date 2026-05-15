@@ -15,12 +15,10 @@ import {
   type BrowserFileHandle,
   type SaveFormat,
 } from './lib/saveModel'
-import { applyTwoFaceStretch, type TwoFaceStretchError } from './lib/twoFaceStretch'
+import type { TwoFaceStretchError } from './lib/twoFaceStretch'
 import type { PreparedElementConstraints, PreparedModelElement } from './lib/preparedElementFormat'
-import {
-  validatePreparedStretchPrecheck,
-  type PreparedStretchPrecheckError,
-} from './lib/preparedStretchValidation'
+import type { PreparedStretchPrecheckError } from './lib/preparedStretchValidation'
+import { applyTwoFaceStretchWithConstraints } from './lib/applyTwoFaceStretchWithConstraints'
 import type { FaceConstraint, FaceConstraintType } from './features/face-constraints/model'
 import { removeBlockAndAuxiliaryConstraints } from './features/face-constraints/blockInstallBundle'
 import { syncPanelAuxiliaryConstraints } from './features/face-constraints/syncPanelAuxiliaryConstraints'
@@ -30,7 +28,6 @@ import { removeFaceConstraint, replaceFaceConstraintById } from './features/face
 import { collectDimensionOccupancy } from './features/face-constraints/limitDimensionSlots'
 import { resizeGeometryAfterConstraintMmEdit } from './features/part-constraints/resizeGeometryAfterConstraintMmEdit'
 import { resolveConstraintDependentFaceIndices } from './features/part-constraints/resolveConstraintDependentFaces'
-import { clampStretchTargetMmForBasicConstraints } from './features/part-constraints/clampStretchTargetForBasicConstraints'
 import type { ApplyTwoFaceStretchOverlay } from './lib/applyStretchOverlay'
 import styles from './App.module.css'
 
@@ -286,51 +283,21 @@ function App() {
         return { ok: false, error: 'invalidGeometry' }
       }
 
-      const faceConstraintsEffective =
-        overlay?.faceConstraints ?? preparedConstraints.faceConstraints ?? []
-      const modelElementsEffective = overlay?.modelElements ?? preparedConstraints.modelElements ?? []
-
-      const preparedEffective: PreparedElementConstraints = {
-        ...preparedConstraints,
-        faceConstraints: [...faceConstraintsEffective],
-        modelElements: [...modelElementsEffective],
-      }
-
-      const constraintsEvalLocked = constraintsLocked || overlay?.forceConstraintEvaluation === true
-
-      const { targetMm: resolvedTargetMm } = clampStretchTargetMmForBasicConstraints({
+      const result = applyTwoFaceStretchWithConstraints({
         geometry: model,
+        targetMm,
         mergedFaces,
-        rawTargetMm: targetMm,
-        faceConstraints: faceConstraintsEffective,
-        modelElements: modelElementsEffective,
-        constraintsLocked: constraintsEvalLocked,
+        prepared: preparedConstraints,
+        constraintsLocked,
+        overlay,
       })
-
-      const pre = validatePreparedStretchPrecheck({
-        model,
-        mergedFaces,
-        targetMm: resolvedTargetMm,
-        prepared: preparedEffective,
-        constraintsLocked: constraintsEvalLocked,
-        panelThicknessMergedFaces: overlay?.panelThicknessMergedFaces,
-      })
-      if (!pre.ok) {
-        return { ok: false, error: pre.error }
-      }
-      const result = applyTwoFaceStretch(model, mergedFaces, resolvedTargetMm)
       if (result.ok) {
         if (result.geometry !== model) {
           setModel(result.geometry)
         }
         setGeometryRevision((n) => n + 1)
-        return {
-          ok: true,
-          geometry: result.geometry,
-          effectiveTargetMm: resolvedTargetMm,
-        }
       }
-      return { ok: false, error: result.error }
+      return result
     },
     [model, selection, probableFaces, preparedConstraints, constraintsLocked],
   )

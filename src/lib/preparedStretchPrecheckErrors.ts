@@ -4,6 +4,9 @@ import type { TwoFaceStretchError } from './twoFaceStretch'
 export type PreparedStretchPrecheckError =
   | TwoFaceStretchError
   | 'lockedByBlock'
+  | 'lockedExact'
+  | 'lockedMin'
+  | 'lockedMax'
   | 'constraintBrokenConst'
   | 'constraintBrokenMin'
   | 'constraintBrokenMax'

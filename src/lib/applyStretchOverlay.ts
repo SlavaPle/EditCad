@@ -7,4 +7,6 @@ export type ApplyTwoFaceStretchOverlay = {
   modelElements?: PreparedModelElement[]
   forceConstraintEvaluation?: boolean
   panelThicknessMergedFaces?: readonly number[]
+  /** Distance-between-faces: do not snap target to nearest allowed mm — fail instead. */
+  rejectClampedTarget?: boolean
 }

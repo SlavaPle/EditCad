@@ -1,10 +1,26 @@
 import type { BufferGeometry } from 'three'
 import type { PreparedModelElement } from '../../lib/preparedElementFormat'
+import type { PreparedStretchPrecheckError } from '../../lib/preparedStretchPrecheckErrors'
 import type { FaceConstraint } from '../face-constraints/model'
-import { stretchBasicEnvelopeForMergedPair } from './stretchBasicEnvelopeForMergedPair'
+import {
+  stretchBasicEnvelopeForMergedPair,
+  type StretchBasicEnvelope,
+} from './stretchBasicEnvelopeForMergedPair'
 import { stretchProfilBandForMergedPair } from './stretchProfilBandForMergedPair'
 
 const EPS_ADJUST = 1e-4
+
+/** Błąd gdy żądana odległość wymagałaby podcięcia do najbliższej dopuszczalnej (Distance between faces). */
+export function stretchTargetLockedViolationError(
+  rawTargetMm: number,
+  resolvedTargetMm: number,
+  envelope: StretchBasicEnvelope | null,
+): Extract<PreparedStretchPrecheckError, 'lockedExact' | 'lockedMin' | 'lockedMax'> | null {
+  if (!(Number.isFinite(rawTargetMm) && Number.isFinite(resolvedTargetMm))) return null
+  if (Math.abs(resolvedTargetMm - rawTargetMm) <= EPS_ADJUST) return null
+  if (envelope !== null && envelope.pinConstMm !== null) return 'lockedExact'
+  return resolvedTargetMm > rawTargetMm ? 'lockedMin' : 'lockedMax'
+}
 
 /** Przy włączonej blokadzie — MIN/MAX/CONST na aktualnej parze (CONST = valueMm dla płaszczyzn); PROFIL kliuje pas MIN…MAX przy tej parze rozciągania. */
 export function clampStretchTargetMmForBasicConstraints(params: {

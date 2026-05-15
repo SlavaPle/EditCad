@@ -321,15 +321,12 @@ export function RightPanel({
       setApplyError('invalidTarget')
       return
     }
-    const result = onApplyTwoFaceStretch(mm)
+    const result = onApplyTwoFaceStretch(mm, { rejectClampedTarget: true })
     if (!result.ok) {
       setApplyError(result.error)
       return
     }
     setApplyError(null)
-    if (Math.abs(result.effectiveTargetMm - mm) > 1e-4) {
-      setTargetInput(String(Number(result.effectiveTargetMm.toFixed(6))))
-    }
   }, [onApplyTwoFaceStretch, targetInput])
 
   // spanX/Y helpers and handleApplyPanelSpan are no longer used in simplified Distance UI
