@@ -1,0 +1,23 @@
+{
+  "project": "EditCad",
+  "formats": {
+    "preparedElement": {
+      "id": "editcad.prepared-element",
+      "version": 1,
+      "extensions": [".ecdprt"],
+      "implementation": "src/lib/preparedElementFormat.ts",
+      "description": "Prepared part: STL geometry + stretch limits + face/model element constraints"
+    },
+    "elementComposition": {
+      "id": "editcad.element-composition",
+      "version": 1,
+      "extensions": [".ecdcomp", ".json"],
+      "implementation": "src/features/element-composition",
+      "description": "Assembly tree: nested elements, length variants, placement rules, mass specs",
+      "templates": {
+        "empty": "config/templates/element-composition.empty.json",
+        "skeleton": "config/templates/element-composition.skeleton.json"
+      }
+    }
+  }
+}

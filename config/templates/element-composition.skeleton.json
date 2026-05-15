@@ -1,0 +1,29 @@
+{
+  "format": "editcad.element-composition",
+  "version": 1,
+  "id": "frame-assembly",
+  "name": "Frame assembly",
+  "totalMass": { "kind": "sumChildren" },
+  "variants": [
+    {
+      "id": "profile-a1",
+      "name": "Profile A1",
+      "selector": { "kind": "lengthMm", "maxMm": 5000 },
+      "children": [
+        {
+          "id": "element-b",
+          "placement": { "kind": "countPerParent", "count": 3 }
+        },
+        {
+          "id": "element-c",
+          "placement": { "kind": "spacingAlongParent", "spacingMm": 1000, "axis": "x" }
+        }
+      ]
+    },
+    {
+      "id": "profile-a2",
+      "name": "Profile A2",
+      "selector": { "kind": "lengthMm", "minMm": 5001, "maxMm": 7000 }
+    }
+  ]
+}
