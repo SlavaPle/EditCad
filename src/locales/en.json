@@ -39,6 +39,13 @@
     "settings": "Settings",
     "tabFile": "File",
     "tabEdit": "Edit",
+    "tabView": "View",
+    "view": {
+      "edgesOnly": "Edges only",
+      "solid": "Solid (no edges)",
+      "solidTextured": "Solid with texture (no edges)",
+      "solidWithEdges": "Solid with edges"
+    },
     "limits": "Limits",
     "limitsActive": "Limits placement on (click to close)",
     "saveFormatPrompt": "Choose save format: ecdprt or stl",

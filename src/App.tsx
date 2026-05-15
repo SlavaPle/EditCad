@@ -7,6 +7,10 @@ import { RightPanel } from './components/RightPanel'
 import type { ModelLoaderHandle } from './components/ModelLoader'
 import { clearMeshTopologyCaches } from './features/model-selection/facePlaneSelection'
 import { DEFAULT_MODEL_SELECTION_PROXIMITY_FILTER } from './features/model-selection/types'
+import {
+  DEFAULT_MODEL_DISPLAY_MODE,
+  type ModelDisplayMode,
+} from './features/viewer-display/modelDisplayMode'
 import { createEmptySelection, selectFaces, type SelectionState } from './lib/selection'
 import {
   ECDPRT_EXTENSION,
@@ -71,6 +75,7 @@ function App() {
   const [constraintsLocked, setConstraintsLocked] = useState(true)
   const [focusedLimitConstraintId, setFocusedLimitConstraintId] = useState<string | null>(null)
   const [limitsInstallActive, setLimitsInstallActive] = useState(false)
+  const [displayMode, setDisplayMode] = useState<ModelDisplayMode>(DEFAULT_MODEL_DISPLAY_MODE)
   const [limitsInstallConstraintType, setLimitsInstallConstraintType] = useState<FaceConstraintType>('minmax')
   const modelLoaderRef = useRef<ModelLoaderHandle>(null)
 
@@ -360,6 +365,8 @@ function App() {
         limitsInstallActive={limitsInstallActive}
         limitsAddDisabled={limitsAddDisabled}
         onToggleLimitsInstall={() => setLimitsInstallActive((v) => !v)}
+        displayMode={displayMode}
+        onDisplayModeChange={setDisplayMode}
       />
       <div className={styles.main}>
         <LeftPanel
@@ -388,6 +395,7 @@ function App() {
             key={modelKey}
             model={model}
             geometryRevision={geometryRevision}
+            displayMode={displayMode}
             selection={selection}
             onSelectionChange={setSelection}
             selectionProximityFilter={DEFAULT_MODEL_SELECTION_PROXIMITY_FILTER}

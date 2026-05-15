@@ -6,10 +6,16 @@ describe('TOOLBAR_TABS configuration', () => {
     expect(TOOLBAR_TABS.length).toBeGreaterThan(0)
   })
 
-  it('includes file and edit tabs', () => {
+  it('includes file, edit and view tabs', () => {
     const ids = TOOLBAR_TABS.map((tab) => tab.id)
     expect(ids).toContain('file')
     expect(ids).toContain('edit')
+    expect(ids).toContain('view')
+  })
+
+  it('places view tab after edit', () => {
+    const ids = TOOLBAR_TABS.map((tab) => tab.id)
+    expect(ids.indexOf('view')).toBeGreaterThan(ids.indexOf('edit'))
   })
 
   it('default tab id exists in configuration', () => {

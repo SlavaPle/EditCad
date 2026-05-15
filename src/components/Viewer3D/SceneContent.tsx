@@ -4,10 +4,15 @@ import { Bounds } from '@react-three/drei'
 import { SelectableModel } from './SelectableModel'
 import type { SelectionState } from '../../lib/selection'
 import type { ModelSelectionProximityFilter } from '../../features/model-selection/types'
+import {
+  DEFAULT_MODEL_DISPLAY_MODE,
+  type ModelDisplayMode,
+} from '../../features/viewer-display/modelDisplayMode'
 
 interface SceneContentProps {
   model?: BufferGeometry | null
   geometryRevision: number
+  displayMode?: ModelDisplayMode
   selection: SelectionState
   onSelectionChange: Dispatch<SetStateAction<SelectionState>>
   selectionProximityFilter: ModelSelectionProximityFilter
@@ -17,6 +22,7 @@ interface SceneContentProps {
 export function SceneContent({
   model,
   geometryRevision,
+  displayMode = DEFAULT_MODEL_DISPLAY_MODE,
   selection,
   onSelectionChange,
   selectionProximityFilter,
@@ -33,6 +39,7 @@ export function SceneContent({
           <SelectableModel
             model={model}
             geometryRevision={geometryRevision}
+            displayMode={displayMode}
             selection={selection}
             onSelectionChange={onSelectionChange}
             selectionProximityFilter={selectionProximityFilter}

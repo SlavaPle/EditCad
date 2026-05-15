@@ -6,6 +6,10 @@ import { SceneContent } from './Viewer3D/SceneContent'
 import styles from './Viewer3D.module.css'
 import { createEmptySelection, type SelectionState } from '../lib/selection'
 import type { ModelSelectionProximityFilter } from '../features/model-selection/types'
+import {
+  DEFAULT_MODEL_DISPLAY_MODE,
+  type ModelDisplayMode,
+} from '../features/viewer-display/modelDisplayMode'
 
 const VIEWER_BACKGROUND = '#2d3b52'
 
@@ -13,6 +17,7 @@ export interface Viewer3DProps {
   model?: BufferGeometry | null
   /** Inkrement po edycji wierzchołków (np. rozciągnięcie między ścianami). */
   geometryRevision: number
+  displayMode?: ModelDisplayMode
   selection: SelectionState
   onSelectionChange: Dispatch<SetStateAction<SelectionState>>
   selectionProximityFilter: ModelSelectionProximityFilter
@@ -23,6 +28,7 @@ export interface Viewer3DProps {
 export function Viewer3D({
   model,
   geometryRevision,
+  displayMode = DEFAULT_MODEL_DISPLAY_MODE,
   selection,
   onSelectionChange,
   selectionProximityFilter,
@@ -74,6 +80,7 @@ export function Viewer3D({
         <SceneContent
           model={model}
           geometryRevision={geometryRevision}
+          displayMode={displayMode}
           selection={selection}
           onSelectionChange={onSelectionChange}
           selectionProximityFilter={selectionProximityFilter}

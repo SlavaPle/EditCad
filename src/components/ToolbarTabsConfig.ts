@@ -1,6 +1,15 @@
-export type ToolbarTabId = 'file' | 'edit'
+export type ToolbarTabId = 'file' | 'edit' | 'view'
 
-export type ToolbarActionId = 'open' | 'save' | 'saveAs' | 'settings' | 'editLimits'
+export type ToolbarActionId =
+  | 'open'
+  | 'save'
+  | 'saveAs'
+  | 'settings'
+  | 'editLimits'
+  | 'viewEdgesOnly'
+  | 'viewSolid'
+  | 'viewSolidTextured'
+  | 'viewSolidWithEdges'
 
 export interface ToolbarTabConfig {
   id: ToolbarTabId
@@ -18,6 +27,11 @@ export const TOOLBAR_TABS: ToolbarTabConfig[] = [
     id: 'edit',
     labelKey: 'toolbar.tabEdit',
     actions: ['editLimits']
+  },
+  {
+    id: 'view',
+    labelKey: 'toolbar.tabView',
+    actions: ['viewEdgesOnly', 'viewSolid', 'viewSolidTextured', 'viewSolidWithEdges']
   }
 ]
 

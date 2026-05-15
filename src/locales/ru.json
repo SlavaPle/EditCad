@@ -37,8 +37,15 @@
     "save": "Сохранить",
     "saveAs": "Сохранить как",
     "settings": "Настройки",
-    "tabFile": "File",
-    "tabEdit": "Edit",
+    "tabFile": "Файл",
+    "tabEdit": "Правка",
+    "tabView": "Вид",
+    "view": {
+      "edgesOnly": "Только рёбра",
+      "solid": "Тело без рёбер",
+      "solidTextured": "Тело без рёбер, с текстурой",
+      "solidWithEdges": "Тело с рёбрами"
+    },
     "limits": "Лимиты",
     "limitsActive": "Режим установки лимитов (нажмите, чтобы выключить)",
     "saveFormatPrompt": "Выберите формат сохранения: ecdprt или stl",

@@ -22,7 +22,14 @@ import {
 import { resolveProximityPick } from '../../features/model-selection/proximityPick'
 import { resolveFaceSelectionFlow } from '../../features/model-selection/faceSelectionFlow'
 import type { ModelSelectionProximityFilter } from '../../features/model-selection/types'
+import {
+  buildMeshEdgeLinePositions,
+  isSolidBodyDisplayMode,
+  usesModelEdgeLines,
+  type ModelDisplayMode,
+} from '../../features/viewer-display/modelDisplayMode'
 import { FatLineSegments } from './FatLineSegments'
+import { TexturedBodyMaterial } from './TexturedBodyMaterial'
 
 const PREVIEW_COLOR_HEX = '#22c55e'
 const PREVIEW_FACE_OVERLAY_SOLID = '#2f9f55'
@@ -30,6 +37,8 @@ const SELECTION_FACE_OVERLAY_HEX = '#f97316'
 const SELECTION_FACE_OVERLAY_SOLID = '#c45f14'
 const PROBABLE_FACE_OVERLAY_SOLID = '#f7b267'
 const EDGE_LINE_WIDTH_PX = 5
+const MODEL_EDGE_LINE_WIDTH_PX = 2
+const MODEL_EDGE_COLOR_HEX = '#94a3b8'
 
 const FACE_OVERLAY_OFFSET = {
   polygonOffset: true,
@@ -130,6 +139,7 @@ function pushOverlayTriangle(
 interface SelectableModelProps {
   model: BufferGeometry
   geometryRevision: number
+  displayMode: ModelDisplayMode
   selection: SelectionState
   onSelectionChange: Dispatch<SetStateAction<SelectionState>>
   selectionProximityFilter: ModelSelectionProximityFilter
@@ -139,6 +149,7 @@ interface SelectableModelProps {
 export function SelectableModel({
   model,
   geometryRevision,
+  displayMode,
   selection,
   onSelectionChange,
   selectionProximityFilter,
@@ -159,6 +170,15 @@ export function SelectableModel({
   const primaryFacesRef = useRef<readonly number[]>(primaryFaces)
 
   const scratchLocal = useMemo(() => new Vector3(), [])
+
+  const showSolidBody = isSolidBodyDisplayMode(displayMode)
+  const showTextured = displayMode === 'solidTextured'
+  const showModelEdges = usesModelEdgeLines(displayMode)
+
+  const modelEdgeLinePositions = useMemo(() => {
+    if (!showModelEdges) return null
+    return buildMeshEdgeLinePositions(model)
+  }, [model, geometryRevision, showModelEdges])
 
   useEffect(() => {
     // #region agent log
@@ -631,16 +651,31 @@ export function SelectableModel({
         onPointerOut={handlePointerOut}
         onPointerDown={handlePointerDown}
       >
-        <meshStandardMaterial
-          color="#e2eaf4"
-          emissive="#6b7f95"
-          emissiveIntensity={0.42}
-          metalness={0}
-          roughness={0.72}
-          envMapIntensity={0}
-        />
+        {showSolidBody ? (
+          showTextured ? (
+            <TexturedBodyMaterial geometry={model} geometryRevision={geometryRevision} />
+          ) : (
+            <meshStandardMaterial
+              color="#e2eaf4"
+              emissive="#6b7f95"
+              emissiveIntensity={0.42}
+              metalness={0}
+              roughness={0.72}
+              envMapIntensity={0}
+            />
+          )
+        ) : (
+          <meshBasicMaterial colorWrite={false} depthWrite={false} />
+        )}
       </mesh>
-      {selectedFaceOverlayGeometry && (
+      <FatLineSegments
+        positions={modelEdgeLinePositions}
+        color={MODEL_EDGE_COLOR_HEX}
+        linewidth={MODEL_EDGE_LINE_WIDTH_PX}
+        renderOrder={2}
+        raycastDisabled
+      />
+      {showSolidBody && selectedFaceOverlayGeometry && (
         <mesh ref={selectedFaceOverlayRef} geometry={selectedFaceOverlayGeometry} renderOrder={6}>
           <meshBasicMaterial
             color={SELECTION_FACE_OVERLAY_SOLID}
@@ -650,7 +685,7 @@ export function SelectableModel({
           />
         </mesh>
       )}
-      {probableFaceOverlayGeometry && (
+      {showSolidBody && probableFaceOverlayGeometry && (
         <mesh ref={probableFaceOverlayRef} geometry={probableFaceOverlayGeometry} renderOrder={7}>
           <meshBasicMaterial
             color={PROBABLE_FACE_OVERLAY_SOLID}
@@ -663,7 +698,7 @@ export function SelectableModel({
           />
         </mesh>
       )}
-      {hoverFaceOverlayGeometry && (
+      {showSolidBody && hoverFaceOverlayGeometry && (
         <mesh ref={hoverFaceOverlayRef} geometry={hoverFaceOverlayGeometry} renderOrder={8}>
           <meshBasicMaterial
             color={PREVIEW_FACE_OVERLAY_SOLID}

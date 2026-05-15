@@ -2,6 +2,10 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styles from './Toolbar.module.css'
 import {
+  DEFAULT_MODEL_DISPLAY_MODE,
+  type ModelDisplayMode,
+} from '../features/viewer-display/modelDisplayMode'
+import {
   DEFAULT_TOOLBAR_TAB_ID,
   TOOLBAR_TABS,
   type ToolbarActionId,
@@ -16,6 +20,8 @@ interface ToolbarProps {
   limitsInstallActive?: boolean
   limitsAddDisabled?: boolean
   onToggleLimitsInstall?: () => void
+  displayMode?: ModelDisplayMode
+  onDisplayModeChange?: (mode: ModelDisplayMode) => void
 }
 
 const LANGUAGES = [
@@ -31,6 +37,8 @@ export function Toolbar({
   limitsInstallActive = false,
   limitsAddDisabled = false,
   onToggleLimitsInstall,
+  displayMode = DEFAULT_MODEL_DISPLAY_MODE,
+  onDisplayModeChange,
 }: ToolbarProps) {
   const { t, i18n } = useTranslation()
   const [activeTabId, setActiveTabId] = useState<ToolbarTabId>(DEFAULT_TOOLBAR_TAB_ID)
@@ -164,6 +172,89 @@ export function Toolbar({
                   strokeWidth="0.5"
                   strokeLinejoin="round"
                 />
+              </svg>
+            </span>
+          </button>
+        )
+      case 'viewEdgesOnly':
+        return (
+          <button
+            key={actionId}
+            type="button"
+            className={`${styles.iconBtn} ${displayMode === 'edgesOnly' ? styles.iconBtnActive : ''}`}
+            disabled={!hasModel}
+            title={t('toolbar.view.edgesOnly')}
+            aria-label={t('toolbar.view.edgesOnly')}
+            aria-pressed={displayMode === 'edgesOnly'}
+            onClick={() => onDisplayModeChange?.('edgesOnly')}
+          >
+            <span className={styles.icon}>
+              <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4">
+                <path d="M4 6l6-3 6 3v8l-6 3-6-3V6z" />
+                <path d="M10 3v14M4 6l6 3 6-3M4 14l6 3 6-3" />
+              </svg>
+            </span>
+          </button>
+        )
+      case 'viewSolid':
+        return (
+          <button
+            key={actionId}
+            type="button"
+            className={`${styles.iconBtn} ${displayMode === 'solid' ? styles.iconBtnActive : ''}`}
+            disabled={!hasModel}
+            title={t('toolbar.view.solid')}
+            aria-label={t('toolbar.view.solid')}
+            aria-pressed={displayMode === 'solid'}
+            onClick={() => onDisplayModeChange?.('solid')}
+          >
+            <span className={styles.icon}>
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M4 6l6-3 6 3v8l-6 3-6-3V6z" fill="currentColor" />
+              </svg>
+            </span>
+          </button>
+        )
+      case 'viewSolidTextured':
+        return (
+          <button
+            key={actionId}
+            type="button"
+            className={`${styles.iconBtn} ${displayMode === 'solidTextured' ? styles.iconBtnActive : ''}`}
+            disabled={!hasModel}
+            title={t('toolbar.view.solidTextured')}
+            aria-label={t('toolbar.view.solidTextured')}
+            aria-pressed={displayMode === 'solidTextured'}
+            onClick={() => onDisplayModeChange?.('solidTextured')}
+          >
+            <span className={styles.icon}>
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M4 6l6-3 6 3v8l-6 3-6-3V6z" fill="currentColor" fillOpacity="0.9" />
+                <path
+                  d="M5 8h3v3H5V8zm7 0h3v3h-3V8zM5 12h3v2H5v-2zm7 0h3v2h-3v-2z"
+                  fill="#0f172a"
+                  fillOpacity="0.45"
+                />
+              </svg>
+            </span>
+          </button>
+        )
+      case 'viewSolidWithEdges':
+        return (
+          <button
+            key={actionId}
+            type="button"
+            className={`${styles.iconBtn} ${displayMode === 'solidWithEdges' ? styles.iconBtnActive : ''}`}
+            disabled={!hasModel}
+            title={t('toolbar.view.solidWithEdges')}
+            aria-label={t('toolbar.view.solidWithEdges')}
+            aria-pressed={displayMode === 'solidWithEdges'}
+            onClick={() => onDisplayModeChange?.('solidWithEdges')}
+          >
+            <span className={styles.icon}>
+              <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4">
+                <path d="M4 6l6-3 6 3v8l-6 3-6-3V6z" fill="currentColor" fillOpacity="0.85" />
+                <path d="M4 6l6 3 6-3M4 14l6 3 6-3M10 3v14" />
               </svg>
             </span>
           </button>
