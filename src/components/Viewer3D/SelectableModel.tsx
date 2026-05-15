@@ -29,6 +29,7 @@ import {
   type ModelDisplayMode,
 } from '../../features/viewer-display/modelDisplayMode'
 import { FatLineSegments } from './FatLineSegments'
+import type { ModelAppearance } from '../../features/viewer-display/modelAppearance'
 import { TexturedBodyMaterial } from './TexturedBodyMaterial'
 
 const PREVIEW_COLOR_HEX = '#22c55e'
@@ -140,6 +141,7 @@ interface SelectableModelProps {
   model: BufferGeometry
   geometryRevision: number
   displayMode: ModelDisplayMode
+  appearance: ModelAppearance
   selection: SelectionState
   onSelectionChange: Dispatch<SetStateAction<SelectionState>>
   selectionProximityFilter: ModelSelectionProximityFilter
@@ -150,6 +152,7 @@ export function SelectableModel({
   model,
   geometryRevision,
   displayMode,
+  appearance,
   selection,
   onSelectionChange,
   selectionProximityFilter,
@@ -653,15 +656,22 @@ export function SelectableModel({
       >
         {showSolidBody ? (
           showTextured ? (
-            <TexturedBodyMaterial geometry={model} geometryRevision={geometryRevision} />
+            <TexturedBodyMaterial
+              geometry={model}
+              geometryRevision={geometryRevision}
+              appearance={appearance}
+            />
           ) : (
             <meshStandardMaterial
-              color="#e2eaf4"
+              color={appearance.color}
               emissive="#6b7f95"
               emissiveIntensity={0.42}
               metalness={0}
               roughness={0.72}
               envMapIntensity={0}
+              transparent={appearance.opacity < 1}
+              opacity={appearance.opacity}
+              depthWrite={appearance.opacity >= 1}
             />
           )
         ) : (

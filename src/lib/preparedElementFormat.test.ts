@@ -123,6 +123,28 @@ describe('preparedElementFormat', () => {
     expect(parsed.file).toEqual(source)
   })
 
+  it('roundtrips appearance in ECDPRT', () => {
+    const source = createBaseFile()
+    source.appearance = {
+      surface: 'texture',
+      color: '#ff8800',
+      opacity: 0.75,
+      texture: { kind: 'default' },
+    }
+    const content = serializePreparedElementFile(source)
+    const parsed = parsePreparedElementFile(content)
+    expect(parsed.ok).toBe(true)
+    if (!parsed.ok) return
+    expect(parsed.file.appearance).toEqual(source.appearance)
+  })
+
+  it('accepts files without appearance', () => {
+    const result = validatePreparedElementFile(createBaseFile())
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.file.appearance).toBeUndefined()
+  })
+
   it('rejects duplicate modelElements id', () => {
     const result = validatePreparedElementFile({
       ...createBaseFile(),

@@ -11,7 +11,6 @@ import {
   type ToolbarActionId,
   type ToolbarTabId
 } from './ToolbarTabsConfig'
-
 interface ToolbarProps {
   onLoadModelClick?: () => void
   onSaveModelClick?: () => void
@@ -20,6 +19,8 @@ interface ToolbarProps {
   limitsInstallActive?: boolean
   limitsAddDisabled?: boolean
   onToggleLimitsInstall?: () => void
+  appearanceEditActive?: boolean
+  onToggleAppearanceEdit?: () => void
   displayMode?: ModelDisplayMode
   onDisplayModeChange?: (mode: ModelDisplayMode) => void
 }
@@ -37,6 +38,8 @@ export function Toolbar({
   limitsInstallActive = false,
   limitsAddDisabled = false,
   onToggleLimitsInstall,
+  appearanceEditActive = false,
+  onToggleAppearanceEdit,
   displayMode = DEFAULT_MODEL_DISPLAY_MODE,
   onDisplayModeChange,
 }: ToolbarProps) {
@@ -111,6 +114,36 @@ export function Toolbar({
               <svg viewBox="0 0 20 20" aria-hidden="true">
                 <path
                   d="M10 6.5a3.5 3.5 0 110 7 3.5 3.5 0 010-7zm0-4.5l1.2 2.4 2.7-.3.4 2.7 2.4 1.2-1.5 2.3 1.5 2.3-2.4 1.2-.4 2.7-2.7-.3L10 18l-1.2-2.4-2.7.3-.4-2.7L3.3 13l1.5-2.3L3.3 8.4l2.4-1.2.4-2.7 2.7.3L10 2z"
+                  fill="currentColor"
+                />
+              </svg>
+            </span>
+          </button>
+        )
+      case 'editAppearance':
+        return (
+          <button
+            key={actionId}
+            type="button"
+            className={`${styles.iconBtn} ${appearanceEditActive ? styles.iconBtnActive : ''}`}
+            title={
+              appearanceEditActive
+                ? t('toolbar.appearance.active')
+                : t('toolbar.appearance.button')
+            }
+            aria-label={
+              appearanceEditActive
+                ? t('toolbar.appearance.active')
+                : t('toolbar.appearance.button')
+            }
+            aria-pressed={appearanceEditActive}
+            disabled={!hasModel}
+            onClick={() => onToggleAppearanceEdit?.()}
+          >
+            <span className={styles.icon}>
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path
+                  d="M10 3.5a4.5 4.5 0 100 9 4.5 4.5 0 000-9zm0 2a2.5 2.5 0 110 5 2.5 2.5 0 010-5zM4 16.5c0-2.8 2.7-5 6-5s6 2.2 6 5v.5H4v-.5z"
                   fill="currentColor"
                 />
               </svg>

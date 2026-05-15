@@ -90,6 +90,7 @@ async function loadECDPRTFromFile(file: File): Promise<LoadModelResult> {
       prepared: {
         name: parsed.file.name,
         constraints: parsed.file.constraints,
+        appearance: parsed.file.appearance,
       },
     }
   } catch (err) {

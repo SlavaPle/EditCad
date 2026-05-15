@@ -10,6 +10,10 @@ import {
   DEFAULT_MODEL_DISPLAY_MODE,
   type ModelDisplayMode,
 } from '../features/viewer-display/modelDisplayMode'
+import {
+  DEFAULT_MODEL_APPEARANCE,
+  type ModelAppearance,
+} from '../features/viewer-display/modelAppearance'
 
 const VIEWER_BACKGROUND = '#2d3b52'
 
@@ -18,6 +22,7 @@ export interface Viewer3DProps {
   /** Inkrement po edycji wierzchołków (np. rozciągnięcie między ścianami). */
   geometryRevision: number
   displayMode?: ModelDisplayMode
+  appearance?: ModelAppearance
   selection: SelectionState
   onSelectionChange: Dispatch<SetStateAction<SelectionState>>
   selectionProximityFilter: ModelSelectionProximityFilter
@@ -29,6 +34,7 @@ export function Viewer3D({
   model,
   geometryRevision,
   displayMode = DEFAULT_MODEL_DISPLAY_MODE,
+  appearance = DEFAULT_MODEL_APPEARANCE,
   selection,
   onSelectionChange,
   selectionProximityFilter,
@@ -81,6 +87,7 @@ export function Viewer3D({
           model={model}
           geometryRevision={geometryRevision}
           displayMode={displayMode}
+          appearance={appearance}
           selection={selection}
           onSelectionChange={onSelectionChange}
           selectionProximityFilter={selectionProximityFilter}

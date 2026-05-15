@@ -6,6 +6,7 @@ export type ToolbarActionId =
   | 'saveAs'
   | 'settings'
   | 'editLimits'
+  | 'editAppearance'
   | 'viewEdgesOnly'
   | 'viewSolid'
   | 'viewSolidTextured'
@@ -26,7 +27,7 @@ export const TOOLBAR_TABS: ToolbarTabConfig[] = [
   {
     id: 'edit',
     labelKey: 'toolbar.tabEdit',
-    actions: ['editLimits']
+    actions: ['editLimits', 'editAppearance']
   },
   {
     id: 'view',

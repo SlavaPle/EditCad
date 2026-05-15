@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo } from 'react'
 import { ShaderMaterial, Vector3, type BufferGeometry } from 'three'
-import { getDefaultModelTexture } from '../../features/viewer-display/defaultModelTexture'
+import type { ModelAppearance } from '../../features/viewer-display/modelAppearance'
+import { resolveModelTexture } from '../../features/viewer-display/modelAppearance'
 import { computeTriplanarMappingUniforms } from '../../features/viewer-display/triplanarMapping'
 import {
   TRIPLANAR_FRAGMENT_SHADER,
@@ -10,14 +11,26 @@ import {
 interface TexturedBodyMaterialProps {
   geometry: BufferGeometry
   geometryRevision: number
+  appearance: ModelAppearance
 }
 
-export function TexturedBodyMaterial({ geometry, geometryRevision }: TexturedBodyMaterialProps) {
+function textureCacheKey(appearance: ModelAppearance): string {
+  if (appearance.surface === 'color') {
+    return `color:${appearance.color}`
+  }
+  if (appearance.texture.kind === 'image') {
+    return `image:${appearance.texture.dataUrl.length}:${appearance.texture.dataUrl.slice(0, 48)}`
+  }
+  return 'default'
+}
+
+export function TexturedBodyMaterial({ geometry, geometryRevision, appearance }: TexturedBodyMaterialProps) {
+  const textureKey = textureCacheKey(appearance)
   const texture = useMemo(() => {
-    const tex = getDefaultModelTexture()
-    tex.repeat.set(1, 1)
+    const tex = resolveModelTexture(appearance)
+    tex.repeat.set(4, 4)
     return tex
-  }, [])
+  }, [textureKey, appearance])
 
   const material = useMemo(
     () =>
@@ -26,9 +39,12 @@ export function TexturedBodyMaterial({ geometry, geometryRevision }: TexturedBod
           uMap: { value: texture },
           uOrigin: { value: new Vector3() },
           uInvSize: { value: new Vector3(1, 1, 1) },
+          uOpacity: { value: appearance.opacity },
         },
         vertexShader: TRIPLANAR_VERTEX_SHADER,
         fragmentShader: TRIPLANAR_FRAGMENT_SHADER,
+        transparent: appearance.opacity < 1,
+        depthWrite: appearance.opacity >= 1,
       }),
     [texture],
   )
@@ -38,9 +54,21 @@ export function TexturedBodyMaterial({ geometry, geometryRevision }: TexturedBod
     material.uniforms.uOrigin.value.copy(origin)
     material.uniforms.uInvSize.value.copy(invSize)
     material.uniforms.uMap.value = texture
-  }, [geometry, geometryRevision, texture, material])
+    material.uniforms.uOpacity.value = appearance.opacity
+    material.transparent = appearance.opacity < 1
+    material.depthWrite = appearance.opacity >= 1
+  }, [geometry, geometryRevision, texture, material, appearance.opacity])
 
   useEffect(() => () => material.dispose(), [material])
+
+  useEffect(() => {
+    if (appearance.surface === 'color' || appearance.texture.kind === 'image') {
+      return () => {
+        texture.dispose()
+      }
+    }
+    return undefined
+  }, [texture, appearance.surface, appearance.texture])
 
   return <primitive object={material} attach="material" />
 }

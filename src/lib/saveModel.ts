@@ -1,5 +1,6 @@
 import { Mesh, type BufferGeometry } from 'three'
 import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js'
+import type { ModelAppearance } from '../features/viewer-display/modelAppearance'
 import {
   PREPARED_ELEMENT_FORMAT,
   PREPARED_ELEMENT_VERSION,
@@ -114,6 +115,7 @@ export function buildPreparedElementJson(
   geometry: BufferGeometry,
   name: string,
   constraints: PreparedElementConstraints,
+  appearance?: ModelAppearance,
 ): string {
   return serializePreparedElementFile({
     format: PREPARED_ELEMENT_FORMAT,
@@ -124,6 +126,7 @@ export function buildPreparedElementJson(
       format: 'stl-ascii',
       data: exportGeometryToAsciiStl(geometry),
     },
+    ...(appearance ? { appearance } : {}),
   })
 }
 
@@ -132,8 +135,9 @@ export async function saveGeometryAsEcdprtFile(
   handle: BrowserFileHandle,
   name: string,
   constraints: PreparedElementConstraints,
+  appearance?: ModelAppearance,
 ): Promise<string | null> {
-  const content = buildPreparedElementJson(geometry, name, constraints)
+  const content = buildPreparedElementJson(geometry, name, constraints, appearance)
   await writeTextToHandle(content, handle, 'application/json')
   return handle.name ?? null
 }
@@ -143,6 +147,7 @@ export async function saveGeometryAsEcdprtFileAs(
   baseName?: string,
   startIn?: BrowserFileHandle,
   constraints: PreparedElementConstraints = { mode: 'fixed' },
+  appearance?: ModelAppearance,
 ): Promise<BrowserFileHandle> {
   const fileName = buildEcdprtFileName(baseName)
   const showSaveFilePicker = (window as Window & { showSaveFilePicker?: SaveFilePicker }).showSaveFilePicker
@@ -154,7 +159,7 @@ export async function saveGeometryAsEcdprtFileAs(
     startIn,
     types: [{ description: 'EditCad Prepared Part', accept: { 'application/json': ['.ecdprt'] } }],
   })
-  await saveGeometryAsEcdprtFile(geometry, handle, baseName ?? DEFAULT_EXPORT_NAME, constraints)
+  await saveGeometryAsEcdprtFile(geometry, handle, baseName ?? DEFAULT_EXPORT_NAME, constraints, appearance)
   return handle
 }
 
@@ -163,6 +168,7 @@ export async function saveGeometryWithFormatAs(
   baseName?: string,
   startIn?: BrowserFileHandle,
   constraints: PreparedElementConstraints = { mode: 'fixed' },
+  appearance?: ModelAppearance,
 ): Promise<SaveAsResult> {
   const showSaveFilePicker = (window as Window & { showSaveFilePicker?: SaveFilePicker }).showSaveFilePicker
   if (!showSaveFilePicker) {
@@ -182,7 +188,7 @@ export async function saveGeometryWithFormatAs(
   if (selectedFormat === 'stl') {
     await saveGeometryAsStlFile(geometry, handle)
   } else {
-    await saveGeometryAsEcdprtFile(geometry, handle, baseName ?? DEFAULT_EXPORT_NAME, constraints)
+    await saveGeometryAsEcdprtFile(geometry, handle, baseName ?? DEFAULT_EXPORT_NAME, constraints, appearance)
   }
   return {
     handle,

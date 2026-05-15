@@ -13,6 +13,7 @@ export const TRIPLANAR_FRAGMENT_SHADER = /* glsl */ `
 uniform sampler2D uMap;
 uniform vec3 uOrigin;
 uniform vec3 uInvSize;
+uniform float uOpacity;
 
 varying vec3 vObjPos;
 varying vec3 vObjNormal;
@@ -34,6 +35,6 @@ void main() {
   float fill = 0.38 + 0.62 * ndl;
   vec3 ambient = vec3(0.22, 0.26, 0.32);
 
-  gl_FragColor = vec4(albedo * fill + ambient * 0.35, 1.0);
+  gl_FragColor = vec4(albedo * fill + ambient * 0.35, uOpacity);
 }
 `

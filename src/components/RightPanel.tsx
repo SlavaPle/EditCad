@@ -51,6 +51,8 @@ import { removeBlockAndAuxiliaryConstraints } from '../features/face-constraints
 import { removeFaceConstraint, upsertFaceConstraint } from '../features/face-constraints/store'
 import { getLimitsInstallActivePairPanelUi } from './limitsInstallPanelUi'
 import { PanelAxisMinMaxFields } from './PanelAxisMinMaxFields'
+import { EditAppearanceControls } from './EditAppearanceControls'
+import type { ModelAppearance } from '../features/viewer-display/modelAppearance'
 import styles from './RightPanel.module.css'
 
 export interface RightPanelProps {
@@ -61,6 +63,10 @@ export interface RightPanelProps {
   constraintsLocked: boolean
   /** Aktywny przycisk „Limits” na zakładce Edit — pokazuje formularz na panelu */
   limitsInstallActive: boolean
+  /** Aktywny przycisk wyglądu na zakładce Edit — formularz na panelu */
+  appearanceEditActive: boolean
+  appearance: ModelAppearance
+  onAppearanceChange: (next: ModelAppearance) => void
   limitsInstallConstraintType: FaceConstraintType
   onLimitsInstallConstraintTypeChange: (next: FaceConstraintType) => void
   preparedModelElements: readonly PreparedModelElement[]
@@ -100,6 +106,9 @@ export function RightPanel({
   geometryRevision,
   constraintsLocked,
   limitsInstallActive,
+  appearanceEditActive,
+  appearance,
+  onAppearanceChange,
   limitsInstallConstraintType,
   onLimitsInstallConstraintTypeChange,
   preparedModelElements,
@@ -971,7 +980,17 @@ export function RightPanel({
             </ul>
           )}
         </div>
-        {!limitsInstallActive && faceStretchSelection && model && (
+        {appearanceEditActive && model && (
+          <div className={styles.section}>
+            <div className={styles.sectionTitle}>{t('rightPanel.appearance.title')}</div>
+            <p className={styles.limitsInstallToolbarHint}>{t('rightPanel.appearance.hint')}</p>
+            <EditAppearanceControls
+              appearance={appearance}
+              onAppearanceChange={onAppearanceChange}
+            />
+          </div>
+        )}
+        {!limitsInstallActive && !appearanceEditActive && faceStretchSelection && model && (
           <div className={styles.section}>
             <div className={styles.sectionTitle}>{t('rightPanel.faceDistance.title')}</div>
             <p className={styles.faceDistanceHint}>{t('rightPanel.faceDistance.hint')}</p>

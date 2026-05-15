@@ -48,6 +48,10 @@
     },
     "limits": "Limits",
     "limitsActive": "Limits placement on (click to close)",
+    "appearance": {
+      "button": "Appearance",
+      "active": "Appearance editor on (click to close)"
+    },
     "saveFormatPrompt": "Choose save format: ecdprt or stl",
     "saveFormatInvalid": "Invalid format. Enter ecdprt or stl."
   },
@@ -102,6 +106,17 @@
       "vertex": "Vertex {{index}}",
       "edge": "Edge {{a}} — {{b}}",
       "face": "Face {{index}}"
+    },
+    "appearance": {
+      "title": "Appearance",
+      "hint": "Set color or texture and opacity. Use the View tab for display mode (solid, textured, edges).",
+      "surface": "Surface",
+      "surfaceColor": "Color",
+      "surfaceTexture": "Texture",
+      "color": "Color",
+      "pickTexture": "Load texture…",
+      "defaultTexture": "Default pattern",
+      "opacity": "Opacity"
     },
     "faceDistance": {
       "title": "Distance between faces",

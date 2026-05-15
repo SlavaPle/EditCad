@@ -4,6 +4,10 @@ import {
   parseFaceConstraintsForPreparedFile,
 } from '../features/face-constraints/codec'
 import type { FaceConstraint } from '../features/face-constraints/model'
+import {
+  parseModelAppearance,
+  type ModelAppearance,
+} from '../features/viewer-display/modelAppearance'
 
 export type PreparedModelElement = {
   id: string
@@ -53,6 +57,7 @@ export type PreparedElementFile = {
   name: string
   constraints: PreparedElementConstraints
   geometry: PreparedElementGeometry
+  appearance?: ModelAppearance
 }
 
 export type ParsePreparedElementResult =
@@ -166,6 +171,10 @@ export function validatePreparedElementFile(value: unknown): ParsePreparedElemen
   if (!geometry) {
     return { ok: false, error: 'Invalid geometry payload in prepared element file.' }
   }
+  const appearance = parseModelAppearance(value.appearance)
+  if (appearance === null) {
+    return { ok: false, error: 'Invalid appearance in prepared element file.' }
+  }
   return {
     ok: true,
     file: {
@@ -174,6 +183,7 @@ export function validatePreparedElementFile(value: unknown): ParsePreparedElemen
       name: value.name,
       constraints,
       geometry,
+      ...(appearance ? { appearance } : {}),
     },
   }
 }

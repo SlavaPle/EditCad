@@ -11,6 +11,10 @@ import {
   DEFAULT_MODEL_DISPLAY_MODE,
   type ModelDisplayMode,
 } from './features/viewer-display/modelDisplayMode'
+import {
+  DEFAULT_MODEL_APPEARANCE,
+  type ModelAppearance,
+} from './features/viewer-display/modelAppearance'
 import { createEmptySelection, selectFaces, type SelectionState } from './lib/selection'
 import {
   ECDPRT_EXTENSION,
@@ -75,7 +79,9 @@ function App() {
   const [constraintsLocked, setConstraintsLocked] = useState(true)
   const [focusedLimitConstraintId, setFocusedLimitConstraintId] = useState<string | null>(null)
   const [limitsInstallActive, setLimitsInstallActive] = useState(false)
+  const [appearanceEditActive, setAppearanceEditActive] = useState(false)
   const [displayMode, setDisplayMode] = useState<ModelDisplayMode>(DEFAULT_MODEL_DISPLAY_MODE)
+  const [modelAppearance, setModelAppearance] = useState<ModelAppearance>(DEFAULT_MODEL_APPEARANCE)
   const [limitsInstallConstraintType, setLimitsInstallConstraintType] = useState<FaceConstraintType>('minmax')
   const modelLoaderRef = useRef<ModelLoaderHandle>(null)
 
@@ -83,6 +89,7 @@ function App() {
     setSelection(createEmptySelection())
     setProbableFaces([])
     setLimitsInstallActive(false)
+    setAppearanceEditActive(false)
   }, [])
 
   const handleRestoreFaceSelection = useCallback((faceTriangleIndices: readonly number[]) => {
@@ -136,7 +143,11 @@ function App() {
     loadedFromHandle?: BrowserFileHandle | null,
     loadedFileName?: string,
     loadedFormat?: SaveFormat,
-    loadedPrepared?: { name: string; constraints: PreparedElementConstraints },
+    loadedPrepared?: {
+      name: string
+      constraints: PreparedElementConstraints
+      appearance?: ModelAppearance
+    },
   ) => {
     setModel(geometry)
     setLoadError(null)
@@ -147,8 +158,19 @@ function App() {
     setPreparedConstraints(
       loadedPrepared?.constraints ?? { mode: 'fixed', faceConstraints: [], modelElements: [] },
     )
+    setModelAppearance(loadedPrepared?.appearance ?? DEFAULT_MODEL_APPEARANCE)
+    if (loadedPrepared?.appearance?.surface === 'texture') {
+      setDisplayMode('solidTextured')
+    }
     setFocusedLimitConstraintId(null)
   }
+
+  const handleAppearanceChange = useCallback((next: ModelAppearance) => {
+    setModelAppearance(next)
+    if (next.surface === 'texture') {
+      setDisplayMode((mode) => (mode === 'edgesOnly' ? mode : 'solidTextured'))
+    }
+  }, [])
 
   const handleMergeModelElements = useCallback((newElements: readonly PreparedModelElement[]) => {
     setPreparedConstraints((prev) => {
@@ -313,6 +335,7 @@ function App() {
     setSourceFileHandle(null)
     setSourceFileName(null)
     setSourceFormat(null)
+    setModelAppearance(DEFAULT_MODEL_APPEARANCE)
     setModelKey((k) => k + 1)
     modelLoaderRef.current?.openFileDialog()
   }
@@ -322,13 +345,13 @@ function App() {
     const baseName = preparedName || stripExtension(sourceFileName ?? 'edited-model')
     const canOverwriteEcdprt = sourceFormat === 'ecdprt' && !!sourceFileHandle
     if (canOverwriteEcdprt) {
-      void saveGeometryAsEcdprtFile(model, sourceFileHandle, preparedName, preparedConstraints).catch((err: unknown) => {
+      void saveGeometryAsEcdprtFile(model, sourceFileHandle, preparedName, preparedConstraints, modelAppearance).catch((err: unknown) => {
         const message = err instanceof Error ? err.message : String(err)
         console.error('Save failed:', message)
       })
       return
     }
-    void saveGeometryWithFormatAs(model, baseName, sourceFileHandle ?? undefined, preparedConstraints)
+    void saveGeometryWithFormatAs(model, baseName, sourceFileHandle ?? undefined, preparedConstraints, modelAppearance)
       .then(({ handle, format, fileName }) => {
         setSourceFileHandle(handle)
         setSourceFileName(fileName)
@@ -338,12 +361,12 @@ function App() {
         const message = err instanceof Error ? err.message : String(err)
         console.error('Save failed:', message)
       })
-  }, [model, preparedConstraints, preparedName, sourceFileHandle, sourceFileName, sourceFormat])
+  }, [model, preparedConstraints, preparedName, sourceFileHandle, sourceFileName, sourceFormat, modelAppearance])
 
   const handleSaveAsModelClick = useCallback(() => {
     if (!model) return
     const baseName = preparedName || stripExtension(sourceFileName ?? 'edited-model')
-    void saveGeometryWithFormatAs(model, baseName, sourceFileHandle ?? undefined, preparedConstraints)
+    void saveGeometryWithFormatAs(model, baseName, sourceFileHandle ?? undefined, preparedConstraints, modelAppearance)
       .then(({ handle, format, fileName }) => {
         setSourceFileHandle(handle)
         setSourceFileName(fileName)
@@ -353,7 +376,7 @@ function App() {
         const message = err instanceof Error ? err.message : String(err)
         console.error('Save failed:', message)
       })
-  }, [model, preparedConstraints, preparedName, sourceFileHandle, sourceFileName])
+  }, [model, preparedConstraints, preparedName, sourceFileHandle, sourceFileName, modelAppearance])
 
   return (
     <div className={styles.app}>
@@ -364,7 +387,21 @@ function App() {
         hasModel={!!model}
         limitsInstallActive={limitsInstallActive}
         limitsAddDisabled={limitsAddDisabled}
-        onToggleLimitsInstall={() => setLimitsInstallActive((v) => !v)}
+        onToggleLimitsInstall={() => {
+          setLimitsInstallActive((v) => {
+            const next = !v
+            if (next) setAppearanceEditActive(false)
+            return next
+          })
+        }}
+        appearanceEditActive={appearanceEditActive}
+        onToggleAppearanceEdit={() => {
+          setAppearanceEditActive((v) => {
+            const next = !v
+            if (next) setLimitsInstallActive(false)
+            return next
+          })
+        }}
         displayMode={displayMode}
         onDisplayModeChange={setDisplayMode}
       />
@@ -396,6 +433,7 @@ function App() {
             model={model}
             geometryRevision={geometryRevision}
             displayMode={displayMode}
+            appearance={modelAppearance}
             selection={selection}
             onSelectionChange={setSelection}
             selectionProximityFilter={DEFAULT_MODEL_SELECTION_PROXIMITY_FILTER}
@@ -410,6 +448,9 @@ function App() {
           geometryRevision={geometryRevision}
           constraintsLocked={constraintsLocked}
           limitsInstallActive={limitsInstallActive}
+          appearanceEditActive={appearanceEditActive}
+          appearance={modelAppearance}
+          onAppearanceChange={handleAppearanceChange}
           limitsInstallConstraintType={limitsInstallConstraintType}
           onLimitsInstallConstraintTypeChange={setLimitsInstallConstraintType}
           preparedModelElements={preparedConstraints.modelElements ?? []}
