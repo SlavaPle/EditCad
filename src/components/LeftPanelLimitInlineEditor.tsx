@@ -381,6 +381,7 @@ function PanelLimitEditor({
   return (
     <div className={styles.limitEditor}>
       <div className={styles.limitEditorTitle}>{t('leftPanel.limits.editTitle')}</div>
+      <div className={styles.limitEditorSubtitle}>{t('leftPanel.limits.editPanelGroupConst')}</div>
       <label className={styles.limitEditorLabel}>{t('leftPanel.limits.editPanelThickness')}</label>
       <div className={styles.limitEditorRow}>
         <input
@@ -392,7 +393,7 @@ function PanelLimitEditor({
         />
         <span className={styles.limitEditorUnit}>mm</span>
       </div>
-      <div className={styles.limitEditorSubtitle}>{t('leftPanel.limits.editPanelAxisX')}</div>
+      <div className={styles.limitEditorSubtitle}>{t('leftPanel.limits.editPanelGroupMinMaxX')}</div>
       <div className={styles.limitEditorRow}>
         <input
           className={styles.limitEditorInput}
@@ -423,7 +424,7 @@ function PanelLimitEditor({
       )}
       {!c.ySameAsX && (
         <>
-          <div className={styles.limitEditorSubtitle}>{t('leftPanel.limits.editPanelAxisY')}</div>
+          <div className={styles.limitEditorSubtitle}>{t('leftPanel.limits.editPanelGroupMinMaxY')}</div>
           <div className={styles.limitEditorRow}>
             <input
               className={styles.limitEditorInput}

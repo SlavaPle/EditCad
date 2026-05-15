@@ -23,6 +23,7 @@ import {
 } from './lib/preparedStretchValidation'
 import type { FaceConstraint, FaceConstraintType } from './features/face-constraints/model'
 import { removeBlockAndAuxiliaryConstraints } from './features/face-constraints/blockInstallBundle'
+import { syncPanelAuxiliaryConstraints } from './features/face-constraints/syncPanelAuxiliaryConstraints'
 import { removePanelAndAuxiliaryConstraints } from './features/face-constraints/panelInstallBundle'
 import { removeProfilAndAuxiliaryConstraints } from './features/face-constraints/profilInstallBundle'
 import { removeFaceConstraint, replaceFaceConstraintById } from './features/face-constraints/store'
@@ -199,13 +200,10 @@ function App() {
 
   const handleReplaceLimitConstraint = useCallback(
     (next: FaceConstraint) => {
-      let newList = replaceFaceConstraintById(preparedFaceConstraints, next)
-      if (next.type === 'panel' && next.thicknessConstId) {
-        const linked = newList.find((c) => c.id === next.thicknessConstId)
-        if (linked?.type === 'const') {
-          newList = replaceFaceConstraintById(newList, { ...linked, valueMm: next.thicknessMm })
-        }
-      }
+      let newList =
+        next.type === 'panel'
+          ? syncPanelAuxiliaryConstraints(preparedFaceConstraints, next)
+          : replaceFaceConstraintById(preparedFaceConstraints, next)
       if (next.type === 'profil' && next.stretchMinMaxId) {
         const linked = newList.find((c) => c.id === next.stretchMinMaxId)
         if (linked?.type === 'minmax') {

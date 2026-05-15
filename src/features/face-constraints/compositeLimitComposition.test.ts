@@ -42,6 +42,34 @@ describe('composite limit composition spec', () => {
   })
 })
 
+describe('panelExpandedPrimitiveKinds', () => {
+  it('returns kinds in const, minmax, minmax order from linked ids', () => {
+    const { geometry, thicknessFaces } = makeSimplePanelGeometry()
+    const bundle = buildPanelInstallBundle({
+      geometry,
+      panelId: 'panel-exp',
+      thicknessMm: 7,
+      thicknessTriangles: thicknessFaces,
+      panelXBounds: { maxMm: 100, minMm: 5 },
+      panelYBounds: { maxMm: 200 },
+      ySameAsX: false,
+      panelXElementAId: 'xa',
+      panelXElementBId: 'xb',
+      panelYElementAId: 'ya',
+      panelYElementBId: 'yb',
+      preparedModelElements: [
+        { id: 'xa', faceIndices: [0] },
+        { id: 'xb', faceIndices: [2] },
+        { id: 'ya', faceIndices: [1] },
+        { id: 'yb', faceIndices: [3] },
+      ],
+    })
+    if ('ok' in bundle) expect.fail('panel bundle failed')
+    const all: FaceConstraint[] = [...bundle.auxiliaryConstraints, bundle.panel]
+    expect(panelExpandedPrimitiveKinds(bundle.panel, all)).toEqual(['const', 'minmax', 'minmax'])
+  })
+})
+
 describe('panel install matches PANEL composition', () => {
   it('ySameAsX: const + one minmax', () => {
     const { geometry, thicknessFaces } = makeSimplePanelGeometry()

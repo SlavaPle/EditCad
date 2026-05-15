@@ -1269,7 +1269,7 @@ export function RightPanel({
               <div className={styles.panelConstraintFields}>
                 <p className={styles.panelWorkflowHint}>{t('rightPanel.limits.panelWorkflowIntro')}</p>
                 <div className={styles.panelFieldGroup}>
-                  <div className={styles.panelAxisLabel}>{t('rightPanel.limits.panelThicknessSection')}</div>
+                  <div className={styles.panelAxisLabel}>{t('rightPanel.limits.panelGroupConst')}</div>
                   <p className={styles.panelExtentsHintMuted}>{t('rightPanel.limits.panelThicknessFrozenHint')}</p>
                   <p className={styles.panelExtentsMeasured}>
                     {panelThicknessPairReady
@@ -1284,21 +1284,23 @@ export function RightPanel({
                       value={panelThicknessMmInput}
                       onChange={(e) => setPanelThicknessMmInput(e.target.value)}
                       placeholder={t('rightPanel.limits.panelThicknessInputPlaceholder')}
-                      aria-label={t('rightPanel.limits.panelThicknessSection')}
+                      aria-label={t('rightPanel.limits.panelGroupConst')}
                       disabled={!panelThicknessPairReady}
                     />
                     <span className={styles.faceDistanceUnit}>mm</span>
                   </div>
                 </div>
                 <div className={styles.panelFieldGroup}>
-                  <div className={styles.panelAxisLabel}>{t('rightPanel.limits.panelFacesForXTitle')}</div>
-                  <p className={styles.panelExtentsHintMuted}>
-                    {t(
-                      panelThicknessPairReady
-                        ? 'rightPanel.limits.panelFacesForXSpanHint'
-                        : 'rightPanel.limits.panelPickTwoPlanesHint',
-                    )}
-                  </p>
+                  <div className={styles.panelAxisLabel}>{t('rightPanel.limits.panelGroupMinMaxX')}</div>
+                  <div className={styles.panelSpanBlock}>
+                    <p className={styles.panelExtentsHintMuted}>{t('rightPanel.limits.panelMeasurementPairSubtitle')}</p>
+                    <p className={styles.panelExtentsHintMuted}>
+                      {t(
+                        panelThicknessPairReady
+                          ? 'rightPanel.limits.panelFacesForXSpanHint'
+                          : 'rightPanel.limits.panelPickTwoPlanesHint',
+                      )}
+                    </p>
                   <button
                     type="button"
                     className={
@@ -1332,7 +1334,8 @@ export function RightPanel({
                       </button>
                     </>
                   )}
-                  <div className={styles.panelAxisLabel}>{t('rightPanel.limits.panelAxisXLimitsTitle')}</div>
+                  </div>
+                  <div className={styles.panelSpanBlock}>
                   <PanelAxisMinMaxFields
                     idPrefix="panel-axis-x"
                     useMin={panelXUseMin}
@@ -1342,16 +1345,19 @@ export function RightPanel({
                     maxInput={panelXMax}
                     onMaxInputChange={setPanelXMax}
                   />
+                  </div>
                 </div>
                 <div className={styles.panelFieldGroup}>
-                  <div className={styles.panelAxisLabel}>{t('rightPanel.limits.panelFacesForYTitle')}</div>
-                  <p className={styles.panelExtentsHintMuted}>
-                    {t(
-                      panelThicknessPairReady
-                        ? 'rightPanel.limits.panelFacesForYSpanHint'
-                        : 'rightPanel.limits.panelPickTwoPlanesHint',
-                    )}
-                  </p>
+                  <div className={styles.panelAxisLabel}>{t('rightPanel.limits.panelGroupMinMaxY')}</div>
+                  <div className={styles.panelSpanBlock}>
+                    <p className={styles.panelExtentsHintMuted}>{t('rightPanel.limits.panelMeasurementPairSubtitle')}</p>
+                    <p className={styles.panelExtentsHintMuted}>
+                      {t(
+                        panelThicknessPairReady
+                          ? 'rightPanel.limits.panelFacesForYSpanHint'
+                          : 'rightPanel.limits.panelPickTwoPlanesHint',
+                      )}
+                    </p>
                   <button
                     type="button"
                     className={
@@ -1385,6 +1391,7 @@ export function RightPanel({
                       </button>
                     </>
                   )}
+                  </div>
                   <label className={styles.panelCheckboxRow}>
                     <input
                       type="checkbox"
@@ -1394,8 +1401,7 @@ export function RightPanel({
                     {t('rightPanel.limits.panelYSameAsX')}
                   </label>
                   {!panelYSameAsX && (
-                    <>
-                      <div className={styles.panelAxisLabel}>{t('rightPanel.limits.panelAxisYLimitsTitle')}</div>
+                    <div className={styles.panelSpanBlock}>
                       <PanelAxisMinMaxFields
                         idPrefix="panel-axis-y"
                         useMin={panelYUseMin}
@@ -1405,7 +1411,7 @@ export function RightPanel({
                         maxInput={panelYMax}
                         onMaxInputChange={setPanelYMax}
                       />
-                    </>
+                    </div>
                   )}
                 </div>
               </div>

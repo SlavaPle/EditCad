@@ -15,6 +15,32 @@ function makeSimplePanelGeometry(): { geometry: BufferGeometry; thicknessFaces: 
 }
 
 describe('buildPanelInstallBundle', () => {
+  it('orders auxiliaries as const then minmax (X then Y)', () => {
+    const { geometry, thicknessFaces } = makeSimplePanelGeometry()
+    const bundle = buildPanelInstallBundle({
+      geometry,
+      panelId: 'panel-order',
+      thicknessMm: 7,
+      thicknessTriangles: thicknessFaces,
+      panelXBounds: { maxMm: 100, minMm: 10 },
+      panelYBounds: { maxMm: 200, minMm: 5 },
+      ySameAsX: false,
+      panelXElementAId: 'xa',
+      panelXElementBId: 'xb',
+      panelYElementAId: 'ya',
+      panelYElementBId: 'yb',
+      preparedModelElements: [
+        { id: 'xa', faceIndices: [0] },
+        { id: 'xb', faceIndices: [2] },
+        { id: 'ya', faceIndices: [1] },
+        { id: 'yb', faceIndices: [3] },
+      ],
+    })
+    if ('ok' in bundle) expect.fail(`bundle failed: ${bundle.reason}`)
+    expect(auxiliaryPrimitiveKinds(bundle.auxiliaryConstraints)).toEqual(['const', 'minmax', 'minmax'])
+    expect(matchesComposition(auxiliaryPrimitiveKinds(bundle.auxiliaryConstraints), PANEL_COMPOSITION)).toBe(true)
+  })
+
   it('creates CONST for thickness and MINMAX for X/Y', () => {
     const { geometry, thicknessFaces } = makeSimplePanelGeometry()
     const bundle = buildPanelInstallBundle({
@@ -49,6 +75,112 @@ describe('buildPanelInstallBundle', () => {
     if (thicknessConst?.type !== 'const') return
     expect(thicknessConst.valueMm).toBe(7)
     expect(bundle.stretchSteps[0]?.targetMm).toBe(7)
+  })
+
+  it('links panel record to const and minmax ids', () => {
+    const { geometry, thicknessFaces } = makeSimplePanelGeometry()
+    const bundle = buildPanelInstallBundle({
+      geometry,
+      panelId: 'panel-links',
+      thicknessMm: 7,
+      thicknessTriangles: thicknessFaces,
+      panelXBounds: { maxMm: 50 },
+      panelYBounds: { maxMm: 60 },
+      ySameAsX: false,
+      panelXElementAId: 'xa',
+      panelXElementBId: 'xb',
+      panelYElementAId: 'ya',
+      panelYElementBId: 'yb',
+      preparedModelElements: [
+        { id: 'xa', faceIndices: [0] },
+        { id: 'xb', faceIndices: [2] },
+        { id: 'ya', faceIndices: [1] },
+        { id: 'yb', faceIndices: [3] },
+      ],
+    })
+    if ('ok' in bundle) expect.fail(`bundle failed: ${bundle.reason}`)
+    expect(bundle.panel.thicknessConstId).toBe('panel-links-thickness-const')
+    expect(bundle.panel.panelXMinMaxId).toBe('panel-links-axis-x-minmax')
+    expect(bundle.panel.panelYMinMaxId).toBe('panel-links-axis-y-minmax')
+    const xMm = bundle.auxiliaryConstraints.find((c) => c.id === bundle.panel.panelXMinMaxId)
+    expect(xMm?.type).toBe('minmax')
+    if (xMm?.type === 'minmax') {
+      expect(xMm.elementAId).toBe('xa')
+      expect(xMm.elementBId).toBe('xb')
+      expect(xMm.maxMm).toBe(50)
+    }
+  })
+
+  it('emits stretch steps for thickness, X, and Y when ySameAsX is false', () => {
+    const { geometry, thicknessFaces } = makeSimplePanelGeometry()
+    const bundle = buildPanelInstallBundle({
+      geometry,
+      panelId: 'panel-steps',
+      thicknessMm: 7,
+      thicknessTriangles: thicknessFaces,
+      panelXBounds: { maxMm: 500 },
+      panelYBounds: { maxMm: 500 },
+      ySameAsX: false,
+      panelXElementAId: 'xa',
+      panelXElementBId: 'xb',
+      panelYElementAId: 'ya',
+      panelYElementBId: 'yb',
+      preparedModelElements: [
+        { id: 'xa', faceIndices: [0] },
+        { id: 'xb', faceIndices: [2] },
+        { id: 'ya', faceIndices: [1] },
+        { id: 'yb', faceIndices: [3] },
+      ],
+    })
+    if ('ok' in bundle) expect.fail(`bundle failed: ${bundle.reason}`)
+    expect(bundle.stretchSteps).toHaveLength(3)
+    expect(bundle.stretchSteps[0]?.panelThicknessMergedFaces?.length).toBeGreaterThan(0)
+  })
+
+  it('emits two stretch steps when ySameAsX (no separate Y minmax)', () => {
+    const { geometry, thicknessFaces } = makeSimplePanelGeometry()
+    const bundle = buildPanelInstallBundle({
+      geometry,
+      panelId: 'panel-steps-same',
+      thicknessMm: 7,
+      thicknessTriangles: thicknessFaces,
+      panelXBounds: { maxMm: 500 },
+      panelYBounds: { maxMm: 500 },
+      ySameAsX: true,
+      panelXElementAId: 'xa',
+      panelXElementBId: 'xb',
+      panelYElementAId: 'ya',
+      panelYElementBId: 'yb',
+      preparedModelElements: [
+        { id: 'xa', faceIndices: [0] },
+        { id: 'xb', faceIndices: [2] },
+        { id: 'ya', faceIndices: [1] },
+        { id: 'yb', faceIndices: [3] },
+      ],
+    })
+    if ('ok' in bundle) expect.fail(`bundle failed: ${bundle.reason}`)
+    expect(bundle.stretchSteps).toHaveLength(2)
+    expect(bundle.panel.panelYMinMaxId).toBeUndefined()
+    expect(bundle.auxiliaryConstraints).toHaveLength(2)
+  })
+
+  it('returns missingSpanElements when span elements are absent', () => {
+    const { geometry, thicknessFaces } = makeSimplePanelGeometry()
+    const result = buildPanelInstallBundle({
+      geometry,
+      panelId: 'panel-fail',
+      thicknessMm: 7,
+      thicknessTriangles: thicknessFaces,
+      panelXBounds: { maxMm: 10 },
+      panelYBounds: { maxMm: 10 },
+      ySameAsX: false,
+      panelXElementAId: 'missing',
+      panelXElementBId: 'xb',
+      panelYElementAId: 'ya',
+      panelYElementBId: 'yb',
+      preparedModelElements: [{ id: 'xb', faceIndices: [0] }],
+    })
+    expect(result).toEqual({ ok: false, reason: 'missingSpanElements' })
   })
 })
 
