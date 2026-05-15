@@ -36,6 +36,29 @@ describe('limitDimensionSlots', () => {
     expect(res).toEqual({ ok: false, reason: 'fullConstraintExists' })
   })
 
+  it('allows BLOCK on empty constraint list', () => {
+    const geo = makeAxisGeometry()
+    const res = checkConstraintCanBeAddedByDimensionSlots({
+      geometry: geo,
+      modelElements: [],
+      existing: [],
+      nextType: 'block',
+    })
+    expect(res).toEqual({ ok: true })
+  })
+
+  it('blocks BLOCK when any constraint already exists', () => {
+    const geo = makeAxisGeometry()
+    const existing: FaceConstraint[] = [{ id: 'c1', type: 'minmax', facePair: { a: 0, b: 1 }, minMm: 1, maxMm: 5 }]
+    const res = checkConstraintCanBeAddedByDimensionSlots({
+      geometry: geo,
+      modelElements: [],
+      existing,
+      nextType: 'block',
+    })
+    expect(res).toEqual({ ok: false, reason: 'fullConstraintExists' })
+  })
+
   it('blocks directional type when slot is already occupied', () => {
     const geo = makeAxisGeometry()
     const existing: FaceConstraint[] = [{ id: 'c1', type: 'minmax', facePair: { a: 0, b: 1 }, minMm: 1, maxMm: 5 }]

@@ -21,13 +21,13 @@ export function validatePreparedStretchPrecheck(params: {
   const { model, mergedFaces, targetMm, prepared, constraintsLocked, panelThicknessMergedFaces } =
     params
 
-  if (!constraintsLocked) {
-    return { ok: true }
-  }
-
   const list = prepared.faceConstraints ?? []
   if (list.some((c) => c.type === 'block')) {
     return { ok: false, error: 'lockedByBlock' }
+  }
+
+  if (!constraintsLocked) {
+    return { ok: true }
   }
 
   const cloned = model.clone()

@@ -146,6 +146,7 @@
     "limits": {
       "title": "Face limits",
       "waitingStretchSelection": "Limits placement is on. Select two opposite planar regions (faces or edges—no vertices-only selection), same workflow as Distance between faces, then add limits here.",
+      "blockWorkflowHint": "BLOCK fixes the entire model — no face selection. Adding it blocks all size changes.",
       "hint": "Add MINMAX (single range with optional MIN and required MAX), CONST, PROFIL, BLOCK, or PANEL on selected faces.",
       "activePairDistance": "Active pair distance: {{value}} mm",
       "optionMinMax": "MIN / MAX (range)",

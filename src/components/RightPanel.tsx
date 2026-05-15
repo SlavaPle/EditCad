@@ -47,6 +47,7 @@ import {
   isProfilInstallBundleFailure,
   removeProfilAndAuxiliaryConstraints,
 } from '../features/face-constraints/profilInstallBundle'
+import { removeBlockAndAuxiliaryConstraints } from '../features/face-constraints/blockInstallBundle'
 import { removeFaceConstraint, upsertFaceConstraint } from '../features/face-constraints/store'
 import { getLimitsInstallActivePairPanelUi } from './limitsInstallPanelUi'
 import { PanelAxisMinMaxFields } from './PanelAxisMinMaxFields'
@@ -905,6 +906,8 @@ export function RightPanel({
         next = removePanelAndAuxiliaryConstraints(faceConstraints, id)
       } else if (target?.type === 'profil') {
         next = removeProfilAndAuxiliaryConstraints(faceConstraints, id)
+      } else if (target?.type === 'block') {
+        next = removeBlockAndAuxiliaryConstraints(faceConstraints, id)
       } else {
         next = removeFaceConstraint(faceConstraints, id)
       }
@@ -924,6 +927,7 @@ export function RightPanel({
     hasModel: model !== null,
     limitsInstallActive,
     faceStretchSelection,
+    limitsInstallConstraintType: constraintType,
   })
 
   return (
@@ -1056,7 +1060,7 @@ export function RightPanel({
             )}
           </div>
         )}
-        {model && limitsInstallActive && !faceStretchSelection && (
+        {model && limitsInstallActive && !faceStretchSelection && constraintType !== 'block' && (
           <div className={styles.section}>
             <div className={styles.sectionTitle}>{t('rightPanel.limits.title')}</div>
             <p className={styles.limitsInstallToolbarHint}>{t('rightPanel.limits.waitingStretchSelection')}</p>
@@ -1097,6 +1101,9 @@ export function RightPanel({
               <option value="block">{t('rightPanel.limits.optionBlock')}</option>
               <option value="panel">{t('rightPanel.limits.optionPanel')}</option>
             </select>
+            {limitsActivePairPanel.isBlockInstall && (
+              <p className={styles.limitsInstallToolbarHint}>{t('rightPanel.limits.blockWorkflowHint')}</p>
+            )}
             {constraintType === 'minmax' && (
               <div className={styles.minMaxBoundsInputs}>
                 <label className={styles.panelCheckboxRow}>

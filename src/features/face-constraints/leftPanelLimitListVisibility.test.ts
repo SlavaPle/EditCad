@@ -162,6 +162,13 @@ describe('left panel list — PROFIL install bundle', () => {
   })
 })
 
+describe('left panel list — BLOCK marker', () => {
+  it('shows marker-only BLOCK without face selection auxiliaries', () => {
+    const block: BlockFaceConstraint = { id: 'bk-only', type: 'block', facePair: null }
+    expect(leftPanelVisibleIds([block])).toEqual(['bk-only'])
+  })
+})
+
 describe('left panel list — BLOCK install bundle', () => {
   it('shows only BLOCK row (three const axes hidden)', () => {
     const { geometry } = makeSimplePanelGeometry()

@@ -9,7 +9,7 @@ import {
   profilExpandedPrimitiveKinds,
   PROFIL_COMPOSITION,
 } from './compositeLimitComposition'
-import type { FaceConstraint, ProfilFaceConstraint } from './model'
+import type { BlockFaceConstraint, FaceConstraint, ProfilFaceConstraint } from './model'
 import { buildPanelInstallBundle } from './panelInstallBundle'
 import { buildProfilInstallBundle } from './profilInstallBundle'
 import { buildBlockInstallBundle } from './blockInstallBundle'
@@ -128,6 +128,13 @@ describe('profil install matches PROFIL composition', () => {
     expect(matchesComposition(profilExpandedPrimitiveKinds(bundle.profil, all), PROFIL_COMPOSITION)).toBe(
       true,
     )
+  })
+})
+
+describe('blockExpandedPrimitiveKinds', () => {
+  it('returns empty kinds for marker-only BLOCK', () => {
+    const block: BlockFaceConstraint = { id: 'bk', type: 'block', facePair: null }
+    expect(blockExpandedPrimitiveKinds(block, [block])).toEqual([])
   })
 })
 

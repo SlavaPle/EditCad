@@ -162,6 +162,12 @@ function App() {
 
   const preparedFaceConstraints = preparedConstraints.faceConstraints ?? []
 
+  useEffect(() => {
+    if (preparedFaceConstraints.some((c) => c.type === 'block')) {
+      setConstraintsLocked(true)
+    }
+  }, [preparedFaceConstraints])
+
   const limitsAddDisabled = (() => {
     if (!model) return false
     if (preparedFaceConstraints.length >= 3) return true
