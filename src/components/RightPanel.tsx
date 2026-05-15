@@ -34,6 +34,7 @@ import {
 import { checkConstraintCanBeAddedByDimensionSlots } from '../features/face-constraints/limitDimensionSlots'
 import { formatConstraintUiSummary } from '../features/face-constraints/formatConstraintUiSummary'
 import { removeFaceConstraint, upsertFaceConstraint } from '../features/face-constraints/store'
+import { getLimitsInstallActivePairPanelUi } from './limitsInstallPanelUi'
 import styles from './RightPanel.module.css'
 
 export interface RightPanelProps {
@@ -888,6 +889,12 @@ export function RightPanel({
         ? t(`rightPanel.limits.errors.${constraintError}`)
         : t(`rightPanel.faceDistance.errors.${constraintError}`)
 
+  const limitsActivePairPanel = getLimitsInstallActivePairPanelUi({
+    hasModel: model !== null,
+    limitsInstallActive,
+    faceStretchSelection,
+  })
+
   return (
     <aside className={styles.panel}>
       <div className={styles.header}>{t('rightPanel.header')}</div>
@@ -1041,47 +1048,8 @@ export function RightPanel({
             </div>
           </div>
         )}
-        {model && limitsInstallActive && faceStretchSelection && (
+        {limitsActivePairPanel.showSection && (
         <div className={styles.section}>
-          <div className={styles.sectionTitle}>{t('rightPanel.limits.title')}</div>
-          <p className={styles.faceDistanceHint}>{t('rightPanel.limits.hint')}</p>
-          {analysis?.ok && (
-            <>
-              <p className={styles.faceDistanceCurrent}>
-                {t('rightPanel.limits.activePairDistance', { value: Number(analysis.gapMm.toFixed(4)) })}
-              </p>
-              <div className={styles.faceDistanceRow}>
-                <label className={styles.faceDistanceLabel} htmlFor="limits-active-distance-mm">
-                  {t('rightPanel.faceDistance.targetLabel')}
-                </label>
-                <div className={styles.faceDistanceInputWrap}>
-                  <input
-                    id="limits-active-distance-mm"
-                    className={styles.faceDistanceInput}
-                    type="text"
-                    inputMode="decimal"
-                    value={targetInput}
-                    onChange={(e) => setTargetInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key !== 'Enter') return
-                      e.preventDefault()
-                      handleApply()
-                    }}
-                    aria-invalid={applyError === 'invalidTarget'}
-                  />
-                  <span className={styles.faceDistanceUnit}>mm</span>
-                </div>
-                <button type="button" className={styles.faceDistanceApply} onClick={handleApply}>
-                  {t('rightPanel.faceDistance.apply')}
-                </button>
-              </div>
-            </>
-          )}
-          {applyError && (
-            <p className={styles.faceDistanceError} role="alert">
-              {t(`rightPanel.faceDistance.errors.${applyError}`)}
-            </p>
-          )}
           <div className={styles.faceDistanceRow}>
             <label className={styles.faceDistanceLabel} htmlFor="constraint-type">
               {t('rightPanel.limits.type')}
