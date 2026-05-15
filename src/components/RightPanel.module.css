@@ -247,6 +247,11 @@
   border-color: #64748b;
 }
 
+.faceDistanceInput:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .faceDistanceUnit {
   font-size: 0.8125rem;
   color: #94a3b8;

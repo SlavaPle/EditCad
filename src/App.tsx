@@ -22,6 +22,9 @@ import {
   type PreparedStretchPrecheckError,
 } from './lib/preparedStretchValidation'
 import type { FaceConstraint, FaceConstraintType } from './features/face-constraints/model'
+import { removeBlockAndAuxiliaryConstraints } from './features/face-constraints/blockInstallBundle'
+import { removePanelAndAuxiliaryConstraints } from './features/face-constraints/panelInstallBundle'
+import { removeProfilAndAuxiliaryConstraints } from './features/face-constraints/profilInstallBundle'
 import { removeFaceConstraint, replaceFaceConstraintById } from './features/face-constraints/store'
 import { collectDimensionOccupancy } from './features/face-constraints/limitDimensionSlots'
 import { resizeGeometryAfterConstraintMmEdit } from './features/part-constraints/resizeGeometryAfterConstraintMmEdit'
@@ -190,7 +193,23 @@ function App() {
 
   const handleReplaceLimitConstraint = useCallback(
     (next: FaceConstraint) => {
-      const newList = replaceFaceConstraintById(preparedFaceConstraints, next)
+      let newList = replaceFaceConstraintById(preparedFaceConstraints, next)
+      if (next.type === 'panel' && next.thicknessConstId) {
+        const linked = newList.find((c) => c.id === next.thicknessConstId)
+        if (linked?.type === 'const') {
+          newList = replaceFaceConstraintById(newList, { ...linked, valueMm: next.thicknessMm })
+        }
+      }
+      if (next.type === 'profil' && next.stretchMinMaxId) {
+        const linked = newList.find((c) => c.id === next.stretchMinMaxId)
+        if (linked?.type === 'minmax') {
+          newList = replaceFaceConstraintById(newList, {
+            ...linked,
+            maxMm: next.valueMm,
+            minMm: next.stretchMinMm ?? 0,
+          })
+        }
+      }
       handleFaceConstraintsChange(newList)
       if (!model) return
       const preparedNext: PreparedElementConstraints = {
@@ -219,7 +238,18 @@ function App() {
 
   const handleRemoveLimitConstraint = useCallback(
     (id: string) => {
-      handleFaceConstraintsChange(removeFaceConstraint(preparedFaceConstraints, id))
+      const target = preparedFaceConstraints.find((c) => c.id === id)
+      let newList = preparedFaceConstraints
+      if (target?.type === 'panel') {
+        newList = removePanelAndAuxiliaryConstraints(preparedFaceConstraints, id)
+      } else if (target?.type === 'profil') {
+        newList = removeProfilAndAuxiliaryConstraints(preparedFaceConstraints, id)
+      } else if (target?.type === 'block') {
+        newList = removeBlockAndAuxiliaryConstraints(preparedFaceConstraints, id)
+      } else {
+        newList = removeFaceConstraint(preparedFaceConstraints, id)
+      }
+      handleFaceConstraintsChange(newList)
       setFocusedLimitConstraintId((cur) => (cur === id ? null : cur))
     },
     [handleFaceConstraintsChange, preparedFaceConstraints],

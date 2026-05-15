@@ -1,4 +1,4 @@
-import { useCallback, useRef, Fragment } from 'react'
+import { useCallback, useMemo, useRef, Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelLoader } from './ModelLoader'
 import { isSupportedExtension } from '../lib/loadModel'
@@ -7,6 +7,7 @@ import type { SaveFormat } from '../lib/saveModel'
 import type { BufferGeometry } from 'three'
 import type { PreparedElementConstraints, PreparedModelElement } from '../lib/preparedElementFormat'
 import type { FaceConstraint, FaceConstraintType } from '../features/face-constraints/model'
+import { filterConstraintsForLeftPanelList } from '../features/face-constraints/compositeLimitComposition'
 import { formatConstraintUiSummary } from '../features/face-constraints/formatConstraintUiSummary'
 import { LeftPanelLimitInlineEditor } from './LeftPanelLimitInlineEditor'
 import styles from './LeftPanel.module.css'
@@ -87,9 +88,14 @@ export function LeftPanel({
     e.dataTransfer.dropEffect = 'copy'
   }, [])
 
+  const visibleLimits = useMemo(
+    () => filterConstraintsForLeftPanelList(faceConstraints),
+    [faceConstraints],
+  )
+
   const focusedConstraint =
     !constraintsLocked && focusedLimitConstraintId
-      ? faceConstraints.find((c) => c.id === focusedLimitConstraintId)
+      ? visibleLimits.find((c) => c.id === focusedLimitConstraintId)
       : undefined
 
   return (
@@ -148,12 +154,12 @@ export function LeftPanel({
                 </span>
               </button>
             </div>
-            {faceConstraints.length === 0 ? (
+            {visibleLimits.length === 0 ? (
               <p className={styles.placeholder}>{t('leftPanel.limits.empty')}</p>
             ) : (
               <Fragment>
                 <ul className={styles.constraintsList}>
-                  {faceConstraints.map((item) => {
+                  {visibleLimits.map((item) => {
                     const { primary } = formatConstraintUiSummary({
                       constraint: item,
                       geometry: limitsSummaryGeometry,

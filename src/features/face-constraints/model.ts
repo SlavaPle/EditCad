@@ -59,10 +59,23 @@ export type ProfilFaceConstraint = FaceConstraintBase & {
   /** Dwa wymiary „śledzone” jak CONST; brak obu = stary zapis PROFIL (tylko MAX + para rozciągania). */
   frozen1?: ProfilFrozenSlotStored
   frozen2?: ProfilFrozenSlotStored
+  /** MINMAX na parze rozciągania. */
+  stretchMinMaxId?: string
+  frozen1ConstId?: string
+  frozen2ConstId?: string
 }
 
 export type BlockFaceConstraint = FaceConstraintBase & {
   type: 'block'
+  axis0ConstId?: string
+  axis1ConstId?: string
+  axis2ConstId?: string
+  axis0ElementAId?: string
+  axis0ElementBId?: string
+  axis1ElementAId?: string
+  axis1ElementBId?: string
+  axis2ElementAId?: string
+  axis2ElementBId?: string
 }
 
 /** Jedna oś panelu (X lub Y): MAX wymagane; MIN opcjonalne. */
@@ -87,6 +100,13 @@ export type PanelFaceConstraint = FaceConstraintBase & {
   panelXElementBId?: string
   panelYElementAId?: string
   panelYElementBId?: string
+  /** Powiązany CONST dla grubości (para thicknessElement*). */
+  thicknessConstId?: string
+  thicknessElementAId?: string
+  thicknessElementBId?: string
+  /** MINMAX dla osi X / Y (pary panelX* / panelY*). */
+  panelXMinMaxId?: string
+  panelYMinMaxId?: string
 }
 
 export type FaceConstraint =
@@ -412,6 +432,12 @@ export function parseFaceConstraint(value: unknown): FaceConstraint | null {
         if (!isPositiveNumber(rawMin)) return null
         stretchMinMm = rawMin
       }
+      const stretchMinMaxId =
+        typeof value.stretchMinMaxId === 'string' ? value.stretchMinMaxId.trim() || undefined : undefined
+      const frozen1ConstId =
+        typeof value.frozen1ConstId === 'string' ? value.frozen1ConstId.trim() || undefined : undefined
+      const frozen2ConstId =
+        typeof value.frozen2ConstId === 'string' ? value.frozen2ConstId.trim() || undefined : undefined
       const out: ProfilFaceConstraint = {
         ...common,
         type: 'profil',
@@ -419,11 +445,33 @@ export function parseFaceConstraint(value: unknown): FaceConstraint | null {
         stretchMinMm,
         frozen1,
         frozen2,
+        stretchMinMaxId,
+        frozen1ConstId,
+        frozen2ConstId,
       }
       return validateFaceConstraint(out) ? out : null
     }
     case 'block': {
-      const out: BlockFaceConstraint = { ...common, type: 'block', facePair: null }
+      const axis0ConstId =
+        typeof value.axis0ConstId === 'string' ? value.axis0ConstId.trim() || undefined : undefined
+      const axis1ConstId =
+        typeof value.axis1ConstId === 'string' ? value.axis1ConstId.trim() || undefined : undefined
+      const axis2ConstId =
+        typeof value.axis2ConstId === 'string' ? value.axis2ConstId.trim() || undefined : undefined
+      const out: BlockFaceConstraint = {
+        ...common,
+        type: 'block',
+        facePair: null,
+        axis0ConstId,
+        axis1ConstId,
+        axis2ConstId,
+        axis0ElementAId: parseTrimmedPanelElementId(value.axis0ElementAId),
+        axis0ElementBId: parseTrimmedPanelElementId(value.axis0ElementBId),
+        axis1ElementAId: parseTrimmedPanelElementId(value.axis1ElementAId),
+        axis1ElementBId: parseTrimmedPanelElementId(value.axis1ElementBId),
+        axis2ElementAId: parseTrimmedPanelElementId(value.axis2ElementAId),
+        axis2ElementBId: parseTrimmedPanelElementId(value.axis2ElementBId),
+      }
       return validateFaceConstraint(out) ? out : null
     }
     case 'panel': {
@@ -436,6 +484,14 @@ export function parseFaceConstraint(value: unknown): FaceConstraint | null {
         const xb = parseTrimmedPanelElementId(value.panelXElementBId)
         const ya = parseTrimmedPanelElementId(value.panelYElementAId)
         const yb = parseTrimmedPanelElementId(value.panelYElementBId)
+        const thicknessConstId =
+          typeof value.thicknessConstId === 'string' ? value.thicknessConstId.trim() || undefined : undefined
+        const thicknessElementAId = parseTrimmedPanelElementId(value.thicknessElementAId)
+        const thicknessElementBId = parseTrimmedPanelElementId(value.thicknessElementBId)
+        const panelXMinMaxId =
+          typeof value.panelXMinMaxId === 'string' ? value.panelXMinMaxId.trim() || undefined : undefined
+        const panelYMinMaxId =
+          typeof value.panelYMinMaxId === 'string' ? value.panelYMinMaxId.trim() || undefined : undefined
         const mode = resolvePanelMeasureModeRead(value)
         if (mode === 'facePairs' && !(xa && xb && ya && yb)) return null
 
@@ -451,6 +507,11 @@ export function parseFaceConstraint(value: unknown): FaceConstraint | null {
           panelXElementBId: xb,
           panelYElementAId: ya,
           panelYElementBId: yb,
+          thicknessConstId,
+          thicknessElementAId,
+          thicknessElementBId,
+          panelXMinMaxId,
+          panelYMinMaxId,
         }
         return validateFaceConstraint(out) ? out : null
       }
