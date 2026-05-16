@@ -324,6 +324,11 @@
   outline-offset: 1px;
 }
 
+.dimensionsInput:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .dimensionsList {
   list-style: none;
   margin: 4px 0 0;
@@ -342,6 +347,13 @@
   margin-bottom: 0;
   padding-bottom: 0;
   border-bottom: none;
+}
+
+.dimensionsApplyError {
+  margin: 4px 0 0;
+  font-size: 0.72rem;
+  color: #f87171;
+  line-height: 1.35;
 }
 
 .constraintLock {

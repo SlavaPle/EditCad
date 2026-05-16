@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { BufferGeometry } from 'three'
 import { useTranslation } from 'react-i18next'
-import { analyzeTwoFaceStretch, type TwoFaceStretchError } from '../lib/twoFaceStretch'
+import { analyzeTwoFaceStretch } from '../lib/twoFaceStretch'
 import type { ApplyTwoFaceStretchOverlay } from '../lib/applyStretchOverlay'
 import { partitionSelectionIntoCoplanarPatches } from '../features/model-selection/facePlaneSelection'
 import {
@@ -16,8 +16,11 @@ import {
   panelAxisBoundsFromMinMaxForm,
   panelAxisBoundsFromParsed,
 } from '../lib/panelAxisBoundsFromMinMaxForm'
+import {
+  applyTargetDistanceFromInput,
+  type ApplyTwoFaceStretchFn,
+} from '../lib/applyTargetDistanceFromInput'
 import { parsePositiveMm } from '../lib/parsePositiveMm'
-import type { PreparedStretchPrecheckError } from '../lib/preparedStretchValidation'
 import type { PreparedModelElement } from '../lib/preparedElementFormat'
 import {
   findMatchingPanelThicknessConstraint,
@@ -70,12 +73,7 @@ export interface RightPanelProps {
   limitsInstallConstraintType: FaceConstraintType
   onLimitsInstallConstraintTypeChange: (next: FaceConstraintType) => void
   preparedModelElements: readonly PreparedModelElement[]
-  onApplyTwoFaceStretch: (
-    targetMm: number,
-    overlay?: ApplyTwoFaceStretchOverlay,
-  ) =>
-    | { ok: true; geometry: BufferGeometry; effectiveTargetMm: number }
-    | { ok: false; error: TwoFaceStretchError | PreparedStretchPrecheckError }
+  onApplyTwoFaceStretch: ApplyTwoFaceStretchFn
   faceConstraints: FaceConstraint[]
   onFaceConstraintsChange: (next: FaceConstraint[]) => void
   onMergeModelElements: (elements: readonly PreparedModelElement[]) => void
@@ -325,12 +323,7 @@ export function RightPanel({
   }, [analysis, constStretchNominalMm])
 
   const handleApply = useCallback(() => {
-    const mm = parsePositiveMm(targetInput)
-    if (mm === null) {
-      setApplyError('invalidTarget')
-      return
-    }
-    const result = onApplyTwoFaceStretch(mm, { rejectClampedTarget: true })
+    const result = applyTargetDistanceFromInput(targetInput, onApplyTwoFaceStretch)
     if (!result.ok) {
       setApplyError(result.error)
       return

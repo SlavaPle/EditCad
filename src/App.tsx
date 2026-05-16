@@ -420,6 +420,7 @@ function App() {
           limitsSummaryGeometry={model}
           limitsSummaryModelElements={preparedConstraints.modelElements ?? []}
           geometryRevision={geometryRevision}
+          onApplyTwoFaceStretch={handleApplyTwoFaceStretch}
           onLimitRowClick={handleLimitRowClick}
           focusedLimitConstraintId={focusedLimitConstraintId}
           onReplaceLimitConstraint={handleReplaceLimitConstraint}

@@ -93,6 +93,7 @@
     "dimensions": {
       "title": "Dimensions",
       "placeholderNoModel": "Load a model to use dimensions.",
+      "typeMinMaxLabel": "MIN/MAX",
       "elementaryEmpty": "No elementary limits with a measurable gap between planes (pairs of faces / prepared elements).",
       "elementaryListAria": "Elementary limits"
     },

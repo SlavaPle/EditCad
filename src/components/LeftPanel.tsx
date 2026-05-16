@@ -11,6 +11,7 @@ import { filterConstraintsForLeftPanelList } from '../features/face-constraints/
 import { formatConstraintUiSummary } from '../features/face-constraints/formatConstraintUiSummary'
 import { LeftPanelLimitInlineEditor } from './LeftPanelLimitInlineEditor'
 import { LeftPanelDimensionsSection } from './LeftPanelDimensionsSection'
+import type { ApplyTwoFaceStretchFn } from '../lib/applyTargetDistanceFromInput'
 import styles from './LeftPanel.module.css'
 
 export interface LeftPanelProps {
@@ -33,6 +34,7 @@ export interface LeftPanelProps {
   limitsSummaryGeometry: BufferGeometry | null
   limitsSummaryModelElements: readonly PreparedModelElement[]
   geometryRevision: number
+  onApplyTwoFaceStretch: ApplyTwoFaceStretchFn
   onLimitRowClick?: (constraint: FaceConstraint) => void
   focusedLimitConstraintId?: string | null
   onReplaceLimitConstraint?: (next: FaceConstraint) => void
@@ -56,6 +58,7 @@ export function LeftPanel({
   limitsSummaryGeometry,
   limitsSummaryModelElements,
   geometryRevision,
+  onApplyTwoFaceStretch,
   onLimitRowClick,
   focusedLimitConstraintId = null,
   onReplaceLimitConstraint,
@@ -208,6 +211,7 @@ export function LeftPanel({
             faceConstraints={faceConstraints}
             limitsSummaryGeometry={limitsSummaryGeometry}
             limitsSummaryModelElements={limitsSummaryModelElements}
+            onApplyTwoFaceStretch={onApplyTwoFaceStretch}
           />
         </div>
       </div>

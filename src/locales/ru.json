@@ -93,6 +93,7 @@
     "dimensions": {
       "title": "Размеры",
       "placeholderNoModel": "Загрузите модель, чтобы работать с размерами.",
+      "typeMinMaxLabel": "MIN/MAX",
       "elementaryEmpty": "Нет элементарных лимитов с измеримым расстоянием между плоскостями (пары граней / элементов ECDPRT).",
       "elementaryListAria": "Элементарные лимиты"
     },
