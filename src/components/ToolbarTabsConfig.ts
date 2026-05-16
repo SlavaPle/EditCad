@@ -4,6 +4,7 @@ export type ToolbarActionId =
   | 'open'
   | 'save'
   | 'saveAs'
+  | 'paste'
   | 'settings'
   | 'editLimits'
   | 'editAppearance'
@@ -22,7 +23,7 @@ export const TOOLBAR_TABS: ToolbarTabConfig[] = [
   {
     id: 'file',
     labelKey: 'toolbar.tabFile',
-    actions: ['open', 'save', 'saveAs', 'settings']
+    actions: ['open', 'save', 'saveAs', 'paste']
   },
   {
     id: 'edit',
