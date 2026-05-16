@@ -154,7 +154,7 @@ function parseElementPlacement(value: unknown): ElementPlacement | undefined | n
       return { kind: 'included' }
     case 'countPerParent': {
       const count = value.count
-      if (!Number.isInteger(count) || count <= 0) return null
+      if (typeof count !== 'number' || !Number.isInteger(count) || count <= 0) return null
       return { kind: 'countPerParent', count }
     }
     case 'spacingAlongParent': {

@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { BufferGeometry } from 'three'
 import { useTranslation } from 'react-i18next'
 import { analyzeTwoFaceStretch } from '../lib/twoFaceStretch'
-import type { ApplyTwoFaceStretchOverlay } from '../lib/applyStretchOverlay'
 import { partitionSelectionIntoCoplanarPatches } from '../features/model-selection/facePlaneSelection'
 import {
   getSelectionPanelListEntries,
