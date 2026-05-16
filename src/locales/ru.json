@@ -29,6 +29,16 @@
   "app": {
     "title": "EditCad"
   },
+  "viewer": {
+    "viewCube": {
+      "faceRight": "Справа",
+      "faceLeft": "Слева",
+      "faceTop": "Сверху",
+      "faceBottom": "Снизу",
+      "faceFront": "Спереди",
+      "faceBack": "Сзади"
+    }
+  },
   "toolbar": {
     "loadModel": "Загрузить модель",
     "exportStl": "Экспорт STL",

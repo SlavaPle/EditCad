@@ -29,6 +29,16 @@
   "app": {
     "title": "EditCad"
   },
+  "viewer": {
+    "viewCube": {
+      "faceRight": "Right",
+      "faceLeft": "Left",
+      "faceTop": "Top",
+      "faceBottom": "Bottom",
+      "faceFront": "Front",
+      "faceBack": "Back"
+    }
+  },
   "toolbar": {
     "loadModel": "Load model",
     "exportStl": "Export STL",

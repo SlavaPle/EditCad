@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from 'react'
 import { Color, MOUSE, NoToneMapping, SRGBColorSpace, type BufferGeometry } from 'three'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Grid } from '@react-three/drei'
+import { ViewCubeGizmo } from '../features/view-navigation/ViewCubeGizmo'
 import { SceneContent } from './Viewer3D/SceneContent'
 import styles from './Viewer3D.module.css'
 import { createEmptySelection, type SelectionState } from '../lib/selection'
@@ -104,6 +105,7 @@ export function Viewer3D({
             RIGHT: MOUSE.PAN,
           }}
         />
+        <ViewCubeGizmo />
         <Grid
           args={[20, 20]}
           cellSize={1}
