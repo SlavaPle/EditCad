@@ -10,6 +10,7 @@ import type { FaceConstraint, FaceConstraintType } from '../features/face-constr
 import { filterConstraintsForLeftPanelList } from '../features/face-constraints/compositeLimitComposition'
 import { formatConstraintUiSummary } from '../features/face-constraints/formatConstraintUiSummary'
 import { LeftPanelLimitInlineEditor } from './LeftPanelLimitInlineEditor'
+import { LeftPanelDimensionsSection } from './LeftPanelDimensionsSection'
 import styles from './LeftPanel.module.css'
 
 export interface LeftPanelProps {
@@ -199,6 +200,7 @@ export function LeftPanel({
               </Fragment>
             )}
           </div>
+          <LeftPanelDimensionsSection hasModel={hasModel} />
         </div>
       </div>
     </aside>

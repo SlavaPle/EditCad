@@ -90,6 +90,11 @@
       "panelYSameBadge": " (Y=X)",
       "panelMeasureBboxBadge": "старое AABB"
     },
+    "dimensions": {
+      "title": "Размеры",
+      "placeholderNoModel": "Загрузите модель, чтобы работать с размерами.",
+      "placeholderReady": "Инструменты размеров появятся здесь."
+    },
     "dropHint": "Перетащите STL сюда или нажмите «Загрузить модель» в тулбаре.",
     "dropHintReplace": "Перетащите другой STL/ECDPRT/STEP/IGES для замены.",
     "unsupportedFormat": "Формат не поддерживается. Используйте .stl, .ecdprt, .stp, .step, .igs или .iges."
