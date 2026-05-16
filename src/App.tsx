@@ -419,6 +419,7 @@ function App() {
           onConstraintsLockedChange={setConstraintsLocked}
           limitsSummaryGeometry={model}
           limitsSummaryModelElements={preparedConstraints.modelElements ?? []}
+          geometryRevision={geometryRevision}
           onLimitRowClick={handleLimitRowClick}
           focusedLimitConstraintId={focusedLimitConstraintId}
           onReplaceLimitConstraint={handleReplaceLimitConstraint}

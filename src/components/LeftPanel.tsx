@@ -32,6 +32,7 @@ export interface LeftPanelProps {
   onConstraintsLockedChange: (next: boolean) => void
   limitsSummaryGeometry: BufferGeometry | null
   limitsSummaryModelElements: readonly PreparedModelElement[]
+  geometryRevision: number
   onLimitRowClick?: (constraint: FaceConstraint) => void
   focusedLimitConstraintId?: string | null
   onReplaceLimitConstraint?: (next: FaceConstraint) => void
@@ -54,6 +55,7 @@ export function LeftPanel({
   onConstraintsLockedChange,
   limitsSummaryGeometry,
   limitsSummaryModelElements,
+  geometryRevision,
   onLimitRowClick,
   focusedLimitConstraintId = null,
   onReplaceLimitConstraint,
@@ -200,7 +202,13 @@ export function LeftPanel({
               </Fragment>
             )}
           </div>
-          <LeftPanelDimensionsSection hasModel={hasModel} />
+          <LeftPanelDimensionsSection
+            hasModel={hasModel}
+            geometryRevision={geometryRevision}
+            faceConstraints={faceConstraints}
+            limitsSummaryGeometry={limitsSummaryGeometry}
+            limitsSummaryModelElements={limitsSummaryModelElements}
+          />
         </div>
       </div>
     </aside>

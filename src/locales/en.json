@@ -93,7 +93,8 @@
     "dimensions": {
       "title": "Dimensions",
       "placeholderNoModel": "Load a model to use dimensions.",
-      "placeholderReady": "Dimension tools will appear here."
+      "elementaryEmpty": "No elementary limits with a measurable gap between planes (pairs of faces / prepared elements).",
+      "elementaryListAria": "Elementary limits"
     },
     "dropHint": "Drag STL here or click \"Load model\" in the toolbar.",
     "dropHintReplace": "Drop another STL/ECDPRT/STEP/IGES to replace.",
