@@ -280,8 +280,16 @@
     },
     "scale": "Scale",
     "scaleHint": "X / Y / Z — after loading a model.",
-    "rotation": "Rotation",
-    "rotationHint": "Axis angles — after loading a model.",
+    "rotation": {
+      "title": "Rotation",
+      "hint": "Angles in degrees around the geometric center (bounding box). Order: X → Y → Z.",
+      "axisX": "X",
+      "axisY": "Y",
+      "axisZ": "Z",
+      "degreesUnit": "°",
+      "apply": "Apply rotation",
+      "invalidAngle": "Enter valid angles in degrees."
+    },
     "colorTexture": "Color & texture",
     "colorTextureHint": "Color and texture — after loading."
   }

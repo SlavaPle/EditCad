@@ -54,6 +54,8 @@ import { removeFaceConstraint, upsertFaceConstraint } from '../features/face-con
 import { getLimitsInstallActivePairPanelUi } from './limitsInstallPanelUi'
 import { PanelAxisMinMaxFields } from './PanelAxisMinMaxFields'
 import { EditAppearanceControls } from './EditAppearanceControls'
+import { ModelRotationControls } from './ModelRotationControls'
+import type { RotationDegrees } from '../features/model-transform/rotateGeometryAroundCenter'
 import type { ModelAppearance } from '../features/viewer-display/modelAppearance'
 import styles from './RightPanel.module.css'
 
@@ -80,6 +82,7 @@ export interface RightPanelProps {
   onRestoreFaceSelection?: (faceTriangleIndices: readonly number[]) => void
   /** Jednorazowy tryb Limits: po udanym dodaniu wyłącz tryb. */
   onLimitsInstallDone?: () => void
+  onApplyModelRotation?: (rotationDeg: RotationDegrees) => void
 }
 
 function naiveStretchMmAfterAddingMinMax(
@@ -115,6 +118,7 @@ export function RightPanel({
   onMergeModelElements,
   onRestoreFaceSelection,
   onLimitsInstallDone,
+  onApplyModelRotation,
 }: RightPanelProps) {
   const { t, i18n } = useTranslation()
   const rows = useMemo(
@@ -1475,10 +1479,12 @@ export function RightPanel({
           <div className={styles.sectionTitle}>{t('rightPanel.scale')}</div>
           <p className={styles.placeholder}>{t('rightPanel.scaleHint')}</p>
         </div>
-        <div className={styles.section}>
-          <div className={styles.sectionTitle}>{t('rightPanel.rotation')}</div>
-          <p className={styles.placeholder}>{t('rightPanel.rotationHint')}</p>
-        </div>
+        {model && onApplyModelRotation && (
+          <div className={styles.section}>
+            <div className={styles.sectionTitle}>{t('rightPanel.rotation.title')}</div>
+            <ModelRotationControls onApply={onApplyModelRotation} />
+          </div>
+        )}
         <div className={styles.section}>
           <div className={styles.sectionTitle}>{t('rightPanel.colorTexture')}</div>
           <p className={styles.placeholder}>{t('rightPanel.colorTextureHint')}</p>

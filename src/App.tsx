@@ -6,6 +6,10 @@ import { LeftPanel } from './components/LeftPanel'
 import { RightPanel } from './components/RightPanel'
 import type { ModelLoaderHandle } from './components/ModelLoader'
 import { clearMeshTopologyCaches } from './features/model-selection/facePlaneSelection'
+import {
+  rotateGeometryAroundCenter,
+  type RotationDegrees,
+} from './features/model-transform/rotateGeometryAroundCenter'
 import { DEFAULT_MODEL_SELECTION_PROXIMITY_FILTER } from './features/model-selection/types'
 import {
   DEFAULT_MODEL_DISPLAY_MODE,
@@ -283,6 +287,16 @@ function App() {
     [handleFaceConstraintsChange, preparedFaceConstraints],
   )
 
+  const handleApplyModelRotation = useCallback(
+    (rotationDeg: RotationDegrees) => {
+      if (!model) return
+      rotateGeometryAroundCenter(model, rotationDeg)
+      clearMeshTopologyCaches(model)
+      setGeometryRevision((n) => n + 1)
+    },
+    [model],
+  )
+
   const handleApplyTwoFaceStretch = useCallback(
     (
       targetMm: number,
@@ -463,6 +477,7 @@ function App() {
           onMergeModelElements={handleMergeModelElements}
           onRestoreFaceSelection={handleRestoreFaceSelection}
           onLimitsInstallDone={() => setLimitsInstallActive(false)}
+          onApplyModelRotation={handleApplyModelRotation}
         />
       </div>
     </div>
