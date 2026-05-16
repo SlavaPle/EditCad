@@ -433,6 +433,7 @@ function App() {
           <Viewer3D
             key={modelKey}
             model={model}
+            modelLoadToken={modelKey}
             geometryRevision={geometryRevision}
             displayMode={displayMode}
             appearance={modelAppearance}

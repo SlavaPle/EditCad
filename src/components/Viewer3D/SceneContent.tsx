@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { BufferGeometry } from 'three'
 import { Bounds } from '@react-three/drei'
+import { FitModelOnLoad } from '../../features/viewer-camera/FitModelOnLoad'
 import { SelectableModel } from './SelectableModel'
 import type { SelectionState } from '../../lib/selection'
 import type { ModelSelectionProximityFilter } from '../../features/model-selection/types'
@@ -15,6 +16,8 @@ import {
 
 interface SceneContentProps {
   model?: BufferGeometry | null
+  /** Token ładowania pliku (modelKey) — wywołuje fit widoku tylko przy nowej detali. */
+  modelLoadToken: number
   geometryRevision: number
   displayMode?: ModelDisplayMode
   appearance?: ModelAppearance
@@ -26,6 +29,7 @@ interface SceneContentProps {
 
 export function SceneContent({
   model,
+  modelLoadToken,
   geometryRevision,
   displayMode = DEFAULT_MODEL_DISPLAY_MODE,
   appearance = DEFAULT_MODEL_APPEARANCE,
@@ -41,7 +45,8 @@ export function SceneContent({
       <directionalLight position={[12, 18, 10]} intensity={2.6} />
       <directionalLight position={[-10, 8, -12]} intensity={1.35} />
       {model && (
-        <Bounds fit observe margin={1.2}>
+        <Bounds margin={1.2}>
+          <FitModelOnLoad model={model} loadToken={modelLoadToken} />
           <SelectableModel
             model={model}
             geometryRevision={geometryRevision}

@@ -20,6 +20,8 @@ const VIEWER_BACKGROUND = '#2d3b52'
 
 export interface Viewer3DProps {
   model?: BufferGeometry | null
+  /** Inkrement przy otwarciu nowego pliku — jednorazowy fit widoku po załadowaniu. */
+  modelLoadToken: number
   /** Inkrement po edycji wierzchołków (np. rozciągnięcie między ścianami). */
   geometryRevision: number
   displayMode?: ModelDisplayMode
@@ -33,6 +35,7 @@ export interface Viewer3DProps {
 
 export function Viewer3D({
   model,
+  modelLoadToken,
   geometryRevision,
   displayMode = DEFAULT_MODEL_DISPLAY_MODE,
   appearance = DEFAULT_MODEL_APPEARANCE,
@@ -86,6 +89,7 @@ export function Viewer3D({
       >
         <SceneContent
           model={model}
+          modelLoadToken={modelLoadToken}
           geometryRevision={geometryRevision}
           displayMode={displayMode}
           appearance={appearance}
