@@ -9,10 +9,11 @@ import {
   type ElementaryFaceConstraint,
 } from '../features/dimensions-panel/elementaryLimitsUi'
 import { resolveTriangleIndicesForConstraint } from '../features/part-constraints/resolveConstraintFaces'
-import {
-  applyTargetDistanceFromInput,
-  type ApplyTwoFaceStretchFn,
-} from '../lib/applyTargetDistanceFromInput'
+import { applyDimensionGapFromInput } from '../features/dimensions-panel/applyDimensionGapFromInput'
+import { formatDimensionGapErrorMessage } from '../features/dimensions-panel/formatDimensionGapErrorMessage'
+import type { ApplyTwoFaceStretchFn } from '../lib/applyTargetDistanceFromInput'
+import { validateDimensionGapInput } from '../features/dimensions-panel/validateDimensionGapInput'
+import type { StretchBasicEnvelope } from '../features/part-constraints/stretchBasicEnvelopeForMergedPair'
 import styles from './LeftPanel.module.css'
 
 export interface LeftPanelDimensionsSectionProps {
@@ -34,9 +35,9 @@ export function LeftPanelDimensionsSection({
 }: LeftPanelDimensionsSectionProps) {
   const { t, i18n } = useTranslation()
   const [draftByConstraintId, setDraftByConstraintId] = useState<Record<string, string>>({})
-  const [applyErrorByConstraintId, setApplyErrorByConstraintId] = useState<Record<string, string>>(
-    {},
-  )
+  const [applyErrorByConstraintId, setApplyErrorByConstraintId] = useState<
+    Record<string, { code: string; envelope: StretchBasicEnvelope | null }>
+  >({})
 
   const planeGapRows = useMemo(
     () =>
@@ -53,29 +54,73 @@ export function LeftPanelDimensionsSection({
     setApplyErrorByConstraintId({})
   }, [geometryRevision, planeGapRows])
 
+  const dimensionValidationContext = useCallback(
+    (c: ElementaryFaceConstraint) => ({
+      geometry: limitsSummaryGeometry,
+      mergedFaces: resolveTriangleIndicesForConstraint(c, limitsSummaryModelElements),
+      faceConstraints,
+      modelElements: limitsSummaryModelElements,
+    }),
+    [limitsSummaryGeometry, limitsSummaryModelElements, faceConstraints],
+  )
+
+  const setRowValidationError = useCallback(
+    (constraintId: string, code: string, envelope: StretchBasicEnvelope | null) => {
+      setApplyErrorByConstraintId((prev) => ({ ...prev, [constraintId]: { code, envelope } }))
+    },
+    [],
+  )
+
+  const clearRowValidationError = useCallback((constraintId: string) => {
+    setApplyErrorByConstraintId((prev) => {
+      if (!(constraintId in prev)) return prev
+      const next = { ...prev }
+      delete next[constraintId]
+      return next
+    })
+  }, [])
+
+  const validateDimensionRowDraft = useCallback(
+    (c: ElementaryFaceConstraint, inputText: string) => {
+      const result = validateDimensionGapInput({
+        inputText,
+        ...dimensionValidationContext(c),
+      })
+      if (!result.ok) {
+        setRowValidationError(c.id, result.error, result.envelope)
+        return false
+      }
+      clearRowValidationError(c.id)
+      return true
+    },
+    [clearRowValidationError, dimensionValidationContext, setRowValidationError],
+  )
+
   const applyDimensionRow = useCallback(
     (c: ElementaryFaceConstraint, inputText: string) => {
       const mergedFaces = resolveTriangleIndicesForConstraint(c, limitsSummaryModelElements)
       if (!mergedFaces || mergedFaces.length < 2) return
-      const result = applyTargetDistanceFromInput(inputText, onApplyTwoFaceStretch, {
-        mergedFaces: [...mergedFaces],
-      })
+      const result = applyDimensionGapFromInput(
+        { inputText, ...dimensionValidationContext(c) },
+        onApplyTwoFaceStretch,
+      )
       if (!result.ok) {
-        setApplyErrorByConstraintId((prev) => ({ ...prev, [c.id]: result.error }))
+        setRowValidationError(c.id, result.error, result.envelope)
         return
       }
       setDraftByConstraintId((prev) => ({
         ...prev,
         [c.id]: formatPlaneGapMmLabel(result.effectiveTargetMm),
       }))
-      setApplyErrorByConstraintId((prev) => {
-        if (!(c.id in prev)) return prev
-        const next = { ...prev }
-        delete next[c.id]
-        return next
-      })
+      clearRowValidationError(c.id)
     },
-    [limitsSummaryModelElements, onApplyTwoFaceStretch],
+    [
+      clearRowValidationError,
+      dimensionValidationContext,
+      limitsSummaryModelElements,
+      onApplyTwoFaceStretch,
+      setRowValidationError,
+    ],
   )
 
   if (!hasModel) {
@@ -99,6 +144,10 @@ export function LeftPanelDimensionsSection({
             const gapStr = formatPlaneGapMmLabel(gapMm)
             const value = draftByConstraintId[c.id] ?? gapStr
             const rowError = applyErrorByConstraintId[c.id]
+            const rowErrorMessage =
+              rowError !== undefined
+                ? formatDimensionGapErrorMessage(t, i18n, rowError.code, rowError.envelope)
+                : undefined
             const isConst = c.type === 'const'
             return (
               <li key={`${c.id}-${geometryRevision}`} className={styles.dimensionsListItem}>
@@ -114,16 +163,16 @@ export function LeftPanelDimensionsSection({
                     onChange={(e) => {
                       const v = e.target.value
                       setDraftByConstraintId((prev) => ({ ...prev, [c.id]: v }))
-                      setApplyErrorByConstraintId((prev) => {
-                        if (!(c.id in prev)) return prev
-                        const next = { ...prev }
-                        delete next[c.id]
-                        return next
-                      })
+                      clearRowValidationError(c.id)
+                    }}
+                    onBlur={() => {
+                      if (isConst) return
+                      validateDimensionRowDraft(c, value)
                     }}
                     onKeyDown={(e) => {
                       if (isConst || e.key !== 'Enter') return
                       e.preventDefault()
+                      if (!validateDimensionRowDraft(c, value)) return
                       applyDimensionRow(c, value)
                     }}
                     title={c.id}
@@ -132,11 +181,9 @@ export function LeftPanelDimensionsSection({
                     aria-invalid={Boolean(rowError)}
                   />
                 </div>
-                {rowError !== undefined && (
+                {rowErrorMessage !== undefined && (
                   <p className={styles.dimensionsApplyError} role="alert">
-                    {i18n.exists(`rightPanel.faceDistance.errors.${rowError}`)
-                      ? t(`rightPanel.faceDistance.errors.${rowError}`)
-                      : rowError}
+                    {rowErrorMessage}
                   </p>
                 )}
               </li>

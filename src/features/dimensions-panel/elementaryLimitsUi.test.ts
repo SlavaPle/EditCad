@@ -4,6 +4,7 @@ import type { FaceConstraint } from '../face-constraints/model'
 import {
   elementaryPlaneGapRows,
   filterElementaryFaceConstraints,
+  formatPlaneGapMmLabel,
 } from './elementaryLimitsUi'
 
 describe('filterElementaryFaceConstraints', () => {
@@ -24,6 +25,13 @@ describe('filterElementaryFaceConstraints', () => {
     ]
     const el = filterElementaryFaceConstraints(all)
     expect(el.map((x) => x.id)).toEqual(['a', 'c'])
+  })
+})
+
+describe('formatPlaneGapMmLabel', () => {
+  it('formats to three decimal places as plain string', () => {
+    expect(formatPlaneGapMmLabel(1.23456)).toBe('1.235')
+    expect(formatPlaneGapMmLabel(10)).toBe('10')
   })
 })
 
