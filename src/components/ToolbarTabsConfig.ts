@@ -12,6 +12,9 @@ export type ToolbarActionId =
   | 'viewSolid'
   | 'viewSolidTextured'
   | 'viewSolidWithEdges'
+  | 'loadPhantom'
+  | 'savePhantom'
+  | 'savePhantomAs'
   | 'createPhantom'
   | 'addPart'
   | 'createAttachment'
@@ -41,7 +44,7 @@ export const TOOLBAR_TABS: ToolbarTabConfig[] = [
   {
     id: 'preAssembly',
     labelKey: 'toolbar.tabPreAssembly',
-    actions: ['createPhantom', 'addPart', 'createAttachment']
+    actions: ['loadPhantom', 'savePhantom', 'savePhantomAs', 'createPhantom', 'addPart', 'createAttachment']
   }
 ]
 

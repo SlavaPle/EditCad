@@ -47,7 +47,12 @@ import {
   getPreAssemblyToolbarUi,
   preAssemblySelectionAnchorId,
   preAssemblySelectionElementId,
+  savePhantomAssemblyFileAs,
+  savePhantomAssemblyToHandle,
+  stripEcdpreExtension,
+  PhantomLoader,
   type PhantomAssemblyFile,
+  type PhantomLoaderHandle,
   type PreAssemblyPanelSelection,
   type PreAssemblyWizard,
 } from './features/pre-assembly'
@@ -97,10 +102,14 @@ function App() {
   const [modelAppearance, setModelAppearance] = useState<ModelAppearance>(DEFAULT_MODEL_APPEARANCE)
   const [limitsInstallConstraintType, setLimitsInstallConstraintType] = useState<FaceConstraintType>('minmax')
   const [phantomDoc, setPhantomDoc] = useState<PhantomAssemblyFile | null>(null)
+  const [phantomSourceFileHandle, setPhantomSourceFileHandle] = useState<BrowserFileHandle | null>(null)
+  const [phantomSourceFileName, setPhantomSourceFileName] = useState<string | null>(null)
+  const [phantomLoadError, setPhantomLoadError] = useState<string | null>(null)
   const [preAssemblyWizard, setPreAssemblyWizard] = useState<PreAssemblyWizard>(null)
   const [preAssemblySelection, setPreAssemblySelection] =
     useState<PreAssemblyPanelSelection>(null)
   const modelLoaderRef = useRef<ModelLoaderHandle>(null)
+  const phantomLoaderRef = useRef<PhantomLoaderHandle>(null)
 
   const selectedPhantomAnchorId = preAssemblySelectionAnchorId(preAssemblySelection)
   const selectedPhantomElementId = preAssemblySelectionElementId(preAssemblySelection)
@@ -405,8 +414,76 @@ function App() {
 
   const preAssemblyToolbarUi = getPreAssemblyToolbarUi({ phantomDoc })
 
+  const handlePhantomLoad = useCallback(
+    (
+      file: PhantomAssemblyFile,
+      sourceHandle?: BrowserFileHandle | null,
+      fileName?: string,
+    ) => {
+      setPhantomDoc(file)
+      setPhantomSourceFileHandle(sourceHandle ?? null)
+      setPhantomSourceFileName(fileName ?? null)
+      setPhantomLoadError(null)
+      setPreAssemblyWizard(null)
+      setPreAssemblySelection({ kind: 'envelope' })
+      setLimitsInstallActive(false)
+      setAppearanceEditActive(false)
+    },
+    [],
+  )
+
+  const handleLoadPhantomClick = useCallback(() => {
+    setPhantomLoadError(null)
+    void phantomLoaderRef.current?.openFileDialog()
+  }, [])
+
+  const handleSavePhantomClick = useCallback(() => {
+    if (!phantomDoc || preAssemblyToolbarUi.saveDisabled) return
+    const baseName = phantomDoc.name || stripEcdpreExtension(phantomSourceFileName)
+    const canOverwrite =
+      !!phantomSourceFileHandle &&
+      (phantomSourceFileName?.toLowerCase().endsWith('.ecdpre') ?? false)
+    if (canOverwrite) {
+      void savePhantomAssemblyToHandle(phantomDoc, phantomSourceFileHandle)
+        .then((savedName) => {
+          if (savedName) setPhantomSourceFileName(savedName)
+        })
+        .catch((err: unknown) => {
+          const message = err instanceof Error ? err.message : String(err)
+          console.error('Phantom save failed:', message)
+        })
+      return
+    }
+    void savePhantomAssemblyFileAs(phantomDoc, baseName, phantomSourceFileHandle ?? undefined)
+      .then(({ handle, fileName }) => {
+        setPhantomSourceFileHandle(handle)
+        setPhantomSourceFileName(fileName)
+      })
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err)
+        console.error('Phantom save failed:', message)
+      })
+  }, [phantomDoc, phantomSourceFileHandle, phantomSourceFileName, preAssemblyToolbarUi.saveDisabled])
+
+  const handleSavePhantomAsClick = useCallback(() => {
+    if (!phantomDoc || preAssemblyToolbarUi.saveDisabled) return
+    const baseName = phantomDoc.name || stripEcdpreExtension(phantomSourceFileName)
+    void savePhantomAssemblyFileAs(phantomDoc, baseName, phantomSourceFileHandle ?? undefined)
+      .then(({ handle, fileName }) => {
+        setPhantomSourceFileHandle(handle)
+        setPhantomSourceFileName(fileName)
+      })
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err)
+        console.error('Phantom save failed:', message)
+      })
+  }, [phantomDoc, phantomSourceFileHandle, phantomSourceFileName, preAssemblyToolbarUi.saveDisabled])
+
   const handleCreatePhantom = useCallback(() => {
     setPhantomDoc(createEmptyPhantomFile())
+    setPhantomSourceFileHandle(null)
+    setPhantomSourceFileName(null)
+    setPhantomLoadError(null)
     setPreAssemblyWizard(null)
     setPreAssemblySelection({ kind: 'envelope' })
     setLimitsInstallActive(false)
@@ -471,6 +548,9 @@ function App() {
         onDisplayModeChange={setDisplayMode}
         preAssemblyToolbarUi={preAssemblyToolbarUi}
         preAssemblyWizard={preAssemblyWizard}
+        onLoadPhantomClick={handleLoadPhantomClick}
+        onSavePhantomClick={handleSavePhantomClick}
+        onSavePhantomAsClick={handleSavePhantomAsClick}
         onCreatePhantom={handleCreatePhantom}
         onAddPart={handleAddPart}
         onCreateAttachment={handleCreateAttachment}
@@ -499,6 +579,8 @@ function App() {
           limitsInstallConstraintType={limitsInstallConstraintType}
           onLimitsInstallConstraintTypeChange={setLimitsInstallConstraintType}
           phantomDoc={phantomDoc}
+          phantomSourceFileName={phantomSourceFileName}
+          phantomLoadError={phantomLoadError}
           preAssemblySelection={preAssemblySelection}
           onPreAssemblySelectionChange={setPreAssemblySelection}
           onPhantomDocChange={setPhantomDoc}
@@ -549,6 +631,11 @@ function App() {
           onPreAssemblyWizardDone={() => setPreAssemblyWizard(null)}
         />
       </div>
+      <PhantomLoader
+        ref={phantomLoaderRef}
+        onLoad={handlePhantomLoad}
+        onError={setPhantomLoadError}
+      />
     </div>
   )
 }

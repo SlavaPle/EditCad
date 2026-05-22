@@ -12,7 +12,7 @@ import {
   type ToolbarTabId
 } from './ToolbarTabsConfig'
 import type { PreAssemblyToolbarUi, PreAssemblyWizard } from '../features/pre-assembly'
-import { getPreAssemblyAddPartTitleKey } from '../features/pre-assembly'
+import { getPreAssemblyAddPartTitleKey, getPreAssemblySaveTitleKey } from '../features/pre-assembly'
 interface ToolbarProps {
   onLoadModelClick?: () => void
   onSaveModelClick?: () => void
@@ -27,6 +27,9 @@ interface ToolbarProps {
   onDisplayModeChange?: (mode: ModelDisplayMode) => void
   preAssemblyToolbarUi?: PreAssemblyToolbarUi
   preAssemblyWizard?: PreAssemblyWizard
+  onLoadPhantomClick?: () => void
+  onSavePhantomClick?: () => void
+  onSavePhantomAsClick?: () => void
   onCreatePhantom?: () => void
   onAddPart?: () => void
   onCreateAttachment?: () => void
@@ -51,6 +54,9 @@ export function Toolbar({
   onDisplayModeChange,
   preAssemblyToolbarUi,
   preAssemblyWizard = null,
+  onLoadPhantomClick,
+  onSavePhantomClick,
+  onSavePhantomAsClick,
   onCreatePhantom,
   onAddPart,
   onCreateAttachment,
@@ -320,6 +326,77 @@ export function Toolbar({
               <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4">
                 <path d="M4 6l6-3 6 3v8l-6 3-6-3V6z" fill="currentColor" fillOpacity="0.85" />
                 <path d="M4 6l6 3 6-3M4 14l6 3 6-3M10 3v14" />
+              </svg>
+            </span>
+          </button>
+        )
+      case 'loadPhantom':
+        return (
+          <button
+            key={actionId}
+            type="button"
+            className={`${styles.iconBtn} ${styles.btnPrimary}`}
+            title={t('preAssembly.loadPhantom.button')}
+            aria-label={t('preAssembly.loadPhantom.button')}
+            onClick={() => onLoadPhantomClick?.()}
+          >
+            <span className={styles.icon}>
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path
+                  d="M3 5h4l2 2h8v8H3V5zm2 2v6h10V9H8.5L6.5 7H5z"
+                  fill="currentColor"
+                />
+              </svg>
+            </span>
+          </button>
+        )
+      case 'savePhantom': {
+        const saveTitleKey = preAssemblyToolbarUi
+          ? getPreAssemblySaveTitleKey(preAssemblyToolbarUi)
+          : 'preAssembly.savePhantom.button'
+        return (
+          <button
+            key={actionId}
+            type="button"
+            className={styles.iconBtn}
+            disabled={!preAssemblyToolbarUi || preAssemblyToolbarUi.saveDisabled}
+            title={t(saveTitleKey)}
+            aria-label={t(saveTitleKey)}
+            onClick={() => onSavePhantomClick?.()}
+          >
+            <span className={styles.icon}>
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M3 2.5h11l3 3V17.5H3V2.5zM6 4.5V9h7V4.5H6zm0 7V15h8v-3.5H6z" fill="currentColor" />
+              </svg>
+            </span>
+          </button>
+        )
+      }
+      case 'savePhantomAs':
+        return (
+          <button
+            key={actionId}
+            type="button"
+            className={styles.iconBtn}
+            disabled={!preAssemblyToolbarUi?.hasPhantom || !!preAssemblyToolbarUi?.saveDisabled}
+            title={t('preAssembly.savePhantomAs.button')}
+            aria-label={t('preAssembly.savePhantomAs.button')}
+            onClick={() => onSavePhantomAsClick?.()}
+          >
+            <span className={styles.icon}>
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path
+                  d="M3 2.5h11l3 3V17.5H3V2.5zM6 4.5V9h7V4.5H6zm0 7V15h8v-3.5H6z"
+                  fill="currentColor"
+                />
+                <path
+                  d="M12.5 3v3.5H16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
             </span>
           </button>

@@ -63,11 +63,27 @@ export {
 } from './phantomStore'
 export {
   getPreAssemblyAddPartTitleKey,
+  getPreAssemblySaveTitleKey,
   getPreAssemblyToolbarUi,
   type PreAssemblyAddPartDisabledReason,
+  type PreAssemblySaveDisabledReason,
   type PreAssemblyToolbarUi,
   type PreAssemblyWizard,
 } from './toolbarActions'
+export {
+  buildEcdpreFileName,
+  ECDPRE_EXTENSION,
+  PHANTOM_FILE_ACCEPT,
+  readPhantomAssemblyFromFile,
+  readPhantomAssemblyFromText,
+  savePhantomAssemblyFileAs,
+  savePhantomAssemblyToHandle,
+  stripEcdpreExtension,
+  validatePhantomForSave,
+  type LoadPhantomResult,
+  type SavePhantomAsResult,
+} from './fileIo'
+export { PhantomLoader, type PhantomLoaderHandle } from './PhantomLoader'
 export {
   PreAssemblyRightPanel,
   PreAssemblyTreePanel,

@@ -49,6 +49,8 @@ export interface LeftPanelProps {
   limitsInstallConstraintType?: FaceConstraintType
   onLimitsInstallConstraintTypeChange?: (next: FaceConstraintType) => void
   phantomDoc?: PhantomAssemblyFile | null
+  phantomSourceFileName?: string | null
+  phantomLoadError?: string | null
   preAssemblySelection?: PreAssemblyPanelSelection
   onPreAssemblySelectionChange?: (next: PreAssemblyPanelSelection) => void
   onPhantomDocChange?: (next: PhantomAssemblyFile) => void
@@ -75,6 +77,8 @@ export function LeftPanel({
   onRemoveLimitConstraint,
   // limitsInstallActive, limitsInstallConstraintType, onLimitsInstallConstraintTypeChange — используются только справа
   phantomDoc = null,
+  phantomSourceFileName = null,
+  phantomLoadError = null,
   preAssemblySelection = null,
   onPreAssemblySelectionChange,
   onPhantomDocChange,
@@ -128,13 +132,31 @@ export function LeftPanel({
       <div className={styles.header}>{t('leftPanel.header')}</div>
       <div className={styles.content}>
         {phantomDoc && onPreAssemblySelectionChange ? (
-          <PreAssemblyTreePanel
-            phantomDoc={phantomDoc}
-            selection={preAssemblySelection}
-            onSelectionChange={onPreAssemblySelectionChange}
-            onAddParameter={onPhantomDocChange ? handleAddParameter : undefined}
-            onAddConnection={onPhantomDocChange ? handleAddConnection : undefined}
-          />
+          <>
+            {phantomSourceFileName ? (
+              <div className={styles.section}>
+                <div className={styles.sectionTitle}>{t('preAssembly.panels.tree.phantomFile')}</div>
+                <div className={styles.currentFile} title={phantomSourceFileName}>
+                  <span className={styles.currentFileIcon} aria-hidden>
+                    📦
+                  </span>
+                  <span className={styles.currentFileName}>{phantomSourceFileName}</span>
+                </div>
+              </div>
+            ) : null}
+            {phantomLoadError ? (
+              <p className={styles.error} role="alert">
+                {phantomLoadError}
+              </p>
+            ) : null}
+            <PreAssemblyTreePanel
+              phantomDoc={phantomDoc}
+              selection={preAssemblySelection}
+              onSelectionChange={onPreAssemblySelectionChange}
+              onAddParameter={onPhantomDocChange ? handleAddParameter : undefined}
+              onAddConnection={onPhantomDocChange ? handleAddConnection : undefined}
+            />
+          </>
         ) : null}
         <ModelLoader
           ref={modelLoaderRef}

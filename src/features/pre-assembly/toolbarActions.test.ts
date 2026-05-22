@@ -10,6 +10,8 @@ describe('pre-assembly toolbarActions', () => {
       addPartDisabled: true,
       addPartDisabledReason: 'noPhantom',
       createAttachmentDisabled: true,
+      saveDisabled: true,
+      saveDisabledReason: 'noPhantom',
     })
     expect(getPreAssemblyAddPartTitleKey(ui, false)).toBe('preAssembly.addPart.button')
   })
@@ -20,6 +22,8 @@ describe('pre-assembly toolbarActions', () => {
     expect(ui.addPartDisabled).toBe(true)
     expect(ui.addPartDisabledReason).toBe('noAnchors')
     expect(ui.createAttachmentDisabled).toBe(false)
+    expect(ui.saveDisabled).toBe(false)
+    expect(ui.saveDisabledReason).toBe(null)
     expect(getPreAssemblyAddPartTitleKey(ui, false)).toBe('preAssembly.addPart.noAnchors')
   })
 
