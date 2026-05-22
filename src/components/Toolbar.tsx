@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styles from './Toolbar.module.css'
 import {
@@ -209,6 +209,26 @@ export function Toolbar({
             </span>
           </button>
         )
+      case 'paste':
+        return (
+          <button
+            key={actionId}
+            type="button"
+            className={styles.iconBtn}
+            disabled
+            title={t('toolbar.paste')}
+            aria-label={t('toolbar.paste')}
+          >
+            <span className={styles.icon}>
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path
+                  d="M6.5 3.5h7a1.5 1.5 0 011.5 1.5v1h-10V5a1.5 1.5 0 011.5-1.5zM5 6.5h10a1.5 1.5 0 011.5 1.5v8a1.5 1.5 0 01-1.5 1.5H5a1.5 1.5 0 01-1.5-1.5V8a1.5 1.5 0 011.5-1.5zm3.2 4.2h3.6v1.2H8.2V10.7zm0 2.4h3.6v1.2H8.2v-1.2z"
+                  fill="currentColor"
+                />
+              </svg>
+            </span>
+          </button>
+        )
       case 'viewEdgesOnly':
         return (
           <button
@@ -307,21 +327,29 @@ export function Toolbar({
       <div className={styles.toolbarRight}>
         <div className={styles.toolbarContent}>
           <div className={styles.toolbarGroup}>
-            {activeTab?.actions.map((actionId) => renderActionButton(actionId))}
-          </div>
-          <select
-            className={styles.langSelect}
-            value={LANGUAGES.some((l) => l.code === i18n.language) ? i18n.language : 'en'}
-            onChange={(e) => i18n.changeLanguage(e.target.value)}
-            title="Language"
-            aria-label="Language"
-          >
-            {LANGUAGES.map(({ code, label }) => (
-              <option key={code} value={code}>
-                {label}
-              </option>
+            {activeTab?.actions.map((actionId) => (
+              <Fragment key={actionId}>
+                {actionId === 'paste' && <div className={styles.toolbarDivider} aria-hidden="true" />}
+                {renderActionButton(actionId)}
+              </Fragment>
             ))}
-          </select>
+          </div>
+          <div className={styles.toolbarGroup}>
+            {renderActionButton('settings')}
+            <select
+              className={styles.langSelect}
+              value={LANGUAGES.some((l) => l.code === i18n.language) ? i18n.language : 'en'}
+              onChange={(e) => i18n.changeLanguage(e.target.value)}
+              title="Language"
+              aria-label="Language"
+            >
+              {LANGUAGES.map(({ code, label }) => (
+                <option key={code} value={code}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
         <div className={styles.tabsRow}>
           {TOOLBAR_TABS.map((tab) => (

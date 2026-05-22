@@ -6,6 +6,10 @@ import { LeftPanel } from './components/LeftPanel'
 import { RightPanel } from './components/RightPanel'
 import type { ModelLoaderHandle } from './components/ModelLoader'
 import { clearMeshTopologyCaches } from './features/model-selection/facePlaneSelection'
+import {
+  rotateGeometryAroundCenter,
+  type RotationDegrees,
+} from './features/model-transform/rotateGeometryAroundCenter'
 import { DEFAULT_MODEL_SELECTION_PROXIMITY_FILTER } from './features/model-selection/types'
 import {
   DEFAULT_MODEL_DISPLAY_MODE,
@@ -150,6 +154,7 @@ function App() {
     },
   ) => {
     setModel(geometry)
+    setModelKey((k) => k + 1)
     setLoadError(null)
     setSourceFileHandle(loadedFromHandle ?? null)
     setSourceFileName(loadedFileName ?? null)
@@ -283,6 +288,16 @@ function App() {
     [handleFaceConstraintsChange, preparedFaceConstraints],
   )
 
+  const handleApplyModelRotation = useCallback(
+    (rotationDeg: RotationDegrees) => {
+      if (!model) return
+      rotateGeometryAroundCenter(model, rotationDeg)
+      clearMeshTopologyCaches(model)
+      setGeometryRevision((n) => n + 1)
+    },
+    [model],
+  )
+
   const handleApplyTwoFaceStretch = useCallback(
     (
       targetMm: number,
@@ -330,13 +345,7 @@ function App() {
   )
 
   const handleLoadModelClick = () => {
-    setModel(null)
     setLoadError(null)
-    setSourceFileHandle(null)
-    setSourceFileName(null)
-    setSourceFormat(null)
-    setModelAppearance(DEFAULT_MODEL_APPEARANCE)
-    setModelKey((k) => k + 1)
     modelLoaderRef.current?.openFileDialog()
   }
 
@@ -433,6 +442,7 @@ function App() {
           <Viewer3D
             key={modelKey}
             model={model}
+            modelLoadToken={modelKey}
             geometryRevision={geometryRevision}
             displayMode={displayMode}
             appearance={modelAppearance}
@@ -462,6 +472,7 @@ function App() {
           onMergeModelElements={handleMergeModelElements}
           onRestoreFaceSelection={handleRestoreFaceSelection}
           onLimitsInstallDone={() => setLimitsInstallActive(false)}
+          onApplyModelRotation={handleApplyModelRotation}
         />
       </div>
     </div>

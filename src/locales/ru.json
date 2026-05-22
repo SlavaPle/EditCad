@@ -29,6 +29,16 @@
   "app": {
     "title": "EditCad"
   },
+  "viewer": {
+    "viewCube": {
+      "faceRight": "Справа",
+      "faceLeft": "Слева",
+      "faceTop": "Сверху",
+      "faceBottom": "Снизу",
+      "faceFront": "Спереди",
+      "faceBack": "Сзади"
+    }
+  },
   "toolbar": {
     "loadModel": "Загрузить модель",
     "exportStl": "Экспорт STL",
@@ -36,6 +46,7 @@
     "open": "Открыть",
     "save": "Сохранить",
     "saveAs": "Сохранить как",
+    "paste": "Вставить",
     "settings": "Настройки",
     "tabFile": "Файл",
     "tabEdit": "Правка",
@@ -269,8 +280,16 @@
     },
     "scale": "Масштаб",
     "scaleHint": "X / Y / Z — после загрузки модели.",
-    "rotation": "Поворот",
-    "rotationHint": "Углы по осям — после загрузки модели.",
+    "rotation": {
+      "title": "Поворот",
+      "hint": "Углы в градусах относительно геометрического центра (ограничивающий параллелепипед). Порядок: X → Y → Z.",
+      "axisX": "X",
+      "axisY": "Y",
+      "axisZ": "Z",
+      "degreesUnit": "°",
+      "apply": "Применить поворот",
+      "invalidAngle": "Введите корректные углы в градусах."
+    },
     "colorTexture": "Цвет и текстура",
     "colorTextureHint": "Выбор цвета и текстуры — после загрузки."
   }
