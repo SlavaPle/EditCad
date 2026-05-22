@@ -8,6 +8,7 @@ import type {
   PhantomEnvelope,
   PhantomParameter,
 } from '../model'
+import { isBoxPhantomEnvelope } from '../model'
 import { resolvePhantomParameters } from '../bindings'
 import { resolveEnvelopeSizeMm } from '../phantomGeometry'
 
@@ -47,6 +48,9 @@ export function formatEnvelopeSummary(
   t: TFunction,
   paramValues?: Readonly<Record<string, number>>,
 ): string {
+  if (!isBoxPhantomEnvelope(envelope)) {
+    return t('preAssembly.panels.envelope.summaryPhase2', { kind: envelope.kind })
+  }
   const w = formatDimensionSpec(envelope.widthMm, t, paramValues)
   const h = formatDimensionSpec(envelope.heightMm, t, paramValues)
   const d = formatDimensionSpec(envelope.depthMm, t, paramValues)
@@ -71,6 +75,7 @@ export function formatResolvedEnvelopeAxes(
 ): string | null {
   const paramValues = resolvePhantomParamValuesForDisplay(phantom)
   if (!paramValues) return null
+  if (!isBoxPhantomEnvelope(phantom.envelope)) return null
   const size = resolveEnvelopeSizeMm(phantom.envelope, paramValues)
   if (!size) return null
   return t('preAssembly.panels.envelope.resolvedAxes', {

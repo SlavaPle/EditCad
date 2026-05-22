@@ -152,6 +152,8 @@
         "thicknessHint": "Panel thickness is driven by parameters or element properties — edit those, not the envelope spans.",
         "thicknessAxis": "Thickness axis",
         "summary": "{{kind}} {{width}} × {{height}} × {{depth}}",
+        "summaryPhase2": "{{kind}} envelope (phase 2)",
+        "phase2ReadOnly": "{{kind}} envelope editing is planned for phase 2.",
         "resolvedAxes": "resolved X×Y×Z: {{x}} × {{y}} × {{z}} mm"
       },
       "parameter": {

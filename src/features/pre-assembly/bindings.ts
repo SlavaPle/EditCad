@@ -6,6 +6,7 @@ import type {
   ResolvePhantomParametersResult,
   ValidateBindingsResult,
 } from './model'
+import { isBoxPhantomEnvelope, isWedgePhantomEnvelope } from './model'
 
 const ELEMENT_DRIVEN_PROPERTIES: ReadonlySet<ElementDrivenProperty> = new Set([
   'thickness',
@@ -52,11 +53,14 @@ export function resolveDimensionSpec(
 }
 
 function collectDimensionSpecsFromPhantom(phantom: PhantomAssembly): DimensionSpec[] {
-  const specs: DimensionSpec[] = [
-    phantom.envelope.widthMm,
-    phantom.envelope.heightMm,
-    phantom.envelope.depthMm,
-  ]
+  const specs: DimensionSpec[] = []
+  const { envelope } = phantom
+  if (isBoxPhantomEnvelope(envelope) || isWedgePhantomEnvelope(envelope)) {
+    specs.push(envelope.widthMm, envelope.heightMm, envelope.depthMm)
+    if (isWedgePhantomEnvelope(envelope) && envelope.taperDeg !== undefined) {
+      specs.push(envelope.taperDeg)
+    }
+  }
   for (const attachment of phantom.attachments) {
     if (attachment.source.kind === 'offsetPlane') {
       specs.push(attachment.source.offsetMm)

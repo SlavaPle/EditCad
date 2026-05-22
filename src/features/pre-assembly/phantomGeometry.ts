@@ -1,8 +1,8 @@
 import type {
   AttachmentAnchor,
   BoxFaceId,
+  BoxPhantomEnvelope,
   PhantomAxis,
-  PhantomEnvelope,
   PhantomTransform,
 } from './model'
 import { resolveDimensionSpec } from './bindings'
@@ -31,14 +31,14 @@ const OUTWARD_NORMALS: Record<BoxFaceId, Vec3Mm> = {
   negZ: [0, 0, -1],
 }
 
-function defaultThicknessAxis(envelope: PhantomEnvelope): PhantomAxis {
+function defaultThicknessAxis(envelope: BoxPhantomEnvelope): PhantomAxis {
   if (envelope.thicknessAxis) return envelope.thicknessAxis
   return 'z'
 }
 
 /** Mapuje width/height/depth na osie X/Y/Z zgodnie z phantomKind i thicknessAxis. */
 export function mapEnvelopeDimensionsToAxes(
-  envelope: PhantomEnvelope,
+  envelope: BoxPhantomEnvelope,
   widthMm: number,
   heightMm: number,
   depthMm: number,
@@ -58,7 +58,7 @@ export function mapEnvelopeDimensionsToAxes(
 }
 
 export function resolveEnvelopeSizeMm(
-  envelope: PhantomEnvelope,
+  envelope: BoxPhantomEnvelope,
   paramValues: Readonly<Record<string, number>>,
 ): EnvelopeSizeMm | null {
   const widthMm = resolveDimensionSpec(envelope.widthMm, paramValues)

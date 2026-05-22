@@ -9,6 +9,7 @@ import type {
   PhantomElementSlot,
   PhantomParameter,
 } from '../model'
+import { isBoxPhantomEnvelope } from '../model'
 import {
   ATTACHMENT_ROLES,
   BOX_FACE_IDS,
@@ -335,6 +336,16 @@ export function PreAssemblyRightPanel({
 
   if (selection.kind === 'envelope') {
     const envelope = phantom.envelope
+    if (!isBoxPhantomEnvelope(envelope)) {
+      return (
+        <div className={styles.section}>
+          <h3 className={styles.editorTitle}>{t('preAssembly.panels.envelope.editorTitle')}</h3>
+          <p className={styles.placeholder}>
+            {t('preAssembly.panels.envelope.phase2ReadOnly', { kind: envelope.kind })}
+          </p>
+        </div>
+      )
+    }
     const isPanel = envelope.phantomKind === 'panel'
     const isCube = envelope.phantomKind === 'cube'
     return (

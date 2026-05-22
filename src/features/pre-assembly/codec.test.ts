@@ -5,12 +5,18 @@ import { describe, expect, it } from 'vitest'
 import {
   PRE_ASSEMBLY_FORMAT,
   PRE_ASSEMBLY_VERSION,
+  SCENE_FORMAT,
+  SCENE_VERSION,
   parsePhantomAssemblyFile,
+  parseSceneDocumentFile,
   serializePhantomAssemblyFile,
+  serializeSceneDocumentFile,
   validateBindingsComplete,
   validatePhantomAssemblyFile,
+  validateSceneDocumentFile,
   type PhantomAssembly,
   type PhantomAssemblyFile,
+  type SceneDocumentFile,
 } from './index'
 
 const projectRoot = join(dirname(fileURLToPath(import.meta.url)), '../../..')
@@ -167,20 +173,53 @@ describe('pre-assembly codec', () => {
     expect(result.ok).toBe(false)
   })
 
-  it('rejects invalid envelope kind', () => {
+  it('rejects wedge envelope in MVP after parse (phase 2 stub)', () => {
     const file = createEmptyPhantomFile()
-    file.phantom.envelope = {
-      kind: 'box',
-      phantomKind: 'panel',
-      widthMm: 1,
-      heightMm: 1,
-      depthMm: 1,
-    }
     const broken = {
       ...file,
       phantom: {
         ...file.phantom,
-        envelope: { ...file.phantom.envelope, kind: 'wedge' },
+        envelope: {
+          kind: 'wedge',
+          widthMm: 600,
+          heightMm: 400,
+          depthMm: 18,
+          taperDeg: 15,
+        },
+      },
+    }
+    const result = validatePhantomAssemblyFile(broken)
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error).toContain('wedge')
+    expect(result.error).toContain('phase 2')
+  })
+
+  it('rejects meshRef envelope in MVP after parse (phase 2 stub)', () => {
+    const file = createEmptyPhantomFile()
+    const broken = {
+      ...file,
+      phantom: {
+        ...file.phantom,
+        envelope: {
+          kind: 'meshRef',
+          ref: 'envelopes/frame-shell.stl',
+        },
+      },
+    }
+    const result = validatePhantomAssemblyFile(broken)
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error).toContain('meshRef')
+  })
+
+  it('rejects invalid envelope kind', () => {
+    const file = createEmptyPhantomFile()
+    const broken = {
+      ...file,
+      phantom: {
+        ...file.phantom,
+        envelope: { kind: 'unknown', widthMm: 1 },
       },
     }
     const result = validatePhantomAssemblyFile(broken)
@@ -241,5 +280,61 @@ describe('pre-assembly codec', () => {
     )
     const parsed = parsePhantomAssemblyFile(content)
     expect(parsed.ok).toBe(true)
+  })
+})
+
+function createSceneDocumentFile(): SceneDocumentFile {
+  return {
+    format: SCENE_FORMAT,
+    version: SCENE_VERSION,
+    id: 'scene-root',
+    name: 'Main scene',
+    scene: {
+      id: 'main-scene',
+      name: 'Main scene',
+      phantoms: [
+        {
+          id: 'frame',
+          ref: 'assemblies/frame.ecdpre',
+          transform: { positionMm: [0, 0, 0], rotationDeg: [0, 0, 0] },
+        },
+        {
+          id: 'panel',
+          ref: 'assemblies/panel.ecdpre',
+          transform: { positionMm: [600, 0, 0], rotationDeg: [0, 0, 0] },
+        },
+      ],
+      connections: [],
+    },
+  }
+}
+
+describe('scene document codec (phase 2 stub)', () => {
+  it('accepts minimal scene with phantom refs', () => {
+    const result = validateSceneDocumentFile(createSceneDocumentFile())
+    expect(result.ok).toBe(true)
+  })
+
+  it('roundtrips scene file through JSON', () => {
+    const source = createSceneDocumentFile()
+    const parsed = parseSceneDocumentFile(serializeSceneDocumentFile(source))
+    expect(parsed.ok).toBe(true)
+    if (!parsed.ok) return
+    expect(parsed.file).toEqual(source)
+  })
+
+  it('rejects scene connection referencing unknown phantom', () => {
+    const source = createSceneDocumentFile()
+    source.scene.connections = [
+      {
+        id: 'link-1',
+        bindingKind: 'rigid',
+        endpointA: { kind: 'phantomAnchor', phantomId: 'frame', anchorId: 'outer' },
+        endpointB: { kind: 'phantomAnchor', phantomId: 'missing', anchorId: 'outer' },
+        rule: { kind: 'coincident' },
+      },
+    ]
+    const result = validateSceneDocumentFile(source)
+    expect(result.ok).toBe(false)
   })
 })

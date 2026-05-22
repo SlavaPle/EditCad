@@ -37,13 +37,49 @@ export type PhantomTransform = {
   rotationDeg: [number, number, number]
 }
 
-export type PhantomEnvelope = {
+export type BoxPhantomEnvelope = {
   kind: 'box'
   phantomKind: 'panel' | 'cube'
   widthMm: DimensionSpec
   heightMm: DimensionSpec
   depthMm: DimensionSpec
   thicknessAxis?: PhantomAxis
+}
+
+/** Klin — faza 2; w MVP tylko parse/typ, bez renderu. */
+export type WedgePhantomEnvelope = {
+  kind: 'wedge'
+  widthMm: DimensionSpec
+  heightMm: DimensionSpec
+  depthMm: DimensionSpec
+  taperDeg?: DimensionSpec
+}
+
+/** Konwert STL przez ref — faza 2; w MVP tylko parse/typ, bez renderu. */
+export type MeshRefPhantomEnvelope = {
+  kind: 'meshRef'
+  ref: string
+}
+
+export type PhantomEnvelope =
+  | BoxPhantomEnvelope
+  | WedgePhantomEnvelope
+  | MeshRefPhantomEnvelope
+
+export function isBoxPhantomEnvelope(envelope: PhantomEnvelope): envelope is BoxPhantomEnvelope {
+  return envelope.kind === 'box'
+}
+
+export function isWedgePhantomEnvelope(
+  envelope: PhantomEnvelope,
+): envelope is WedgePhantomEnvelope {
+  return envelope.kind === 'wedge'
+}
+
+export function isMeshRefPhantomEnvelope(
+  envelope: PhantomEnvelope,
+): envelope is MeshRefPhantomEnvelope {
+  return envelope.kind === 'meshRef'
 }
 
 export type AttachmentRole =
@@ -149,3 +185,64 @@ export type ElementPropertyValues = Partial<Record<ElementDrivenProperty, number
 export type ResolvePhantomParametersResult =
   | { ok: true; values: Record<string, number> }
   | { ok: false; error: string }
+
+/** Identyfikator formatu sceny z wieloma fantomami (JSON). Faza 2. */
+export const SCENE_FORMAT = 'editcad.scene' as const
+
+export const SCENE_VERSION = 1 as const
+
+export type ScenePhantomRef = {
+  /** Stabilny id — na niego wskazują połączenia między fantomami. */
+  id: string
+  /** Ścieżka do pliku .ecdpre. */
+  ref: string
+  transform: PhantomTransform
+}
+
+export type PhantomSceneEndpoint = {
+  kind: 'phantomAnchor'
+  phantomId: string
+  anchorId: string
+}
+
+export type PhantomConnection = {
+  id: string
+  bindingKind: 'rigid' | 'floating'
+  endpointA: PhantomSceneEndpoint
+  endpointB: PhantomSceneEndpoint
+  rule: ConnectionRule
+  degreesOfFreedom?: FloatingDof[]
+}
+
+export type SceneDocument = {
+  id: string
+  name?: string
+  phantoms: ScenePhantomRef[]
+  connections: PhantomConnection[]
+}
+
+export type SceneDocumentFile = {
+  format: typeof SCENE_FORMAT
+  version: typeof SCENE_VERSION
+  id: string
+  name: string
+  scene: SceneDocument
+}
+
+export type ParseSceneDocumentResult =
+  | { ok: true; file: SceneDocumentFile }
+  | { ok: false; error: string }
+
+export type ResolvedElementPlacement = {
+  elementId: string
+  /** Przesunięcie względem pozycji slot→anchor (mm). */
+  offsetMm: [number, number, number]
+}
+
+export type ResolvePhantomConnectionsResult =
+  | { ok: true; placements: ResolvedElementPlacement[] }
+  | { ok: false; error: string; reason: 'unsupported' | 'incomplete' }
+
+export type ResolveSceneConnectionsResult =
+  | { ok: true; phantomTransforms: Record<string, PhantomTransform> }
+  | { ok: false; error: string; reason: 'unsupported' | 'incomplete' }

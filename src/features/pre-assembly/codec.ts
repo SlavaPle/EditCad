@@ -3,11 +3,15 @@ import {
   validateBindingsComplete,
 } from './bindings'
 import {
+  isBoxPhantomEnvelope,
   PRE_ASSEMBLY_FORMAT,
   PRE_ASSEMBLY_VERSION,
+  SCENE_FORMAT,
+  SCENE_VERSION,
   type AttachmentAnchor,
   type AttachmentRole,
   type BoxFaceId,
+  type BoxPhantomEnvelope,
   type ConnectionEndpoint,
   type ConnectionRule,
   type DimensionSpec,
@@ -15,14 +19,22 @@ import {
   type ElementDrivenProperty,
   type ElementVariant,
   type FloatingDof,
+  type MeshRefPhantomEnvelope,
   type ParsePhantomAssemblyResult,
+  type ParseSceneDocumentResult,
   type PhantomAssembly,
   type PhantomAssemblyFile,
   type PhantomAxis,
+  type PhantomConnection,
   type PhantomElementSlot,
   type PhantomEnvelope,
   type PhantomParameter,
+  type PhantomSceneEndpoint,
   type PhantomTransform,
+  type SceneDocument,
+  type SceneDocumentFile,
+  type ScenePhantomRef,
+  type WedgePhantomEnvelope,
 } from './model'
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -169,8 +181,7 @@ function parseParameterList(value: unknown): PhantomParameter[] | null {
   return params
 }
 
-function parsePhantomEnvelope(value: unknown): PhantomEnvelope | null {
-  if (!isObject(value) || value.kind !== 'box') return null
+function parseBoxPhantomEnvelope(value: Record<string, unknown>): BoxPhantomEnvelope | null {
   const rawKind = value.phantomKind
   const phantomKind =
     rawKind === 'plate' ? 'panel' : rawKind === 'panel' || rawKind === 'cube' ? rawKind : null
@@ -182,7 +193,7 @@ function parsePhantomEnvelope(value: unknown): PhantomEnvelope | null {
   const thicknessAxis =
     value.thicknessAxis === undefined ? undefined : parsePhantomAxis(value.thicknessAxis)
   if (value.thicknessAxis !== undefined && thicknessAxis === null) return null
-  const envelope: PhantomEnvelope = {
+  const envelope: BoxPhantomEnvelope = {
     kind: 'box',
     phantomKind,
     widthMm,
@@ -193,6 +204,50 @@ function parsePhantomEnvelope(value: unknown): PhantomEnvelope | null {
     envelope.thicknessAxis = thicknessAxis
   }
   return envelope
+}
+
+function parseWedgePhantomEnvelope(value: Record<string, unknown>): WedgePhantomEnvelope | null {
+  const widthMm = parseDimensionSpec(value.widthMm)
+  const heightMm = parseDimensionSpec(value.heightMm)
+  const depthMm = parseDimensionSpec(value.depthMm)
+  if (widthMm === null || heightMm === null || depthMm === null) return null
+  const taperDeg =
+    value.taperDeg === undefined ? undefined : parseDimensionSpec(value.taperDeg)
+  if (value.taperDeg !== undefined && taperDeg === null) return null
+  const envelope: WedgePhantomEnvelope = {
+    kind: 'wedge',
+    widthMm,
+    heightMm,
+    depthMm,
+  }
+  if (taperDeg !== undefined && taperDeg !== null) {
+    envelope.taperDeg = taperDeg
+  }
+  return envelope
+}
+
+function parseMeshRefPhantomEnvelope(value: Record<string, unknown>): MeshRefPhantomEnvelope | null {
+  if (typeof value.ref !== 'string' || value.ref.trim().length === 0) return null
+  return { kind: 'meshRef', ref: value.ref.trim() }
+}
+
+function parsePhantomEnvelope(value: unknown): PhantomEnvelope | null {
+  if (!isObject(value) || typeof value.kind !== 'string') return null
+  switch (value.kind) {
+    case 'box':
+      return parseBoxPhantomEnvelope(value)
+    case 'wedge':
+      return parseWedgePhantomEnvelope(value)
+    case 'meshRef':
+      return parseMeshRefPhantomEnvelope(value)
+    default:
+      return null
+  }
+}
+
+/** MVP akceptuje tylko box; wedge/meshRef parsują się, ale nie przechodzą walidacji zapisu. */
+export function isMvpSupportedEnvelope(envelope: PhantomEnvelope): boolean {
+  return isBoxPhantomEnvelope(envelope)
 }
 
 function parseAttachmentAnchor(value: unknown): AttachmentAnchor | null {
@@ -475,6 +530,13 @@ export function validatePhantomAssemblyFile(value: unknown): ParsePhantomAssembl
     return { ok: false, error: 'Invalid phantom assembly in pre-assembly file.' }
   }
 
+  if (!isMvpSupportedEnvelope(phantom.envelope)) {
+    return {
+      ok: false,
+      error: `Envelope kind "${phantom.envelope.kind}" is not supported in MVP (phase 2 stub).`,
+    }
+  }
+
   const bindings = validateBindingsComplete(phantom)
   if (!bindings.ok) {
     return { ok: false, error: bindings.error }
@@ -502,5 +564,166 @@ export function parsePhantomAssemblyFile(content: string): ParsePhantomAssemblyR
     return validatePhantomAssemblyFile(json)
   } catch {
     return { ok: false, error: 'Pre-assembly file is not valid JSON.' }
+  }
+}
+
+function parsePhantomSceneEndpoint(value: unknown): PhantomSceneEndpoint | null {
+  if (!isObject(value) || value.kind !== 'phantomAnchor') return null
+  if (typeof value.phantomId !== 'string' || value.phantomId.trim().length === 0) return null
+  if (typeof value.anchorId !== 'string' || value.anchorId.trim().length === 0) return null
+  return {
+    kind: 'phantomAnchor',
+    phantomId: value.phantomId.trim(),
+    anchorId: value.anchorId.trim(),
+  }
+}
+
+function parsePhantomConnection(value: unknown): PhantomConnection | null {
+  if (!isObject(value) || typeof value.id !== 'string' || value.id.trim().length === 0) {
+    return null
+  }
+  if (value.bindingKind !== 'rigid' && value.bindingKind !== 'floating') return null
+  const endpointA = parsePhantomSceneEndpoint(value.endpointA)
+  const endpointB = parsePhantomSceneEndpoint(value.endpointB)
+  const rule = parseConnectionRule(value.rule)
+  if (endpointA === null || endpointB === null || rule === null) return null
+
+  let degreesOfFreedom: FloatingDof[] | undefined
+  if (value.degreesOfFreedom !== undefined) {
+    if (!Array.isArray(value.degreesOfFreedom)) return null
+    degreesOfFreedom = []
+    for (const item of value.degreesOfFreedom) {
+      const dof = parseFloatingDof(item)
+      if (!dof) return null
+      degreesOfFreedom.push(dof)
+    }
+  }
+
+  return {
+    id: value.id.trim(),
+    bindingKind: value.bindingKind,
+    endpointA,
+    endpointB,
+    rule,
+    ...(degreesOfFreedom !== undefined ? { degreesOfFreedom } : {}),
+  }
+}
+
+function parseScenePhantomRef(value: unknown): ScenePhantomRef | null {
+  if (!isObject(value) || typeof value.id !== 'string' || value.id.trim().length === 0) {
+    return null
+  }
+  if (typeof value.ref !== 'string' || value.ref.trim().length === 0) return null
+  const transform = parsePhantomTransform(value.transform)
+  if (transform === null) return null
+  return {
+    id: value.id.trim(),
+    ref: value.ref.trim(),
+    transform,
+  }
+}
+
+function parseSceneDocument(value: unknown): SceneDocument | null {
+  if (!isObject(value) || typeof value.id !== 'string' || value.id.trim().length === 0) {
+    return null
+  }
+  const name = parseOptionalNonEmptyString(value.name)
+  if (name === null) return null
+  if (!Array.isArray(value.phantoms)) return null
+  const phantoms: ScenePhantomRef[] = []
+  const phantomIds = new Set<string>()
+  for (const item of value.phantoms) {
+    const ref = parseScenePhantomRef(item)
+    if (!ref) return null
+    if (phantomIds.has(ref.id)) return null
+    phantomIds.add(ref.id)
+    phantoms.push(ref)
+  }
+  if (!Array.isArray(value.connections)) return null
+  const connections: PhantomConnection[] = []
+  const connectionIds = new Set<string>()
+  for (const item of value.connections) {
+    const connection = parsePhantomConnection(item)
+    if (!connection) return null
+    if (connectionIds.has(connection.id)) return null
+    connectionIds.add(connection.id)
+    connections.push(connection)
+  }
+  return {
+    id: value.id.trim(),
+    ...(name !== undefined ? { name } : {}),
+    phantoms,
+    connections,
+  }
+}
+
+export type ValidateSceneDocumentResult = { ok: true } | { ok: false; error: string }
+
+/** Walidacja strukturalna sceny — bez ładowania plików .ecdpre (faza 2 stub). */
+export function validateSceneDocumentStructure(scene: SceneDocument): ValidateSceneDocumentResult {
+  const phantomIds = new Set(scene.phantoms.map((p) => p.id))
+  for (const connection of scene.connections) {
+    for (const endpoint of [connection.endpointA, connection.endpointB]) {
+      if (!phantomIds.has(endpoint.phantomId)) {
+        return {
+          ok: false,
+          error: `Scene connection "${connection.id}" references unknown phantom "${endpoint.phantomId}".`,
+        }
+      }
+    }
+    if (connection.bindingKind === 'floating' && connection.rule.kind !== 'floating') {
+      return {
+        ok: false,
+        error: `Floating scene connection "${connection.id}" requires a floating rule with min, max, and axis.`,
+      }
+    }
+  }
+  return { ok: true }
+}
+
+export function validateSceneDocumentFile(value: unknown): ParseSceneDocumentResult {
+  if (!isObject(value)) {
+    return { ok: false, error: 'Scene file must be an object.' }
+  }
+  if (value.format !== SCENE_FORMAT) {
+    return { ok: false, error: 'Invalid scene format identifier.' }
+  }
+  if (value.version !== SCENE_VERSION) {
+    return { ok: false, error: 'Unsupported scene version.' }
+  }
+  if (typeof value.id !== 'string' || value.id.trim().length === 0) {
+    return { ok: false, error: 'Scene file id is required.' }
+  }
+  if (typeof value.name !== 'string' || value.name.trim().length === 0) {
+    return { ok: false, error: 'Scene file name is required.' }
+  }
+  const scene = parseSceneDocument(value.scene)
+  if (scene === null) {
+    return { ok: false, error: 'Invalid scene document.' }
+  }
+  const structure = validateSceneDocumentStructure(scene)
+  if (!structure.ok) return structure
+  return {
+    ok: true,
+    file: {
+      format: SCENE_FORMAT,
+      version: SCENE_VERSION,
+      id: value.id.trim(),
+      name: value.name.trim(),
+      scene,
+    },
+  }
+}
+
+export function serializeSceneDocumentFile(file: SceneDocumentFile): string {
+  return JSON.stringify(file, null, 2)
+}
+
+export function parseSceneDocumentFile(content: string): ParseSceneDocumentResult {
+  try {
+    const json = JSON.parse(content) as unknown
+    return validateSceneDocumentFile(json)
+  } catch {
+    return { ok: false, error: 'Scene file is not valid JSON.' }
   }
 }

@@ -152,6 +152,8 @@
         "thicknessHint": "Толщина панели задаётся параметрами или свойствами элемента — меняйте их, а не пролёты конверта.",
         "thicknessAxis": "Ось толщины",
         "summary": "{{kind}} {{width}} × {{height}} × {{depth}}",
+        "summaryPhase2": "конверт {{kind}} (фаза 2)",
+        "phase2ReadOnly": "Редактирование конверта {{kind}} запланировано на фазу 2.",
         "resolvedAxes": "оси X×Y×Z: {{x}} × {{y}} × {{z}} мм"
       },
       "parameter": {

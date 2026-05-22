@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import type { AttachmentAnchor, ElementPropertyValues, PhantomAssembly } from '../model'
+import { isBoxPhantomEnvelope } from '../model'
 import { resolvePhantomParameters } from '../bindings'
 import {
   attachmentAnchorPoseMm,
@@ -27,10 +28,10 @@ export function PhantomAssemblyLayer({
     return result.ok ? result.values : {}
   }, [phantom, elementProperties])
 
-  const envelopeSizeMm = useMemo(
-    () => resolveEnvelopeSizeMm(phantom.envelope, paramValues),
-    [phantom.envelope, paramValues],
-  )
+  const envelopeSizeMm = useMemo(() => {
+    if (!isBoxPhantomEnvelope(phantom.envelope)) return null
+    return resolveEnvelopeSizeMm(phantom.envelope, paramValues)
+  }, [phantom.envelope, paramValues])
 
   const anchorPoses = useMemo(() => {
     if (!envelopeSizeMm) return new Map<string, ReturnType<typeof attachmentAnchorPoseMm>>()

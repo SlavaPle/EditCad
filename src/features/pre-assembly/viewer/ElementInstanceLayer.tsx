@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Edges } from '@react-three/drei'
 import { Box3, BufferGeometry, Vector3 } from 'three'
 import type { ElementPropertyValues, PhantomAssembly, PhantomElementSlot } from '../model'
+import { isBoxPhantomEnvelope } from '../model'
 import { resolvePhantomParameters } from '../bindings'
 import {
   addVec3,
@@ -36,10 +37,10 @@ export function ElementInstanceLayer({
     return result.ok ? result.values : {}
   }, [phantom, elementProperties])
 
-  const envelopeSizeMm = useMemo(
-    () => resolveEnvelopeSizeMm(phantom.envelope, paramValues),
-    [phantom.envelope, paramValues],
-  )
+  const envelopeSizeMm = useMemo(() => {
+    if (!isBoxPhantomEnvelope(phantom.envelope)) return null
+    return resolveEnvelopeSizeMm(phantom.envelope, paramValues)
+  }, [phantom.envelope, paramValues])
 
   const anchorById = useMemo(() => {
     const map = new Map<string, ReturnType<typeof attachmentAnchorPoseMm>>()

@@ -1,15 +1,16 @@
 import {
   PRE_ASSEMBLY_FORMAT,
   PRE_ASSEMBLY_VERSION,
+  isBoxPhantomEnvelope,
   type AttachmentAnchor,
   type AttachmentRole,
   type BoxFaceId,
+  type BoxPhantomEnvelope,
   type ElementConnection,
   type ElementDrivenProperty,
   type PhantomAssembly,
   type PhantomAssemblyFile,
   type PhantomElementSlot,
-  type PhantomEnvelope,
   type PhantomParameter,
 } from './model'
 
@@ -166,8 +167,14 @@ export function updatePhantomInFile(
 
 export function updateEnvelope(
   phantom: PhantomAssembly,
-  patch: Partial<PhantomEnvelope>,
+  patch: Partial<BoxPhantomEnvelope>,
 ): PhantomMutationResult {
+  if (!isBoxPhantomEnvelope(phantom.envelope)) {
+    return {
+      ok: false,
+      error: `Envelope kind "${phantom.envelope.kind}" cannot be edited in MVP (phase 2 stub).`,
+    }
+  }
   return {
     ok: true,
     phantom: {
