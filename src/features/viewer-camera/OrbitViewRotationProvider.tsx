@@ -10,7 +10,10 @@ import {
   stepOrbitViewTween,
   type OrbitViewTweenSession,
 } from './orbitViewTween'
+import { isViewDirectionActive } from '../view-navigation/viewDirectionActive'
+import { requestFitModelToFullView } from './requestFitModelToFullView'
 import {
+  getOrbitViewFocusPoint,
   resolveOrbitCamera,
   updateOrbitViewFromMouse,
   type OrbitControlsLike,
@@ -64,6 +67,13 @@ export function OrbitViewRotationProvider({ model, children }: OrbitViewRotation
         }
       }
 
+      const focusPoint = getOrbitViewFocusPoint(controls, focusOverride, scratchFocus)
+      if (isViewDirectionActive(orbitCamera, focusPoint, direction)) {
+        requestFitModelToFullView()
+        invalidate()
+        return
+      }
+
       const session = beginOrbitViewTweenToDirection(
         direction,
         orbitCamera,
@@ -101,7 +111,15 @@ export function OrbitViewRotationProvider({ model, children }: OrbitViewRotation
     invalidate()
   })
 
-  const value = useMemo(() => ({ rotateViewToDirection }), [rotateViewToDirection])
+  const fitModelToFullView = useCallback(() => {
+    requestFitModelToFullView()
+    invalidate()
+  }, [invalidate])
+
+  const value = useMemo(
+    () => ({ rotateViewToDirection, fitModelToFullView }),
+    [rotateViewToDirection, fitModelToFullView],
+  )
 
   return (
     <OrbitViewRotationContext.Provider value={value}>{children}</OrbitViewRotationContext.Provider>

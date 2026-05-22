@@ -4,6 +4,8 @@ import type { Vector3 } from 'three'
 export type OrbitViewRotationContextValue = {
   /** Animowany obrót widoku do kierunku (gizmo-kostka). */
   rotateViewToDirection: (direction: Vector3) => void
+  /** Dopasowanie detalu do pełnego kadru (środek AABB + zoom). */
+  fitModelToFullView: () => void
 }
 
 export const OrbitViewRotationContext = createContext<OrbitViewRotationContextValue | null>(null)
