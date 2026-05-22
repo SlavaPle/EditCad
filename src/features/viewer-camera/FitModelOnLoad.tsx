@@ -11,15 +11,27 @@ type FitModelOnLoadProps = {
   loadToken: number
 }
 
-/** Dopasowuje widok tylko po załadowaniu detalu — bez observe przy edycji geometrii. */
+/** Dopasowuje widok po załadowaniu detalu — fit po zamontowaniu siatki w Bounds. */
 export function FitModelOnLoad({ model, loadToken }: FitModelOnLoadProps) {
   const bounds = useBounds()
   const controls = useThree((state) => state.controls)
 
   useLayoutEffect(() => {
     if (!model) return
-    fitModelToView(bounds)
-    syncOrbitFocusFromGeometry(controls, model)
+
+    let cancelled = false
+    const frame = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (cancelled) return
+        fitModelToView(bounds)
+        syncOrbitFocusFromGeometry(controls, model)
+      })
+    })
+
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(frame)
+    }
   }, [model, loadToken, bounds, controls])
 
   return null

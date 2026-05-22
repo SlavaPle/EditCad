@@ -1,5 +1,4 @@
 import { useMemo } from 'react'
-import type { BufferGeometry } from 'three'
 import { useTranslation } from 'react-i18next'
 import { ViewCubeControl } from './ViewCubeControl'
 import { ViewCubeGizmoHelper } from './ViewCubeGizmoHelper'
@@ -8,11 +7,7 @@ import { buildViewCubeFaceLabels, type ViewCubeFaceLabelKey } from './viewCubeFa
 /** Odstęp od prawego górnego rogu widoku (px). */
 const VIEW_CUBE_MARGIN: [number, number] = [76, 76]
 
-export type ViewCubeGizmoProps = {
-  model?: BufferGeometry | null
-}
-
-export function ViewCubeGizmo({ model }: ViewCubeGizmoProps = {}) {
+export function ViewCubeGizmo() {
   const { t } = useTranslation()
   const faces = useMemo(
     () => buildViewCubeFaceLabels((key) => t(key as ViewCubeFaceLabelKey)),
@@ -20,7 +15,7 @@ export function ViewCubeGizmo({ model }: ViewCubeGizmoProps = {}) {
   )
 
   return (
-    <ViewCubeGizmoHelper alignment="top-right" margin={VIEW_CUBE_MARGIN} model={model}>
+    <ViewCubeGizmoHelper alignment="top-right" margin={VIEW_CUBE_MARGIN}>
       <ViewCubeControl
         faces={faces}
         color="#c5cad1"

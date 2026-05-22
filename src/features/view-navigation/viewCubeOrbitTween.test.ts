@@ -46,17 +46,14 @@ describe('resolveOrbitCamera', () => {
 })
 
 describe('beginViewCubeTween', () => {
-  it('disables damping and orbit updates during tween', () => {
+  it('captures focus and radius without disabling controls', () => {
     const controls = mockOrbitControls(new Vector3(8, 2, 4))
     controls.object.position.set(8, 12, 4)
 
     const session = beginViewCubeTween(new Vector3(0, 1, 0), controls.object, controls)
 
-    expect(controls.enableDamping).toBe(false)
-    expect(controls.enabled).toBe(false)
+    expect(controls.enabled).toBe(true)
     expect(session.focusPoint.toArray()).toEqual([8, 2, 4])
-    expect(session.dampingBeforeTween).toBe(true)
-    expect(session.controlsEnabledBeforeTween).toBe(true)
     expect(session.radius).toBeCloseTo(10, 5)
     expect(session.q2.angleTo(new Quaternion())).toBeGreaterThan(0.01)
   })
@@ -93,8 +90,6 @@ describe('stepViewCubeTween', () => {
       radius: 10,
       q1: new Quaternion(),
       q2: new Quaternion(),
-      dampingBeforeTween: true,
-      controlsEnabledBeforeTween: true,
       defaultUp: new Vector3(0, 1, 0),
     }
     computeCameraQuaternionForViewDirection(new Vector3(1, 0, 0), session.focusPoint, session.radius, session.q2)
@@ -125,8 +120,6 @@ describe('stepViewCubeTween', () => {
       radius: 5,
       q1: new Quaternion(),
       q2: new Quaternion(),
-      dampingBeforeTween: false,
-      controlsEnabledBeforeTween: true,
       defaultUp: new Vector3(0, 1, 0),
     }
     computeCameraQuaternionForViewDirection(new Vector3(0, 1, 0), session.focusPoint, session.radius, session.q2)
@@ -138,17 +131,15 @@ describe('stepViewCubeTween', () => {
 })
 
 describe('finishViewCubeTween', () => {
-  it('restores damping, enabled flag, camera.up and syncs controls target', () => {
+  it('restores camera.up and syncs controls target', () => {
     const controls = mockOrbitControls(new Vector3(1, 0, 0))
     controls.object.up.set(0, 0, 1)
     const session = beginViewCubeTween(new Vector3(0, 1, 0), controls.object, controls)
     controls.object.up.set(1, 0, 0)
     finishViewCubeTween(session, controls.object, controls)
 
-    expect(controls.enableDamping).toBe(true)
-    expect(controls.enabled).toBe(true)
     expect(controls.target.toArray()).toEqual(session.focusPoint.toArray())
-    expect(controls.update).toHaveBeenCalledTimes(1)
+    expect(controls.update).toHaveBeenCalled()
     expect(controls.object.position.distanceTo(session.focusPoint)).toBeCloseTo(session.radius, 5)
     expect(controls.object.up.toArray()).toEqual(session.defaultUp.toArray())
   })

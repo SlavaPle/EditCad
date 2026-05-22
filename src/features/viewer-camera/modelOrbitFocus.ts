@@ -1,7 +1,7 @@
 import type { BufferGeometry } from 'three'
 import { Vector3 } from 'three'
 import { getGeometryGeometricCenter } from '../model-transform/geometricCenter'
-import { isOrbitControlsLike } from '../view-navigation/viewCubeOrbitTween'
+import { isOrbitControlsLike, syncOrbitViewFocus } from './orbitViewRotation'
 import { setOrbitFocusPointWorld } from './orbitFocusPointWorld'
 
 /** Punkt obrotu widoku — środek geometryczny (AABB) siatki w mm. */
@@ -21,7 +21,6 @@ export function syncOrbitFocusFromGeometry(
   setOrbitFocusPointWorld(center)
 
   if (!isOrbitControlsLike(controls)) return false
-  controls.target.copy(center)
-  controls.update()
+  syncOrbitViewFocus(controls, center)
   return true
 }

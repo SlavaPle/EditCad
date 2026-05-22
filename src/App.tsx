@@ -154,6 +154,7 @@ function App() {
     },
   ) => {
     setModel(geometry)
+    setModelKey((k) => k + 1)
     setLoadError(null)
     setSourceFileHandle(loadedFromHandle ?? null)
     setSourceFileName(loadedFileName ?? null)
@@ -344,13 +345,7 @@ function App() {
   )
 
   const handleLoadModelClick = () => {
-    setModel(null)
     setLoadError(null)
-    setSourceFileHandle(null)
-    setSourceFileName(null)
-    setSourceFormat(null)
-    setModelAppearance(DEFAULT_MODEL_APPEARANCE)
-    setModelKey((k) => k + 1)
     modelLoaderRef.current?.openFileDialog()
   }
 

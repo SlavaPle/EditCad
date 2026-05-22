@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useThree, type ThreeEvent } from '@react-three/fiber'
 import { CanvasTexture, Vector3 } from 'three'
+import { useOrbitViewRotation } from '../viewer-camera/orbitViewRotationContext'
+import { VIEW_CUBE_FACE_DIRECTIONS } from './viewCubeAxisDirections'
 import {
   scaleViewCubeHandle,
   VIEW_CUBE_CORNER_DIMENSIONS,
@@ -8,7 +10,6 @@ import {
   VIEW_CUBE_EDGE_HANDLES,
   viewCubeEdgeBoxDimensions,
 } from './viewCubeControlGeometry'
-import { useViewCubeGizmoContext } from './viewCubeGizmoContext'
 
 const corners = VIEW_CUBE_CORNER_HANDLES.map(scaleViewCubeHandle)
 const edges = VIEW_CUBE_EDGE_HANDLES.map(scaleViewCubeHandle)
@@ -73,7 +74,7 @@ function FaceMaterial({
 }
 
 function FaceCube(props: ViewCubeControlProps) {
-  const { tweenCamera } = useViewCubeGizmoContext()
+  const { rotateViewToDirection } = useOrbitViewRotation()
   const [hover, setHover] = useState<number | null>(null)
 
   return (
@@ -90,7 +91,10 @@ function FaceCube(props: ViewCubeControlProps) {
         props.onClick ??
         ((e) => {
           e.stopPropagation()
-          if (e.face?.normal) tweenCamera(e.face.normal)
+          const faceIndex = Math.floor((e.faceIndex ?? 0) / 2)
+          const axisDir = VIEW_CUBE_FACE_DIRECTIONS[faceIndex]
+          if (!axisDir) return
+          rotateViewToDirection(axisDir.clone())
         })
       }
     >
@@ -108,7 +112,7 @@ type EdgeCubeProps = ViewCubeControlProps & {
 }
 
 function EdgeCube({ onClick, dimensions, position, hoverColor = '#999' }: EdgeCubeProps) {
-  const { tweenCamera } = useViewCubeGizmoContext()
+  const { rotateViewToDirection } = useOrbitViewRotation()
   const [hover, setHover] = useState(false)
 
   return (
@@ -127,7 +131,7 @@ function EdgeCube({ onClick, dimensions, position, hoverColor = '#999' }: EdgeCu
         onClick ??
         ((e) => {
           e.stopPropagation()
-          tweenCamera(position)
+          rotateViewToDirection(position.clone().normalize())
         })
       }
     >

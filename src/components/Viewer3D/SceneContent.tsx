@@ -47,8 +47,6 @@ export function SceneContent({
       <directionalLight position={[-10, 8, -12]} intensity={1.35} />
       {model && (
         <Bounds margin={1.2}>
-          <ModelOrbitFocusSync model={model} geometryRevision={geometryRevision} />
-          <FitModelOnLoad model={model} loadToken={modelLoadToken} />
           <SelectableModel
             model={model}
             geometryRevision={geometryRevision}
@@ -59,6 +57,8 @@ export function SceneContent({
             selectionProximityFilter={selectionProximityFilter}
             onProbableFacesChange={onProbableFacesChange}
           />
+          <ModelOrbitFocusSync model={model} geometryRevision={geometryRevision} />
+          <FitModelOnLoad model={model} loadToken={modelLoadToken} />
         </Bounds>
       )}
     </>

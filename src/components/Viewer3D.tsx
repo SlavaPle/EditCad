@@ -1,7 +1,9 @@
 import type { Dispatch, SetStateAction } from 'react'
 import { Color, MOUSE, NoToneMapping, SRGBColorSpace, type BufferGeometry } from 'three'
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Grid } from '@react-three/drei'
+import { Grid } from '@react-three/drei'
+import { MouseOrbitViewControls } from '../features/viewer-camera/MouseOrbitViewControls'
+import { OrbitViewRotationProvider } from '../features/viewer-camera/OrbitViewRotationProvider'
 import { ViewCubeGizmo } from '../features/view-navigation/ViewCubeGizmo'
 import { SceneContent } from './Viewer3D/SceneContent'
 import styles from './Viewer3D.module.css'
@@ -45,22 +47,7 @@ export function Viewer3D({
   onProbableFacesChange,
   onClearSelection,
 }: Viewer3DProps) {
-  const clearAllSelection = (source: 'pointerMissed' | 'grid') => {
-    // #region agent log
-    fetch('http://127.0.0.1:7882/ingest/cc58a8d9-c779-4012-82fb-05fda4bfad8c', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '44a128' },
-      body: JSON.stringify({
-        sessionId: '44a128',
-        runId: 'pre-fix',
-        hypothesisId: 'H2',
-        location: 'Viewer3D.tsx:clearAllSelection',
-        message: 'Global clear all selection invoked',
-        data: { source },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {})
-    // #endregion
+  const clearAllSelection = (_source: 'pointerMissed' | 'grid') => {
     if (onClearSelection) {
       onClearSelection()
       return
@@ -87,30 +74,31 @@ export function Viewer3D({
           clearAllSelection('pointerMissed')
         }}
       >
-        <SceneContent
-          model={model}
-          modelLoadToken={modelLoadToken}
-          geometryRevision={geometryRevision}
-          displayMode={displayMode}
-          appearance={appearance}
-          selection={selection}
-          onSelectionChange={onSelectionChange}
-          selectionProximityFilter={selectionProximityFilter}
-          onProbableFacesChange={onProbableFacesChange}
-        />
-        <OrbitControls
-          makeDefault
-          enableDamping
-          dampingFactor={0.05}
-          mouseButtons={{
-            // Wartość spoza ROTATE/DOLLY/PAN — brak orbitu na LKM (wybór elementów)
-            LEFT: -1 as unknown as (typeof MOUSE)['ROTATE'],
-            MIDDLE: MOUSE.ROTATE,
-            RIGHT: MOUSE.PAN,
-          }}
-        />
-        <ViewCubeGizmo model={model} />
-        <Grid
+        <OrbitViewRotationProvider model={model}>
+          <SceneContent
+            model={model}
+            modelLoadToken={modelLoadToken}
+            geometryRevision={geometryRevision}
+            displayMode={displayMode}
+            appearance={appearance}
+            selection={selection}
+            onSelectionChange={onSelectionChange}
+            selectionProximityFilter={selectionProximityFilter}
+            onProbableFacesChange={onProbableFacesChange}
+          />
+          <MouseOrbitViewControls
+            makeDefault
+            enableDamping
+            dampingFactor={0.05}
+            mouseButtons={{
+              // Wartość spoza ROTATE/DOLLY/PAN — brak orbitu na LKM (wybór elementów)
+              LEFT: -1 as unknown as (typeof MOUSE)['ROTATE'],
+              MIDDLE: MOUSE.ROTATE,
+              RIGHT: MOUSE.PAN,
+            }}
+          />
+          <ViewCubeGizmo />
+          <Grid
           args={[20, 20]}
           cellSize={1}
           cellThickness={0.5}
@@ -128,7 +116,8 @@ export function Viewer3D({
               clearAllSelection('grid')
             }
           }}
-        />
+          />
+        </OrbitViewRotationProvider>
       </Canvas>
     </div>
   )
