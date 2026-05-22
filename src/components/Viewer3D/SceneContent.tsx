@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from 'react'
 import type { BufferGeometry } from 'three'
 import { Bounds } from '@react-three/drei'
 import { FitModelOnLoad } from '../../features/viewer-camera/FitModelOnLoad'
+import { ModelOrbitFocusSync } from '../../features/viewer-camera/ModelOrbitFocusSync'
 import { SelectableModel } from './SelectableModel'
 import type { SelectionState } from '../../lib/selection'
 import type { ModelSelectionProximityFilter } from '../../features/model-selection/types'
@@ -46,6 +47,7 @@ export function SceneContent({
       <directionalLight position={[-10, 8, -12]} intensity={1.35} />
       {model && (
         <Bounds margin={1.2}>
+          <ModelOrbitFocusSync model={model} geometryRevision={geometryRevision} />
           <FitModelOnLoad model={model} loadToken={modelLoadToken} />
           <SelectableModel
             model={model}

@@ -40,25 +40,36 @@ export type ViewCubeTweenSession = {
   q2: Quaternion
   dampingBeforeTween: boolean
   controlsEnabledBeforeTween: boolean
+  defaultUp: Vector3
 }
 
 export function beginViewCubeTween(
   direction: Vector3,
-  camera: { position: Vector3; quaternion: Quaternion },
+  camera: { position: Vector3; quaternion: Quaternion; up: Vector3 },
   controls: OrbitControlsLike | null | undefined,
+  orbitFocusOverride?: Vector3,
 ): ViewCubeTweenSession {
   const focusPoint = new Vector3()
+  const defaultUp = camera.up.clone()
   let dampingBeforeTween = true
   let controlsEnabledBeforeTween = true
+
+  if (orbitFocusOverride) {
+    focusPoint.copy(orbitFocusOverride)
+    if (isOrbitControlsLike(controls)) {
+      controls.target.copy(orbitFocusOverride)
+    }
+  } else if (isOrbitControlsLike(controls)) {
+    focusPoint.copy(controls.target)
+  } else {
+    focusPoint.set(0, 0, 0)
+  }
 
   if (isOrbitControlsLike(controls)) {
     dampingBeforeTween = controls.enableDamping
     controlsEnabledBeforeTween = controls.enabled
     controls.enableDamping = false
     controls.enabled = false
-    focusPoint.copy(controls.target)
-  } else {
-    focusPoint.set(0, 0, 0)
   }
 
   const radius =
@@ -69,7 +80,7 @@ export function beginViewCubeTween(
   const q2 = new Quaternion()
   computeCameraQuaternionForViewDirection(direction, focusPoint, radius, q2)
 
-  return { focusPoint, radius, q1, q2, dampingBeforeTween, controlsEnabledBeforeTween }
+  return { focusPoint, radius, q1, q2, dampingBeforeTween, controlsEnabledBeforeTween, defaultUp }
 }
 
 export function stepViewCubeTween(session: ViewCubeTweenSession, delta: number): 'animating' | 'finished' {
@@ -102,6 +113,7 @@ export function finishViewCubeTween(
   applyOrbitCameraQuaternion(session.q2, session.radius, session.focusPoint, camera)
 
   if (isOrbitControlsLike(controls)) {
+    camera.up.copy(session.defaultUp)
     controls.enableDamping = session.dampingBeforeTween
     controls.enabled = session.controlsEnabledBeforeTween
     controls.target.copy(session.focusPoint)

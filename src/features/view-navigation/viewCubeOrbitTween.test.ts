@@ -68,6 +68,22 @@ describe('beginViewCubeTween', () => {
     expect(session.focusPoint.toArray()).toEqual([0, 0, 0])
     expect(session.radius).toBeCloseTo(Math.hypot(3, 4, 5), 5)
   })
+
+  it('uses orbit focus override and syncs controls.target', () => {
+    const controls = mockOrbitControls(new Vector3(0, 0, 0))
+    const override = new Vector3(12, 3, 9)
+    const session = beginViewCubeTween(new Vector3(0, 1, 0), controls.object, controls, override)
+    expect(session.focusPoint.toArray()).toEqual([12, 3, 9])
+    expect(controls.target.toArray()).toEqual([12, 3, 9])
+  })
+
+  it('prefers override over stale controls.target at origin', () => {
+    const controls = mockOrbitControls(new Vector3(0, 0, 0))
+    const partCenter = new Vector3(5, 2, 3)
+    const session = beginViewCubeTween(new Vector3(0, 0, 1), controls.object, controls, partCenter)
+    expect(session.focusPoint.toArray()).toEqual([5, 2, 3])
+    expect(session.focusPoint.toArray()).not.toEqual([0, 0, 0])
+  })
 })
 
 describe('stepViewCubeTween', () => {
@@ -79,6 +95,7 @@ describe('stepViewCubeTween', () => {
       q2: new Quaternion(),
       dampingBeforeTween: true,
       controlsEnabledBeforeTween: true,
+      defaultUp: new Vector3(0, 1, 0),
     }
     computeCameraQuaternionForViewDirection(new Vector3(1, 0, 0), session.focusPoint, session.radius, session.q2)
 
@@ -95,6 +112,7 @@ describe('stepViewCubeTween', () => {
       q2: new Quaternion(),
       dampingBeforeTween: false,
       controlsEnabledBeforeTween: true,
+      defaultUp: new Vector3(0, 1, 0),
     }
     session.q1.copy(session.q2)
     expect(stepViewCubeTween(session, 0.016)).toBe('finished')
@@ -109,6 +127,7 @@ describe('stepViewCubeTween', () => {
       q2: new Quaternion(),
       dampingBeforeTween: false,
       controlsEnabledBeforeTween: true,
+      defaultUp: new Vector3(0, 1, 0),
     }
     computeCameraQuaternionForViewDirection(new Vector3(0, 1, 0), session.focusPoint, session.radius, session.q2)
     session.q1.copy(session.q2)
@@ -119,9 +138,11 @@ describe('stepViewCubeTween', () => {
 })
 
 describe('finishViewCubeTween', () => {
-  it('restores damping, enabled flag and syncs controls target', () => {
+  it('restores damping, enabled flag, camera.up and syncs controls target', () => {
     const controls = mockOrbitControls(new Vector3(1, 0, 0))
+    controls.object.up.set(0, 0, 1)
     const session = beginViewCubeTween(new Vector3(0, 1, 0), controls.object, controls)
+    controls.object.up.set(1, 0, 0)
     finishViewCubeTween(session, controls.object, controls)
 
     expect(controls.enableDamping).toBe(true)
@@ -129,6 +150,7 @@ describe('finishViewCubeTween', () => {
     expect(controls.target.toArray()).toEqual(session.focusPoint.toArray())
     expect(controls.update).toHaveBeenCalledTimes(1)
     expect(controls.object.position.distanceTo(session.focusPoint)).toBeCloseTo(session.radius, 5)
+    expect(controls.object.up.toArray()).toEqual(session.defaultUp.toArray())
   })
 })
 

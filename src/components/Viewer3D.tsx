@@ -109,7 +109,7 @@ export function Viewer3D({
             RIGHT: MOUSE.PAN,
           }}
         />
-        <ViewCubeGizmo />
+        <ViewCubeGizmo model={model} />
         <Grid
           args={[20, 20]}
           cellSize={1}

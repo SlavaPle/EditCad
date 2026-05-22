@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Hud, OrthographicCamera } from '@react-three/drei'
-import { Matrix4, Vector3, type Group, type OrthographicCamera as OrthographicCameraImpl } from 'three'
+import { Matrix4, Vector3, type BufferGeometry, type Group, type OrthographicCamera as OrthographicCameraImpl } from 'three'
+import { getModelOrbitFocusPoint } from '../viewer-camera/modelOrbitFocus'
 import { ViewCubeGizmoContext } from './viewCubeGizmoContext'
 import { computeViewCubeHudPosition } from './viewCubeHudPosition'
 import {
@@ -16,15 +17,20 @@ import {
 
 const matrix = /* @__PURE__ */ new Matrix4()
 
+const scratchOrbitFocus = /* @__PURE__ */ new Vector3()
+
 export type ViewCubeGizmoHelperProps = {
   alignment?: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left'
   margin?: [number, number]
+  /** Geometria modelu — środek AABB jako punkt obrotu przy kliknięciu kostki. */
+  model?: BufferGeometry | null
   children: React.ReactNode
 }
 
 export function ViewCubeGizmoHelper({
   alignment = 'top-right',
   margin = [76, 76],
+  model,
   children,
 }: ViewCubeGizmoHelperProps) {
   const size = useThree((state) => state.size)
@@ -47,16 +53,24 @@ export function ViewCubeGizmoHelper({
 
   const tweenCamera = useCallback(
     (direction: Vector3) => {
+      let orbitFocus: Vector3 | undefined
+      if (model) {
+        const position = model.getAttribute('position')
+        if (position && position.count > 0) {
+          orbitFocus = getModelOrbitFocusPoint(model, scratchOrbitFocus)
+        }
+      }
       const session = beginViewCubeTween(
         direction,
         orbitCamera,
         controls as unknown as OrbitControlsLike | undefined,
+        orbitFocus,
       )
       sessionRef.current = session
       applyViewCubeTweenFrame(session, orbitCamera)
       invalidate()
     },
-    [controls, invalidate, orbitCamera],
+    [controls, invalidate, model, orbitCamera],
   )
 
   useFrame((_, delta) => {

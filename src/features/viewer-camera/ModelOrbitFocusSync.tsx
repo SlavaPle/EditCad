@@ -2,25 +2,28 @@ import { useLayoutEffect } from 'react'
 import { useBounds } from '@react-three/drei'
 import { useThree } from '@react-three/fiber'
 import type { BufferGeometry } from 'three'
-import { fitModelToView } from './fitModelToView'
 import { syncOrbitFocusFromGeometry } from './modelOrbitFocus'
 
-type FitModelOnLoadProps = {
+type ModelOrbitFocusSyncProps = {
   model: BufferGeometry | null | undefined
-  /** Zmienia się przy każdym otwarciu nowego pliku (np. modelKey). */
-  loadToken: number
+  geometryRevision: number
 }
 
-/** Dopasowuje widok tylko po załadowaniu detalu — bez observe przy edycji geometrii. */
-export function FitModelOnLoad({ model, loadToken }: FitModelOnLoadProps) {
+/**
+ * Wewnątrz Bounds: środek z bieżącej geometrii (wierzchołki), nie (0,0,0) przy pustym bounds.
+ */
+export function ModelOrbitFocusSync({ model, geometryRevision }: ModelOrbitFocusSyncProps) {
   const bounds = useBounds()
   const controls = useThree((state) => state.controls)
 
   useLayoutEffect(() => {
     if (!model) return
-    fitModelToView(bounds)
+    const position = model.getAttribute('position')
+    if (!position || position.count === 0) return
+
+    bounds.refresh()
     syncOrbitFocusFromGeometry(controls, model)
-  }, [model, loadToken, bounds, controls])
+  }, [model, geometryRevision, bounds, controls])
 
   return null
 }
