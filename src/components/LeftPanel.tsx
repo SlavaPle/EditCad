@@ -12,6 +12,12 @@ import { formatConstraintUiSummary } from '../features/face-constraints/formatCo
 import { LeftPanelLimitInlineEditor } from './LeftPanelLimitInlineEditor'
 import { LeftPanelDimensionsSection } from './LeftPanelDimensionsSection'
 import type { ApplyTwoFaceStretchFn } from '../lib/applyTargetDistanceFromInput'
+import {
+  PreAssemblyTreePanel,
+  usePreAssemblyPanelActions,
+  type PhantomAssemblyFile,
+  type PreAssemblyPanelSelection,
+} from '../features/pre-assembly'
 import styles from './LeftPanel.module.css'
 
 export interface LeftPanelProps {
@@ -42,6 +48,10 @@ export interface LeftPanelProps {
   limitsInstallActive?: boolean
   limitsInstallConstraintType?: FaceConstraintType
   onLimitsInstallConstraintTypeChange?: (next: FaceConstraintType) => void
+  phantomDoc?: PhantomAssemblyFile | null
+  preAssemblySelection?: PreAssemblyPanelSelection
+  onPreAssemblySelectionChange?: (next: PreAssemblyPanelSelection) => void
+  onPhantomDocChange?: (next: PhantomAssemblyFile) => void
 }
 
 export function LeftPanel({
@@ -64,9 +74,18 @@ export function LeftPanel({
   onReplaceLimitConstraint,
   onRemoveLimitConstraint,
   // limitsInstallActive, limitsInstallConstraintType, onLimitsInstallConstraintTypeChange — используются только справа
+  phantomDoc = null,
+  preAssemblySelection = null,
+  onPreAssemblySelectionChange,
+  onPhantomDocChange,
 }: LeftPanelProps) {
   const { t } = useTranslation()
   const dropZoneRef = useRef<HTMLDivElement>(null)
+  const { handleAddParameter, handleAddConnection } = usePreAssemblyPanelActions(
+    phantomDoc,
+    onPhantomDocChange ?? (() => {}),
+    onPreAssemblySelectionChange ?? (() => {}),
+  )
 
   const getFileIcon = () => {
     if (currentFileFormat === 'ecdprt') return '🧩'
@@ -108,6 +127,15 @@ export function LeftPanel({
     <aside className={styles.panel}>
       <div className={styles.header}>{t('leftPanel.header')}</div>
       <div className={styles.content}>
+        {phantomDoc && onPreAssemblySelectionChange ? (
+          <PreAssemblyTreePanel
+            phantomDoc={phantomDoc}
+            selection={preAssemblySelection}
+            onSelectionChange={onPreAssemblySelectionChange}
+            onAddParameter={onPhantomDocChange ? handleAddParameter : undefined}
+            onAddConnection={onPhantomDocChange ? handleAddConnection : undefined}
+          />
+        ) : null}
         <ModelLoader
           ref={modelLoaderRef}
           onLoad={onModelLoad}

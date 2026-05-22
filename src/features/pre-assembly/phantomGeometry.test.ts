@@ -7,9 +7,9 @@ import {
 } from './phantomGeometry'
 import type { PhantomEnvelope } from './model'
 
-const plateEnvelope: PhantomEnvelope = {
+const panelEnvelope: PhantomEnvelope = {
   kind: 'box',
-  phantomKind: 'plate',
+  phantomKind: 'panel',
   widthMm: 600,
   heightMm: 400,
   depthMm: { paramId: 'thickness' },
@@ -17,21 +17,37 @@ const plateEnvelope: PhantomEnvelope = {
 }
 
 describe('phantomGeometry', () => {
-  it('maps plate dimensions with thickness on Z', () => {
-    expect(mapEnvelopeDimensionsToAxes(plateEnvelope, 600, 400, 18)).toEqual({
+  it('maps panel dimensions with thickness on Z', () => {
+    expect(mapEnvelopeDimensionsToAxes(panelEnvelope, 600, 400, 18)).toEqual({
       x: 600,
       y: 400,
       z: 18,
     })
   })
 
-  it('maps plate dimensions with default thickness on Y', () => {
+  it('maps panel dimensions with default thickness on Z', () => {
     const envelope: PhantomEnvelope = {
       kind: 'box',
-      phantomKind: 'plate',
+      phantomKind: 'panel',
       widthMm: 600,
       heightMm: 400,
       depthMm: 18,
+    }
+    expect(mapEnvelopeDimensionsToAxes(envelope, 600, 400, 18)).toEqual({
+      x: 600,
+      y: 400,
+      z: 18,
+    })
+  })
+
+  it('maps panel dimensions with thickness on Y', () => {
+    const envelope: PhantomEnvelope = {
+      kind: 'box',
+      phantomKind: 'panel',
+      widthMm: 600,
+      heightMm: 400,
+      depthMm: 18,
+      thicknessAxis: 'y',
     }
     expect(mapEnvelopeDimensionsToAxes(envelope, 600, 400, 18)).toEqual({
       x: 600,
@@ -41,12 +57,12 @@ describe('phantomGeometry', () => {
   })
 
   it('resolves envelope size from parameter values', () => {
-    const size = resolveEnvelopeSizeMm(plateEnvelope, { thickness: 22 })
+    const size = resolveEnvelopeSizeMm(panelEnvelope, { thickness: 22 })
     expect(size).toEqual({ x: 600, y: 400, z: 22 })
   })
 
   it('returns null when dimension spec is unresolved', () => {
-    expect(resolveEnvelopeSizeMm(plateEnvelope, {})).toBeNull()
+    expect(resolveEnvelopeSizeMm(panelEnvelope, {})).toBeNull()
   })
 
   it('computes box face center on posY', () => {

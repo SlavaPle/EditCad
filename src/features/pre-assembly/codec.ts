@@ -171,7 +171,10 @@ function parseParameterList(value: unknown): PhantomParameter[] | null {
 
 function parsePhantomEnvelope(value: unknown): PhantomEnvelope | null {
   if (!isObject(value) || value.kind !== 'box') return null
-  if (value.phantomKind !== 'plate' && value.phantomKind !== 'cube') return null
+  const rawKind = value.phantomKind
+  const phantomKind =
+    rawKind === 'plate' ? 'panel' : rawKind === 'panel' || rawKind === 'cube' ? rawKind : null
+  if (phantomKind === null) return null
   const widthMm = parseDimensionSpec(value.widthMm)
   const heightMm = parseDimensionSpec(value.heightMm)
   const depthMm = parseDimensionSpec(value.depthMm)
@@ -181,7 +184,7 @@ function parsePhantomEnvelope(value: unknown): PhantomEnvelope | null {
   if (value.thicknessAxis !== undefined && thicknessAxis === null) return null
   const envelope: PhantomEnvelope = {
     kind: 'box',
-    phantomKind: value.phantomKind,
+    phantomKind,
     widthMm,
     heightMm,
     depthMm,

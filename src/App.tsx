@@ -45,7 +45,10 @@ import styles from './App.module.css'
 import {
   createEmptyPhantomFile,
   getPreAssemblyToolbarUi,
+  preAssemblySelectionAnchorId,
+  preAssemblySelectionElementId,
   type PhantomAssemblyFile,
+  type PreAssemblyPanelSelection,
   type PreAssemblyWizard,
 } from './features/pre-assembly'
 
@@ -95,9 +98,12 @@ function App() {
   const [limitsInstallConstraintType, setLimitsInstallConstraintType] = useState<FaceConstraintType>('minmax')
   const [phantomDoc, setPhantomDoc] = useState<PhantomAssemblyFile | null>(null)
   const [preAssemblyWizard, setPreAssemblyWizard] = useState<PreAssemblyWizard>(null)
-  const [selectedPhantomAnchorId, setSelectedPhantomAnchorId] = useState<string | null>(null)
-  const [selectedPhantomElementId, setSelectedPhantomElementId] = useState<string | null>(null)
+  const [preAssemblySelection, setPreAssemblySelection] =
+    useState<PreAssemblyPanelSelection>(null)
   const modelLoaderRef = useRef<ModelLoaderHandle>(null)
+
+  const selectedPhantomAnchorId = preAssemblySelectionAnchorId(preAssemblySelection)
+  const selectedPhantomElementId = preAssemblySelectionElementId(preAssemblySelection)
 
   const clearAllSelection = useCallback(() => {
     setSelection(createEmptySelection())
@@ -402,8 +408,7 @@ function App() {
   const handleCreatePhantom = useCallback(() => {
     setPhantomDoc(createEmptyPhantomFile())
     setPreAssemblyWizard(null)
-    setSelectedPhantomAnchorId(null)
-    setSelectedPhantomElementId(null)
+    setPreAssemblySelection({ kind: 'envelope' })
     setLimitsInstallActive(false)
     setAppearanceEditActive(false)
   }, [])
@@ -493,6 +498,10 @@ function App() {
           limitsInstallActive={limitsInstallActive}
           limitsInstallConstraintType={limitsInstallConstraintType}
           onLimitsInstallConstraintTypeChange={setLimitsInstallConstraintType}
+          phantomDoc={phantomDoc}
+          preAssemblySelection={preAssemblySelection}
+          onPreAssemblySelectionChange={setPreAssemblySelection}
+          onPhantomDocChange={setPhantomDoc}
         />
         <div className={styles.viewport}>
           <Viewer3D
@@ -532,6 +541,12 @@ function App() {
           onRestoreFaceSelection={handleRestoreFaceSelection}
           onLimitsInstallDone={() => setLimitsInstallActive(false)}
           onApplyModelRotation={handleApplyModelRotation}
+          phantomDoc={phantomDoc}
+          preAssemblySelection={preAssemblySelection}
+          onPreAssemblySelectionChange={setPreAssemblySelection}
+          onPhantomDocChange={setPhantomDoc}
+          preAssemblyWizard={preAssemblyWizard}
+          onPreAssemblyWizardDone={() => setPreAssemblyWizard(null)}
         />
       </div>
     </div>

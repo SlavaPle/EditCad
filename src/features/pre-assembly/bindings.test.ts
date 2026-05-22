@@ -16,7 +16,7 @@ function createFramePhantom(): PhantomAssembly {
     ],
     envelope: {
       kind: 'box',
-      phantomKind: 'plate',
+      phantomKind: 'panel',
       widthMm: 600,
       heightMm: 400,
       depthMm: { paramId: 'thickness' },

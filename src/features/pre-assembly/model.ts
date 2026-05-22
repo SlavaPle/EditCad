@@ -39,7 +39,7 @@ export type PhantomTransform = {
 
 export type PhantomEnvelope = {
   kind: 'box'
-  phantomKind: 'plate' | 'cube'
+  phantomKind: 'panel' | 'cube'
   widthMm: DimensionSpec
   heightMm: DimensionSpec
   depthMm: DimensionSpec

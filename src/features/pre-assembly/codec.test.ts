@@ -27,7 +27,7 @@ function createEmptyPhantomFile(): PhantomAssemblyFile {
       parameters: [],
       envelope: {
         kind: 'box',
-        phantomKind: 'plate',
+        phantomKind: 'panel',
         widthMm: 600,
         heightMm: 400,
         depthMm: 18,
@@ -49,7 +49,7 @@ function createFramePhantom(): PhantomAssembly {
     ],
     envelope: {
       kind: 'box',
-      phantomKind: 'plate',
+      phantomKind: 'panel',
       widthMm: 600,
       heightMm: 400,
       depthMm: { paramId: 'thickness' },
@@ -119,10 +119,31 @@ describe('pre-assembly codec', () => {
 
   it('roundtrips minimal file through JSON', () => {
     const source = createEmptyPhantomFile()
+    source.phantom.envelope.thicknessAxis = 'z'
     const parsed = parsePhantomAssemblyFile(serializePhantomAssemblyFile(source))
     expect(parsed.ok).toBe(true)
     if (!parsed.ok) return
     expect(parsed.file).toEqual(source)
+  })
+
+  it('normalizes legacy plate phantomKind to panel on parse', () => {
+    const raw = {
+      ...createEmptyPhantomFile(),
+      phantom: {
+        ...createEmptyPhantomFile().phantom,
+        envelope: {
+          kind: 'box',
+          phantomKind: 'plate',
+          widthMm: 100,
+          heightMm: 200,
+          depthMm: 3,
+        },
+      },
+    }
+    const parsed = parsePhantomAssemblyFile(JSON.stringify(raw))
+    expect(parsed.ok).toBe(true)
+    if (!parsed.ok) return
+    expect(parsed.file.phantom.envelope.phantomKind).toBe('panel')
   })
 
   it('accepts frame phantom with parameters, slots, attachments, connections', () => {
@@ -150,7 +171,7 @@ describe('pre-assembly codec', () => {
     const file = createEmptyPhantomFile()
     file.phantom.envelope = {
       kind: 'box',
-      phantomKind: 'plate',
+      phantomKind: 'panel',
       widthMm: 1,
       heightMm: 1,
       depthMm: 1,

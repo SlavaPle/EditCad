@@ -79,6 +79,171 @@
     "createAttachment": {
       "button": "Создать привязку",
       "active": "Режим создания привязки (нажмите, чтобы закрыть)"
+    },
+    "panels": {
+      "tree": {
+        "title": "Дерево сборки",
+        "phantomRoot": "Фантом: {{name}}",
+        "incomplete": "Связи неполные — проверьте параметры, слоты и connections перед сохранением.",
+        "parameters": "Параметры",
+        "parametersEmpty": "Нет параметров.",
+        "addParameter": "Добавить",
+        "envelope": "Конверт",
+        "envelopeBox": "Конверт (box)",
+        "attachments": "Привязки",
+        "attachmentsEmpty": "Нет привязок — используйте «Создать привязку» на панели инструментов.",
+        "elements": "Элементы",
+        "elementsEmpty": "Нет слотов элементов.",
+        "connections": "Связи",
+        "connectionsEmpty": "Нет связей.",
+        "addConnection": "Добавить"
+      },
+      "editor": {
+        "title": "Редактор фантома",
+        "selectHint": "Выберите конверт, параметр, привязку, элемент или связь в дереве сборки.",
+        "notFound": "Выбранный элемент больше не существует."
+      },
+      "wizard": {
+        "addAttachment": "Новая привязка",
+        "addAttachmentHint": "Якорь на грани конверта или на offset-плоскости.",
+        "addElement": "Новый слот элемента",
+        "addElementHint": "Привязка ref детали к якорю attachment."
+      },
+      "actions": {
+        "create": "Создать",
+        "remove": "Удалить"
+      },
+      "common": {
+        "id": "Id",
+        "name": "Имя"
+      },
+      "dimension": {
+        "literal": "{{value}} мм",
+        "param": "{{paramId}}",
+        "paramResolved": "{{paramId}} → {{value}} мм",
+        "modeLiteral": "Число мм",
+        "modeParam": "Параметр",
+        "noParameters": "Сначала добавьте параметр"
+      },
+      "envelope": {
+        "editorTitle": "Конверт",
+        "phantomKindLabel": "Тип фантома",
+        "phantomKind": {
+          "panel": "Панель",
+          "cube": "Куб"
+        },
+        "width": "Ширина",
+        "height": "Высота",
+        "spanWidth": "Пролёт (ширина)",
+        "spanHeight": "Пролёт (высота)",
+        "depth": "Глубина",
+        "thickness": "Толщина (ось {{axis}})",
+        "thicknessHint": "Толщина панели задаётся параметрами или свойствами элемента — меняйте их, а не пролёты конверта.",
+        "thicknessAxis": "Ось толщины",
+        "summary": "{{kind}} {{width}} × {{height}} × {{depth}}",
+        "resolvedAxes": "оси X×Y×Z: {{x}} × {{y}} × {{z}} мм"
+      },
+      "parameter": {
+        "editorTitle": "Параметр",
+        "sourceKind": "Источник",
+        "kindLiteral": "Литерал",
+        "kindFromElement": "Из свойства элемента",
+        "valueMm": "Значение",
+        "elementId": "Слот элемента",
+        "property": "Свойство",
+        "sourceLiteral": "литерал {{value}} мм",
+        "sourceFromElement": "{{elementId}}.{{property}}",
+        "sourceExpr": "expr: {{expression}}"
+      },
+      "elementProperty": {
+        "thickness": "толщина",
+        "width": "ширина",
+        "height": "высота",
+        "depth": "глубина",
+        "bboxMinX": "bbox min X",
+        "bboxMaxX": "bbox max X",
+        "bboxMinY": "bbox min Y",
+        "bboxMaxY": "bbox max Y",
+        "bboxMinZ": "bbox min Z",
+        "bboxMaxZ": "bbox max Z"
+      },
+      "attachmentRole": {
+        "floor": "пол",
+        "ceiling": "потолок",
+        "wall": "стена",
+        "outerEdge": "внешний край",
+        "innerEdge": "внутренний край",
+        "middle": "середина",
+        "otherPhantom": "другой фантом",
+        "front": "перед",
+        "back": "зад",
+        "left": "лево",
+        "right": "право",
+        "start": "начало",
+        "end": "конец",
+        "reference": "опорная",
+        "custom": "custom"
+      },
+      "boxFace": {
+        "posX": "грань +X",
+        "negX": "грань −X",
+        "posY": "грань +Y",
+        "negY": "грань −Y",
+        "posZ": "грань +Z",
+        "negZ": "грань −Z"
+      },
+      "attachment": {
+        "editorTitle": "Привязка",
+        "role": "Роль",
+        "sourceKind": "Тип источника",
+        "sourceKindBoxFace": "Грань box",
+        "sourceKindOffsetPlane": "Offset-плоскость",
+        "face": "Грань",
+        "offsetMm": "Смещение",
+        "sourceBoxFace": "{{face}}",
+        "sourceOffsetPlane": "{{face}}, offset {{offset}}"
+      },
+      "element": {
+        "editorTitle": "Слот элемента",
+        "ref": "Ref детали",
+        "refPlaceholder": "panel.ecdprt",
+        "name": "Отображаемое имя",
+        "anchor": "Якорь",
+        "placementOffset": "Смещение (x, y, z мм)",
+        "replaceable": "Заменяемый слот",
+        "activeVariant": "Активный вариант",
+        "anchorSuffix": "→ {{role}}",
+        "fixedLabel": "{{name}}{{anchor}}",
+        "replaceableLabel": "{{name}} [{{variant}}]{{anchor}}"
+      },
+      "connection": {
+        "editorTitle": "Связь",
+        "bindingKindLabel": "Тип связи",
+        "bindingKind": {
+          "rigid": "жёсткая",
+          "floating": "плавающая"
+        },
+        "endpointKindElement": "Элемент",
+        "endpointKindAnchor": "Якорь",
+        "endpointA": "Конец A",
+        "endpointB": "Конец B",
+        "endpointAnchor": "якорь {{role}}",
+        "endpointElement": "элемент {{name}}",
+        "ruleKind": "Правило",
+        "offsetMm": "Смещение",
+        "minOffset": "Min offset",
+        "maxOffset": "Max offset",
+        "axis": "Ось",
+        "rule": {
+          "coincident": "совпадение",
+          "offsetLabel": "offset",
+          "floatingLabel": "диапазон",
+          "offset": "offset {{offset}}",
+          "floating": "{{min}}–{{max}} мм, ось {{axis}}",
+          "custom": "custom: {{expression}}"
+        },
+        "summary": "{{a}} ↔ {{b}} · {{binding}} · {{rule}}"
+      }
     }
   },
   "leftPanel": {

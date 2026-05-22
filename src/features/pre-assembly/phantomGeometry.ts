@@ -33,7 +33,7 @@ const OUTWARD_NORMALS: Record<BoxFaceId, Vec3Mm> = {
 
 function defaultThicknessAxis(envelope: PhantomEnvelope): PhantomAxis {
   if (envelope.thicknessAxis) return envelope.thicknessAxis
-  return envelope.phantomKind === 'plate' ? 'y' : 'z'
+  return 'z'
 }
 
 /** Mapuje width/height/depth na osie X/Y/Z zgodnie z phantomKind i thicknessAxis. */

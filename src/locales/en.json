@@ -79,6 +79,171 @@
     "createAttachment": {
       "button": "Create attachment",
       "active": "Create attachment mode on (click to close)"
+    },
+    "panels": {
+      "tree": {
+        "title": "Assembly tree",
+        "phantomRoot": "Phantom: {{name}}",
+        "incomplete": "Bindings are incomplete — review parameters, slots, and connections before save.",
+        "parameters": "Parameters",
+        "parametersEmpty": "No parameters.",
+        "addParameter": "Add",
+        "envelope": "Envelope",
+        "envelopeBox": "Box envelope",
+        "attachments": "Attachments",
+        "attachmentsEmpty": "No attachments yet — use Create attachment in the toolbar.",
+        "elements": "Elements",
+        "elementsEmpty": "No element slots.",
+        "connections": "Connections",
+        "connectionsEmpty": "No connections.",
+        "addConnection": "Add"
+      },
+      "editor": {
+        "title": "Phantom editor",
+        "selectHint": "Select envelope, parameter, attachment, element, or connection in the assembly tree.",
+        "notFound": "Selected item no longer exists."
+      },
+      "wizard": {
+        "addAttachment": "New attachment",
+        "addAttachmentHint": "Place an anchor on the envelope face or an offset plane.",
+        "addElement": "New element slot",
+        "addElementHint": "Link a part ref to an attachment anchor."
+      },
+      "actions": {
+        "create": "Create",
+        "remove": "Remove"
+      },
+      "common": {
+        "id": "Id",
+        "name": "Name"
+      },
+      "dimension": {
+        "literal": "{{value}} mm",
+        "param": "{{paramId}}",
+        "paramResolved": "{{paramId}} → {{value}} mm",
+        "modeLiteral": "Literal mm",
+        "modeParam": "Parameter",
+        "noParameters": "Add a parameter first"
+      },
+      "envelope": {
+        "editorTitle": "Envelope",
+        "phantomKindLabel": "Phantom kind",
+        "phantomKind": {
+          "panel": "Panel",
+          "cube": "Cube"
+        },
+        "width": "Width",
+        "height": "Height",
+        "spanWidth": "Span width",
+        "spanHeight": "Span height",
+        "depth": "Depth",
+        "thickness": "Thickness (axis {{axis}})",
+        "thicknessHint": "Panel thickness is driven by parameters or element properties — edit those, not the envelope spans.",
+        "thicknessAxis": "Thickness axis",
+        "summary": "{{kind}} {{width}} × {{height}} × {{depth}}",
+        "resolvedAxes": "resolved X×Y×Z: {{x}} × {{y}} × {{z}} mm"
+      },
+      "parameter": {
+        "editorTitle": "Parameter",
+        "sourceKind": "Source",
+        "kindLiteral": "Literal value",
+        "kindFromElement": "From element property",
+        "valueMm": "Value",
+        "elementId": "Element slot",
+        "property": "Property",
+        "sourceLiteral": "literal {{value}} mm",
+        "sourceFromElement": "{{elementId}}.{{property}}",
+        "sourceExpr": "expr: {{expression}}"
+      },
+      "elementProperty": {
+        "thickness": "thickness",
+        "width": "width",
+        "height": "height",
+        "depth": "depth",
+        "bboxMinX": "bbox min X",
+        "bboxMaxX": "bbox max X",
+        "bboxMinY": "bbox min Y",
+        "bboxMaxY": "bbox max Y",
+        "bboxMinZ": "bbox min Z",
+        "bboxMaxZ": "bbox max Z"
+      },
+      "attachmentRole": {
+        "floor": "floor",
+        "ceiling": "ceiling",
+        "wall": "wall",
+        "outerEdge": "outer edge",
+        "innerEdge": "inner edge",
+        "middle": "middle",
+        "otherPhantom": "other phantom",
+        "front": "front",
+        "back": "back",
+        "left": "left",
+        "right": "right",
+        "start": "start",
+        "end": "end",
+        "reference": "reference",
+        "custom": "custom"
+      },
+      "boxFace": {
+        "posX": "+X face",
+        "negX": "−X face",
+        "posY": "+Y face",
+        "negY": "−Y face",
+        "posZ": "+Z face",
+        "negZ": "−Z face"
+      },
+      "attachment": {
+        "editorTitle": "Attachment",
+        "role": "Role",
+        "sourceKind": "Source type",
+        "sourceKindBoxFace": "Box face",
+        "sourceKindOffsetPlane": "Offset plane",
+        "face": "Face",
+        "offsetMm": "Offset",
+        "sourceBoxFace": "{{face}}",
+        "sourceOffsetPlane": "{{face}}, offset {{offset}}"
+      },
+      "element": {
+        "editorTitle": "Element slot",
+        "ref": "Part ref",
+        "refPlaceholder": "panel.ecdprt",
+        "name": "Display name",
+        "anchor": "Anchor",
+        "placementOffset": "Placement offset (x, y, z mm)",
+        "replaceable": "Replaceable slot",
+        "activeVariant": "Active variant",
+        "anchorSuffix": "→ {{role}}",
+        "fixedLabel": "{{name}}{{anchor}}",
+        "replaceableLabel": "{{name}} [{{variant}}]{{anchor}}"
+      },
+      "connection": {
+        "editorTitle": "Connection",
+        "bindingKindLabel": "Binding",
+        "bindingKind": {
+          "rigid": "rigid",
+          "floating": "floating"
+        },
+        "endpointKindElement": "Element",
+        "endpointKindAnchor": "Anchor",
+        "endpointA": "Endpoint A",
+        "endpointB": "Endpoint B",
+        "endpointAnchor": "anchor {{role}}",
+        "endpointElement": "element {{name}}",
+        "ruleKind": "Rule",
+        "offsetMm": "Offset",
+        "minOffset": "Min offset",
+        "maxOffset": "Max offset",
+        "axis": "Axis",
+        "rule": {
+          "coincident": "coincident",
+          "offsetLabel": "offset",
+          "floatingLabel": "floating range",
+          "offset": "offset {{offset}}",
+          "floating": "{{min}}–{{max}} mm, axis {{axis}}",
+          "custom": "custom: {{expression}}"
+        },
+        "summary": "{{a}} ↔ {{b}} · {{binding}} · {{rule}}"
+      }
     }
   },
   "leftPanel": {

@@ -57,6 +57,12 @@ import { EditAppearanceControls } from './EditAppearanceControls'
 import { ModelRotationControls } from './ModelRotationControls'
 import type { RotationDegrees } from '../features/model-transform/rotateGeometryAroundCenter'
 import type { ModelAppearance } from '../features/viewer-display/modelAppearance'
+import {
+  PreAssemblyRightPanel,
+  type PhantomAssemblyFile,
+  type PreAssemblyPanelSelection,
+  type PreAssemblyWizard,
+} from '../features/pre-assembly'
 import styles from './RightPanel.module.css'
 
 export interface RightPanelProps {
@@ -83,6 +89,12 @@ export interface RightPanelProps {
   /** Jednorazowy tryb Limits: po udanym dodaniu wyłącz tryb. */
   onLimitsInstallDone?: () => void
   onApplyModelRotation?: (rotationDeg: RotationDegrees) => void
+  phantomDoc?: PhantomAssemblyFile | null
+  preAssemblySelection?: PreAssemblyPanelSelection
+  onPreAssemblySelectionChange?: (next: PreAssemblyPanelSelection) => void
+  onPhantomDocChange?: (next: PhantomAssemblyFile) => void
+  preAssemblyWizard?: PreAssemblyWizard
+  onPreAssemblyWizardDone?: () => void
 }
 
 function naiveStretchMmAfterAddingMinMax(
@@ -119,6 +131,12 @@ export function RightPanel({
   onRestoreFaceSelection,
   onLimitsInstallDone,
   onApplyModelRotation,
+  phantomDoc = null,
+  preAssemblySelection = null,
+  onPreAssemblySelectionChange,
+  onPhantomDocChange,
+  preAssemblyWizard = null,
+  onPreAssemblyWizardDone,
 }: RightPanelProps) {
   const { t, i18n } = useTranslation()
   const rows = useMemo(
@@ -936,6 +954,16 @@ export function RightPanel({
     <aside className={styles.panel}>
       <div className={styles.header}>{t('rightPanel.header')}</div>
       <div className={styles.content}>
+        {phantomDoc && onPhantomDocChange && onPreAssemblySelectionChange ? (
+          <PreAssemblyRightPanel
+            phantomDoc={phantomDoc}
+            onPhantomDocChange={onPhantomDocChange}
+            selection={preAssemblySelection}
+            onSelectionChange={onPreAssemblySelectionChange}
+            wizard={preAssemblyWizard}
+            onWizardDone={onPreAssemblyWizardDone}
+          />
+        ) : null}
         <div className={styles.section}>
           <div className={styles.sectionTitle}>{t('rightPanel.picking.title')}</div>
           <p className={styles.selectionHint}>{t('rightPanel.picking.hint')}</p>

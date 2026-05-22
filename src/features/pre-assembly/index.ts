@@ -36,13 +36,28 @@ export {
 } from './codec'
 export {
   addAttachment,
+  addConnection,
   addElementSlot,
+  addParameter,
+  ATTACHMENT_ROLES,
+  BOX_FACE_IDS,
   createEmptyPhantomFile,
   hasAttachments,
+  removeAttachment,
+  removeConnection,
+  removeElementSlot,
+  removeParameter,
+  updateAttachment,
+  updateConnection,
+  updateElementSlot,
+  updateEnvelope,
+  updateParameter,
   updatePhantomInFile,
   validateElementAnchorRequired,
   type AddAttachmentInput,
+  type AddConnectionInput,
   type AddElementSlotInput,
+  type AddParameterInput,
   type PhantomMutationResult,
   type ValidateElementAnchorResult,
 } from './phantomStore'
@@ -53,6 +68,14 @@ export {
   type PreAssemblyToolbarUi,
   type PreAssemblyWizard,
 } from './toolbarActions'
+export {
+  PreAssemblyRightPanel,
+  PreAssemblyTreePanel,
+  preAssemblySelectionAnchorId,
+  preAssemblySelectionElementId,
+  usePreAssemblyPanelActions,
+  type PreAssemblyPanelSelection,
+} from './panels'
 export { degToRad, mmToScene, sceneToMm } from './phantomUnits'
 export {
   attachmentAnchorPoseMm,

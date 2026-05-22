@@ -13,7 +13,7 @@ describe('phantomStore', () => {
     expect(file.format).toBe('editcad.pre-assembly')
     expect(file.version).toBe(1)
     expect(file.name).toBe('Frame')
-    expect(file.phantom.envelope.phantomKind).toBe('plate')
+    expect(file.phantom.envelope.phantomKind).toBe('panel')
     expect(file.phantom.attachments).toEqual([])
     expect(file.phantom.elements).toEqual([])
     expect(file.phantom.connections).toEqual([])
