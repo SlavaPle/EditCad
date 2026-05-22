@@ -17,6 +17,10 @@ import {
   DEFAULT_MODEL_APPEARANCE,
   type ModelAppearance,
 } from '../features/viewer-display/modelAppearance'
+import type {
+  ElementPropertyValues,
+  PhantomAssembly,
+} from '../features/pre-assembly'
 
 const VIEWER_BACKGROUND = '#2d3b52'
 
@@ -33,6 +37,11 @@ export interface Viewer3DProps {
   selectionProximityFilter: ModelSelectionProximityFilter
   onProbableFacesChange?: (faces: readonly number[]) => void
   onClearSelection?: () => void
+  phantom?: PhantomAssembly | null
+  phantomElementGeometries?: Readonly<Record<string, BufferGeometry | null>>
+  phantomElementProperties?: Readonly<Record<string, ElementPropertyValues>>
+  selectedPhantomAnchorId?: string | null
+  selectedPhantomElementId?: string | null
 }
 
 export function Viewer3D({
@@ -46,6 +55,11 @@ export function Viewer3D({
   selectionProximityFilter,
   onProbableFacesChange,
   onClearSelection,
+  phantom = null,
+  phantomElementGeometries = {},
+  phantomElementProperties = {},
+  selectedPhantomAnchorId = null,
+  selectedPhantomElementId = null,
 }: Viewer3DProps) {
   const clearAllSelection = (_source: 'pointerMissed' | 'grid') => {
     if (onClearSelection) {
@@ -85,6 +99,11 @@ export function Viewer3D({
             onSelectionChange={onSelectionChange}
             selectionProximityFilter={selectionProximityFilter}
             onProbableFacesChange={onProbableFacesChange}
+            phantom={phantom}
+            phantomElementGeometries={phantomElementGeometries}
+            phantomElementProperties={phantomElementProperties}
+            selectedPhantomAnchorId={selectedPhantomAnchorId}
+            selectedPhantomElementId={selectedPhantomElementId}
           />
           <MouseOrbitViewControls
             makeDefault

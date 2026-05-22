@@ -3,6 +3,14 @@ import type { BufferGeometry } from 'three'
 import { Bounds } from '@react-three/drei'
 import { FitModelOnLoad } from '../../features/viewer-camera/FitModelOnLoad'
 import { ModelOrbitFocusSync } from '../../features/viewer-camera/ModelOrbitFocusSync'
+import type {
+  ElementPropertyValues,
+  PhantomAssembly,
+} from '../../features/pre-assembly'
+import {
+  ElementInstanceLayer,
+  PhantomAssemblyLayer,
+} from '../../features/pre-assembly/viewer'
 import { SelectableModel } from './SelectableModel'
 import type { SelectionState } from '../../lib/selection'
 import type { ModelSelectionProximityFilter } from '../../features/model-selection/types'
@@ -26,6 +34,12 @@ interface SceneContentProps {
   onSelectionChange: Dispatch<SetStateAction<SelectionState>>
   selectionProximityFilter: ModelSelectionProximityFilter
   onProbableFacesChange?: (faces: readonly number[]) => void
+  /** Aktywny fantom-skręcenie (.ecdpre) — warstwa koperty i elementów. */
+  phantom?: PhantomAssembly | null
+  phantomElementGeometries?: Readonly<Record<string, BufferGeometry | null>>
+  phantomElementProperties?: Readonly<Record<string, ElementPropertyValues>>
+  selectedPhantomAnchorId?: string | null
+  selectedPhantomElementId?: string | null
 }
 
 export function SceneContent({
@@ -38,6 +52,11 @@ export function SceneContent({
   onSelectionChange,
   selectionProximityFilter,
   onProbableFacesChange,
+  phantom = null,
+  phantomElementGeometries = {},
+  phantomElementProperties = {},
+  selectedPhantomAnchorId = null,
+  selectedPhantomElementId = null,
 }: SceneContentProps) {
   return (
     <>
@@ -45,6 +64,21 @@ export function SceneContent({
       <ambientLight intensity={0.95} />
       <directionalLight position={[12, 18, 10]} intensity={2.6} />
       <directionalLight position={[-10, 8, -12]} intensity={1.35} />
+      {phantom && (
+        <>
+          <PhantomAssemblyLayer
+            phantom={phantom}
+            elementProperties={phantomElementProperties}
+            selectedAnchorId={selectedPhantomAnchorId}
+          />
+          <ElementInstanceLayer
+            phantom={phantom}
+            elementGeometries={phantomElementGeometries}
+            elementProperties={phantomElementProperties}
+            selectedElementId={selectedPhantomElementId}
+          />
+        </>
+      )}
       {model && (
         <Bounds margin={1.2}>
           <SelectableModel

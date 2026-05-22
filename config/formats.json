@@ -18,6 +18,16 @@
         "empty": "config/templates/element-composition.empty.json",
         "skeleton": "config/templates/element-composition.skeleton.json"
       }
+    },
+    "preAssembly": {
+      "id": "editcad.pre-assembly",
+      "version": 1,
+      "extensions": [".ecdpre"],
+      "implementation": "src/features/pre-assembly",
+      "description": "Phantom assembly: spatial envelope, anchor planes, element slots, connection rules",
+      "templates": {
+        "empty": "config/templates/pre-assembly.empty.json"
+      }
     }
   }
 }

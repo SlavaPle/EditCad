@@ -1,0 +1,24 @@
+{
+  "format": "editcad.pre-assembly",
+  "version": 1,
+  "id": "phantom-root",
+  "name": "Phantom",
+  "phantom": {
+    "id": "phantom-1",
+    "transform": {
+      "positionMm": [0, 0, 0],
+      "rotationDeg": [0, 0, 0]
+    },
+    "parameters": [],
+    "envelope": {
+      "kind": "box",
+      "phantomKind": "plate",
+      "widthMm": 600,
+      "heightMm": 400,
+      "depthMm": 18
+    },
+    "attachments": [],
+    "elements": [],
+    "connections": []
+  }
+}
