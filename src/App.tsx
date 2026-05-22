@@ -42,6 +42,12 @@ import { resizeGeometryAfterConstraintMmEdit } from './features/part-constraints
 import { resolveConstraintDependentFaceIndices } from './features/part-constraints/resolveConstraintDependentFaces'
 import type { ApplyTwoFaceStretchOverlay } from './lib/applyStretchOverlay'
 import styles from './App.module.css'
+import {
+  createEmptyPhantomFile,
+  getPreAssemblyToolbarUi,
+  type PhantomAssemblyFile,
+  type PreAssemblyWizard,
+} from './features/pre-assembly'
 
 function getFileExtensionLower(name: string | null): string | null {
   if (!name) return null
@@ -87,6 +93,10 @@ function App() {
   const [displayMode, setDisplayMode] = useState<ModelDisplayMode>(DEFAULT_MODEL_DISPLAY_MODE)
   const [modelAppearance, setModelAppearance] = useState<ModelAppearance>(DEFAULT_MODEL_APPEARANCE)
   const [limitsInstallConstraintType, setLimitsInstallConstraintType] = useState<FaceConstraintType>('minmax')
+  const [phantomDoc, setPhantomDoc] = useState<PhantomAssemblyFile | null>(null)
+  const [preAssemblyWizard, setPreAssemblyWizard] = useState<PreAssemblyWizard>(null)
+  const [selectedPhantomAnchorId, setSelectedPhantomAnchorId] = useState<string | null>(null)
+  const [selectedPhantomElementId, setSelectedPhantomElementId] = useState<string | null>(null)
   const modelLoaderRef = useRef<ModelLoaderHandle>(null)
 
   const clearAllSelection = useCallback(() => {
@@ -387,6 +397,41 @@ function App() {
       })
   }, [model, preparedConstraints, preparedName, sourceFileHandle, sourceFileName, modelAppearance])
 
+  const preAssemblyToolbarUi = getPreAssemblyToolbarUi({ phantomDoc })
+
+  const handleCreatePhantom = useCallback(() => {
+    setPhantomDoc(createEmptyPhantomFile())
+    setPreAssemblyWizard(null)
+    setSelectedPhantomAnchorId(null)
+    setSelectedPhantomElementId(null)
+    setLimitsInstallActive(false)
+    setAppearanceEditActive(false)
+  }, [])
+
+  const handleAddPart = useCallback(() => {
+    if (preAssemblyToolbarUi.addPartDisabled) return
+    setPreAssemblyWizard((current) => {
+      const next = current === 'element' ? null : 'element'
+      if (next !== null) {
+        setLimitsInstallActive(false)
+        setAppearanceEditActive(false)
+      }
+      return next
+    })
+  }, [preAssemblyToolbarUi.addPartDisabled])
+
+  const handleCreateAttachment = useCallback(() => {
+    if (preAssemblyToolbarUi.createAttachmentDisabled) return
+    setPreAssemblyWizard((current) => {
+      const next = current === 'attachment' ? null : 'attachment'
+      if (next !== null) {
+        setLimitsInstallActive(false)
+        setAppearanceEditActive(false)
+      }
+      return next
+    })
+  }, [preAssemblyToolbarUi.createAttachmentDisabled])
+
   return (
     <div className={styles.app}>
       <Toolbar
@@ -399,7 +444,10 @@ function App() {
         onToggleLimitsInstall={() => {
           setLimitsInstallActive((v) => {
             const next = !v
-            if (next) setAppearanceEditActive(false)
+            if (next) {
+              setAppearanceEditActive(false)
+              setPreAssemblyWizard(null)
+            }
             return next
           })
         }}
@@ -407,12 +455,20 @@ function App() {
         onToggleAppearanceEdit={() => {
           setAppearanceEditActive((v) => {
             const next = !v
-            if (next) setLimitsInstallActive(false)
+            if (next) {
+              setLimitsInstallActive(false)
+              setPreAssemblyWizard(null)
+            }
             return next
           })
         }}
         displayMode={displayMode}
         onDisplayModeChange={setDisplayMode}
+        preAssemblyToolbarUi={preAssemblyToolbarUi}
+        preAssemblyWizard={preAssemblyWizard}
+        onCreatePhantom={handleCreatePhantom}
+        onAddPart={handleAddPart}
+        onCreateAttachment={handleCreateAttachment}
       />
       <div className={styles.main}>
         <LeftPanel
@@ -451,6 +507,9 @@ function App() {
             selectionProximityFilter={DEFAULT_MODEL_SELECTION_PROXIMITY_FILTER}
             onProbableFacesChange={setProbableFaces}
             onClearSelection={clearAllSelection}
+            phantom={phantomDoc?.phantom ?? null}
+            selectedPhantomAnchorId={selectedPhantomAnchorId}
+            selectedPhantomElementId={selectedPhantomElementId}
           />
         </div>
         <RightPanel

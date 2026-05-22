@@ -51,6 +51,7 @@
     "tabFile": "Файл",
     "tabEdit": "Правка",
     "tabView": "Вид",
+    "tabPreAssembly": "Предсборка",
     "view": {
       "edgesOnly": "Только рёбра",
       "solid": "Тело без рёбер",
@@ -65,6 +66,20 @@
     },
     "saveFormatPrompt": "Выберите формат сохранения: ecdprt или stl",
     "saveFormatInvalid": "Неверный формат. Введите ecdprt или stl."
+  },
+  "preAssembly": {
+    "createPhantom": {
+      "button": "Создать фантом"
+    },
+    "addPart": {
+      "button": "Добавить деталь",
+      "active": "Режим добавления детали (нажмите, чтобы закрыть)",
+      "noAnchors": "Добавить деталь — сначала создайте привязку"
+    },
+    "createAttachment": {
+      "button": "Создать привязку",
+      "active": "Режим создания привязки (нажмите, чтобы закрыть)"
+    }
   },
   "leftPanel": {
     "header": "Модель и загрузка",

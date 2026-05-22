@@ -34,6 +34,25 @@ export {
   serializePhantomAssemblyFile,
   validatePhantomAssemblyFile,
 } from './codec'
+export {
+  addAttachment,
+  addElementSlot,
+  createEmptyPhantomFile,
+  hasAttachments,
+  updatePhantomInFile,
+  validateElementAnchorRequired,
+  type AddAttachmentInput,
+  type AddElementSlotInput,
+  type PhantomMutationResult,
+  type ValidateElementAnchorResult,
+} from './phantomStore'
+export {
+  getPreAssemblyAddPartTitleKey,
+  getPreAssemblyToolbarUi,
+  type PreAssemblyAddPartDisabledReason,
+  type PreAssemblyToolbarUi,
+  type PreAssemblyWizard,
+} from './toolbarActions'
 export { degToRad, mmToScene, sceneToMm } from './phantomUnits'
 export {
   attachmentAnchorPoseMm,

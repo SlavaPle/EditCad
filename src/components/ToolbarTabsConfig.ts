@@ -1,4 +1,4 @@
-export type ToolbarTabId = 'file' | 'edit' | 'view'
+export type ToolbarTabId = 'file' | 'edit' | 'view' | 'preAssembly'
 
 export type ToolbarActionId =
   | 'open'
@@ -12,6 +12,9 @@ export type ToolbarActionId =
   | 'viewSolid'
   | 'viewSolidTextured'
   | 'viewSolidWithEdges'
+  | 'createPhantom'
+  | 'addPart'
+  | 'createAttachment'
 
 export interface ToolbarTabConfig {
   id: ToolbarTabId
@@ -34,6 +37,11 @@ export const TOOLBAR_TABS: ToolbarTabConfig[] = [
     id: 'view',
     labelKey: 'toolbar.tabView',
     actions: ['viewEdgesOnly', 'viewSolid', 'viewSolidTextured', 'viewSolidWithEdges']
+  },
+  {
+    id: 'preAssembly',
+    labelKey: 'toolbar.tabPreAssembly',
+    actions: ['createPhantom', 'addPart', 'createAttachment']
   }
 ]
 

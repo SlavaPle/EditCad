@@ -51,6 +51,7 @@
     "tabFile": "File",
     "tabEdit": "Edit",
     "tabView": "View",
+    "tabPreAssembly": "Pre-assembly",
     "view": {
       "edgesOnly": "Edges only",
       "solid": "Solid (no edges)",
@@ -65,6 +66,20 @@
     },
     "saveFormatPrompt": "Choose save format: ecdprt or stl",
     "saveFormatInvalid": "Invalid format. Enter ecdprt or stl."
+  },
+  "preAssembly": {
+    "createPhantom": {
+      "button": "Create phantom"
+    },
+    "addPart": {
+      "button": "Add part",
+      "active": "Add part mode on (click to close)",
+      "noAnchors": "Add part — create an attachment first"
+    },
+    "createAttachment": {
+      "button": "Create attachment",
+      "active": "Create attachment mode on (click to close)"
+    }
   },
   "leftPanel": {
     "header": "Model & load",

@@ -11,6 +11,8 @@ import {
   type ToolbarActionId,
   type ToolbarTabId
 } from './ToolbarTabsConfig'
+import type { PreAssemblyToolbarUi, PreAssemblyWizard } from '../features/pre-assembly'
+import { getPreAssemblyAddPartTitleKey } from '../features/pre-assembly'
 interface ToolbarProps {
   onLoadModelClick?: () => void
   onSaveModelClick?: () => void
@@ -23,6 +25,11 @@ interface ToolbarProps {
   onToggleAppearanceEdit?: () => void
   displayMode?: ModelDisplayMode
   onDisplayModeChange?: (mode: ModelDisplayMode) => void
+  preAssemblyToolbarUi?: PreAssemblyToolbarUi
+  preAssemblyWizard?: PreAssemblyWizard
+  onCreatePhantom?: () => void
+  onAddPart?: () => void
+  onCreateAttachment?: () => void
 }
 
 const LANGUAGES = [
@@ -42,6 +49,11 @@ export function Toolbar({
   onToggleAppearanceEdit,
   displayMode = DEFAULT_MODEL_DISPLAY_MODE,
   onDisplayModeChange,
+  preAssemblyToolbarUi,
+  preAssemblyWizard = null,
+  onCreatePhantom,
+  onAddPart,
+  onCreateAttachment,
 }: ToolbarProps) {
   const { t, i18n } = useTranslation()
   const [activeTabId, setActiveTabId] = useState<ToolbarTabId>(DEFAULT_TOOLBAR_TAB_ID)
@@ -312,6 +324,91 @@ export function Toolbar({
             </span>
           </button>
         )
+      case 'createPhantom':
+        return (
+          <button
+            key={actionId}
+            type="button"
+            className={`${styles.iconBtn} ${preAssemblyToolbarUi?.hasPhantom ? styles.iconBtnActive : ''}`}
+            title={t('preAssembly.createPhantom.button')}
+            aria-label={t('preAssembly.createPhantom.button')}
+            aria-pressed={!!preAssemblyToolbarUi?.hasPhantom}
+            onClick={() => onCreatePhantom?.()}
+          >
+            <span className={styles.icon}>
+              <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4">
+                <path d="M4 6l6-3 6 3v8l-6 3-6-3V6z" fill="currentColor" fillOpacity="0.35" />
+                <path d="M10 3v14M4 6l6 3 6-3M4 14l6 3 6-3" />
+                <path d="M14 2.5v5M11.5 5h5" strokeLinecap="round" />
+              </svg>
+            </span>
+          </button>
+        )
+      case 'addPart': {
+        const addPartActive = preAssemblyWizard === 'element'
+        const addPartTitleKey = preAssemblyToolbarUi
+          ? getPreAssemblyAddPartTitleKey(preAssemblyToolbarUi, addPartActive)
+          : 'preAssembly.addPart.button'
+        return (
+          <button
+            key={actionId}
+            type="button"
+            className={`${styles.iconBtn} ${addPartActive ? styles.iconBtnActive : ''}`}
+            disabled={!preAssemblyToolbarUi || preAssemblyToolbarUi.addPartDisabled}
+            title={t(addPartTitleKey)}
+            aria-label={t(addPartTitleKey)}
+            aria-pressed={addPartActive}
+            onClick={() => onAddPart?.()}
+          >
+            <span className={styles.icon}>
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path
+                  d="M4 6l6-3 6 3v8l-6 3-6-3V6z"
+                  fill="currentColor"
+                  fillOpacity="0.85"
+                />
+                <path
+                  d="M10 8.5v3M8.5 10h3"
+                  stroke="#0f172a"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </span>
+          </button>
+        )
+      }
+      case 'createAttachment': {
+        const attachmentActive = preAssemblyWizard === 'attachment'
+        return (
+          <button
+            key={actionId}
+            type="button"
+            className={`${styles.iconBtn} ${attachmentActive ? styles.iconBtnActive : ''}`}
+            disabled={!preAssemblyToolbarUi || preAssemblyToolbarUi.createAttachmentDisabled}
+            title={
+              attachmentActive
+                ? t('preAssembly.createAttachment.active')
+                : t('preAssembly.createAttachment.button')
+            }
+            aria-label={
+              attachmentActive
+                ? t('preAssembly.createAttachment.active')
+                : t('preAssembly.createAttachment.button')
+            }
+            aria-pressed={attachmentActive}
+            onClick={() => onCreateAttachment?.()}
+          >
+            <span className={styles.icon}>
+              <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4">
+                <rect x="3.5" y="8" width="13" height="0.01" fill="currentColor" stroke="currentColor" />
+                <path d="M3.5 8h13" strokeLinecap="round" />
+                <path d="M10 4v8" strokeLinecap="round" strokeDasharray="1.5 1.5" />
+              </svg>
+            </span>
+          </button>
+        )
+      }
       default:
         return null
     }
