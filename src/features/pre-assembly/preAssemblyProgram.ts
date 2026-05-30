@@ -1,9 +1,12 @@
+import type { PhantomTransform } from './model'
 import type { ProgramPartDescriptor } from './programParts/programPartFile'
+import { defaultProgramPartTransform } from './programParts/programPartTransform'
 
 export type PreAssemblyProgramPart = {
   id: string
   ref: string
   name: string
+  transform: PhantomTransform
 }
 
 function createUniqueId(prefix: string): string {
@@ -22,6 +25,7 @@ export function appendProgramParts(
     id: createUniqueId('program-part'),
     ref: part.ref,
     name: part.name,
+    transform: defaultProgramPartTransform(),
   }))
   return [...existing, ...added]
 }
@@ -36,5 +40,51 @@ export function removeProgramPart(
 export function programPartsFromAssemblyProgram(
   program: readonly PreAssemblyProgramPart[],
 ): PreAssemblyProgramPart[] {
-  return program.map((part) => ({ ...part }))
+  return program.map((part) => ({
+    ...part,
+    transform: {
+      positionMm: [...part.transform.positionMm] as PhantomTransform['positionMm'],
+      rotationDeg: [...part.transform.rotationDeg] as PhantomTransform['rotationDeg'],
+    },
+  }))
+}
+
+export function updateProgramPartTransform(
+  parts: readonly PreAssemblyProgramPart[],
+  partId: string,
+  transform: PhantomTransform,
+): PreAssemblyProgramPart[] {
+  return parts.map((part) =>
+    part.id === partId
+      ? {
+          ...part,
+          transform: {
+            positionMm: [...transform.positionMm] as PhantomTransform['positionMm'],
+            rotationDeg: [...transform.rotationDeg] as PhantomTransform['rotationDeg'],
+          },
+        }
+      : part,
+  )
+}
+
+export function assignProgramPartLayoutPositions(
+  parts: readonly PreAssemblyProgramPart[],
+  positionsMm: Readonly<Record<string, [number, number, number]>>,
+): PreAssemblyProgramPart[] {
+  return parts.map((part) => {
+    const layout = positionsMm[part.id]
+    if (!layout) return part
+    const atOrigin =
+      part.transform.positionMm[0] === 0 &&
+      part.transform.positionMm[1] === 0 &&
+      part.transform.positionMm[2] === 0
+    if (!atOrigin) return part
+    return {
+      ...part,
+      transform: {
+        ...part.transform,
+        positionMm: [...layout] as PhantomTransform['positionMm'],
+      },
+    }
+  })
 }

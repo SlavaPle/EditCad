@@ -6,12 +6,13 @@ import { ModelOrbitFocusSync } from '../../features/viewer-camera/ModelOrbitFocu
 import type {
   ElementPropertyValues,
   PhantomAssembly,
+  PhantomTransform,
 } from '../../features/pre-assembly'
 import type { PreAssemblyProgramPart } from '../../features/pre-assembly'
 import {
   ElementInstanceLayer,
+  InteractiveProgramPartsLayer,
   PhantomAssemblyLayer,
-  ProgramPartsLayer,
 } from '../../features/pre-assembly/viewer'
 import { SelectableModel } from './SelectableModel'
 import type { SelectionState } from '../../lib/selection'
@@ -45,6 +46,10 @@ interface SceneContentProps {
   programParts?: readonly PreAssemblyProgramPart[]
   programPartGeometries?: Readonly<Record<string, BufferGeometry | null>>
   programPartsFitToken?: number
+  preAssemblyActive?: boolean
+  activeProgramPartId?: string | null
+  onActiveProgramPartChange?: (partId: string | null) => void
+  onProgramPartTransformChange?: (partId: string, transform: PhantomTransform) => void
 }
 
 export function SceneContent({
@@ -65,6 +70,10 @@ export function SceneContent({
   programParts = [],
   programPartGeometries = {},
   programPartsFitToken = 0,
+  preAssemblyActive = false,
+  activeProgramPartId = null,
+  onActiveProgramPartChange,
+  onProgramPartTransformChange,
 }: SceneContentProps) {
   return (
     <>
@@ -72,11 +81,19 @@ export function SceneContent({
       <ambientLight intensity={0.95} />
       <directionalLight position={[12, 18, 10]} intensity={2.6} />
       <directionalLight position={[-10, 8, -12]} intensity={1.35} />
-      {programParts.length > 0 && (
-        <ProgramPartsLayer
+      {programParts.length > 0 && onProgramPartTransformChange && onActiveProgramPartChange && (
+        <InteractiveProgramPartsLayer
           parts={programParts}
           geometries={programPartGeometries}
           fitToken={programPartsFitToken}
+          preAssemblyActive={preAssemblyActive}
+          activePartId={activeProgramPartId}
+          onActivePartChange={onActiveProgramPartChange}
+          selection={selection}
+          onSelectionChange={onSelectionChange}
+          selectionProximityFilter={selectionProximityFilter}
+          onProbableFacesChange={onProbableFacesChange}
+          onPartTransformChange={onProgramPartTransformChange}
         />
       )}
       {phantom && (

@@ -1,4 +1,5 @@
-import { isMvpSupportedEnvelope, parsePhantomAssembly } from '../codec'
+import { isMvpSupportedEnvelope, parsePhantomAssembly, parsePhantomTransform } from '../codec'
+import { defaultProgramPartTransform } from '../programParts/programPartTransform'
 import type { PhantomAssembly } from '../model'
 import type { PhantomAssemblyFile } from '../model'
 import type { PreAssemblyProgramPart } from '../preAssemblyProgram'
@@ -18,7 +19,17 @@ function parseProgramPart(value: unknown): PreAssemblyProgramPart | null {
   if (typeof value.id !== 'string' || value.id.trim().length === 0) return null
   if (typeof value.ref !== 'string' || value.ref.trim().length === 0) return null
   if (typeof value.name !== 'string' || value.name.trim().length === 0) return null
-  return { id: value.id, ref: value.ref.trim(), name: value.name.trim() }
+  const transform =
+    value.transform === undefined
+      ? defaultProgramPartTransform()
+      : parsePhantomTransform(value.transform)
+  if (!transform) return null
+  return {
+    id: value.id,
+    ref: value.ref.trim(),
+    name: value.name.trim(),
+    transform,
+  }
 }
 
 function parseProgram(value: unknown): PreAssemblyProgramPart[] | null {

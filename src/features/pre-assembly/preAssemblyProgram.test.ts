@@ -11,6 +11,7 @@ describe('preAssemblyProgram', () => {
     expect(next[0]?.ref).toBe('a.ecdprt')
     expect(next[1]?.ref).toBe('b.ecdprt')
     expect(next[0]?.id).not.toBe(next[1]?.id)
+    expect(next[0]?.transform.positionMm).toEqual([0, 0, 0])
   })
 
   it('returns copy when incoming list is empty', () => {
@@ -27,7 +28,14 @@ describe('preAssemblyProgram', () => {
   })
 
   it('clones program parts from assembly file', () => {
-    const program = [{ id: 'p1', ref: 'a.ecdprt', name: 'A' }]
+    const program = [
+      {
+        id: 'p1',
+        ref: 'a.ecdprt',
+        name: 'A',
+        transform: { positionMm: [0, 0, 0] as const, rotationDeg: [0, 0, 0] as const },
+      },
+    ]
     const cloned = programPartsFromAssemblyProgram(program)
     expect(cloned).toEqual(program)
     expect(cloned).not.toBe(program)

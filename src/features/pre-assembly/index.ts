@@ -1,7 +1,9 @@
 export {
   appendProgramParts,
+  assignProgramPartLayoutPositions,
   programPartsFromAssemblyProgram,
   removeProgramPart,
+  updateProgramPartTransform,
   type PreAssemblyProgramPart,
 } from './preAssemblyProgram'
 export {

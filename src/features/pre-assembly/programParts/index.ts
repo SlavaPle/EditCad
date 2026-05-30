@@ -10,6 +10,12 @@ export {
 } from './addProgramPartToPhantom'
 export { loadProgramPartGeometryFromFile } from './programPartGeometry'
 export {
+  defaultProgramPartTransform,
+  programPartGroupPosition,
+  programPartGroupRotation,
+  updateProgramPartInList,
+} from './programPartTransform'
+export {
   ProgramPartFilePicker,
   type ProgramPartFilePickerHandle,
   type ProgramPartFilePickerProps,

@@ -122,7 +122,7 @@ function parseVec3(value: unknown): [number, number, number] | null {
   return out as [number, number, number]
 }
 
-function parsePhantomTransform(value: unknown): PhantomTransform | null {
+export function parsePhantomTransform(value: unknown): PhantomTransform | null {
   if (!isObject(value)) return null
   const positionMm = parseVec3(value.positionMm)
   const rotationDeg = parseVec3(value.rotationDeg)

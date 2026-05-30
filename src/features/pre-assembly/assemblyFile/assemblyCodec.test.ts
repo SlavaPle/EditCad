@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { defaultProgramPartTransform } from '../programParts/programPartTransform'
 import { createEmptyPhantomFile } from '../phantomStore'
 import {
   createAssemblyFileFromProgram,
@@ -6,10 +7,17 @@ import {
   serializeAssemblyFile,
 } from './assemblyCodec'
 
+const partWithTransform = (
+  id: string,
+  ref: string,
+  name: string,
+  transform = defaultProgramPartTransform(),
+) => ({ id, ref, name, transform })
+
 describe('assemblyCodec', () => {
   it('round-trips program parts', () => {
     const file = createAssemblyFileFromProgram(
-      [{ id: 'p1', ref: 'panel.ecdprt', name: 'Panel' }],
+      [partWithTransform('p1', 'panel.ecdprt', 'Panel')],
       { id: 'asm-1', name: 'My assembly' },
     )
     const parsed = parseAssemblyFile(serializeAssemblyFile(file))
@@ -66,8 +74,11 @@ describe('assemblyCodec', () => {
     const phantomDoc = createEmptyPhantomFile({ id: 'ph-doc', name: 'Frame' })
     const file = createAssemblyFileFromProgram(
       [
-        { id: 'p1', ref: 'left.ecdprt', name: 'Left' },
-        { id: 'p2', ref: 'right.ecdprt', name: 'Right' },
+        partWithTransform('p1', 'left.ecdprt', 'Left', {
+          positionMm: [10, 0, 0],
+          rotationDeg: [0, 15, 0],
+        }),
+        partWithTransform('p2', 'right.ecdprt', 'Right'),
       ],
       { id: 'asm-1', name: 'Cabinet', phantomDoc },
     )
@@ -93,9 +104,23 @@ describe('assemblyCodec', () => {
     expect(parsed.error).toContain('Invalid phantom')
   })
 
+  it('defaults transform when field is missing (legacy assembly)', () => {
+    const raw = {
+      format: 'editcad.assembly',
+      version: 1,
+      id: 'a',
+      name: 'A',
+      program: [{ id: 'p1', ref: 'panel.ecdprt', name: 'Panel' }],
+    }
+    const parsed = parseAssemblyFile(JSON.stringify(raw))
+    expect(parsed.ok).toBe(true)
+    if (!parsed.ok) return
+    expect(parsed.file.program[0]?.transform).toEqual(defaultProgramPartTransform())
+  })
+
   it('does not embed phantom when phantomDoc is null', () => {
     const file = createAssemblyFileFromProgram(
-      [{ id: 'p1', ref: 'panel.ecdprt', name: 'Panel' }],
+      [partWithTransform('p1', 'panel.ecdprt', 'Panel')],
       { id: 'asm-1', name: 'Cabinet', phantomDoc: null },
     )
     expect(file.phantom).toBeUndefined()

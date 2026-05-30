@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
+import { defaultProgramPartTransform } from '../programParts/programPartTransform'
 import { createEmptyPhantomFile } from '../phantomStore'
+
+const samplePart = {
+  id: 'p1',
+  ref: 'panel.ecdprt',
+  name: 'Panel',
+  transform: defaultProgramPartTransform(),
+}
 import { createAssemblyFileFromProgram, parseAssemblyFile } from './assemblyCodec'
 import {
   buildEcdasmFileName,
@@ -22,7 +30,7 @@ describe('assemblyFileIo', () => {
   it('readAssemblyFromFile parses valid assembly', async () => {
     const phantomDoc = createEmptyPhantomFile({ name: 'Frame' })
     const source = createAssemblyFileFromProgram(
-      [{ id: 'p1', ref: 'panel.ecdprt', name: 'Panel' }],
+      [samplePart],
       { id: 'asm-1', name: 'Cabinet', phantomDoc },
     )
     const file = new File([JSON.stringify(source)], 'cabinet.ecdasm', {
@@ -44,7 +52,7 @@ describe('assemblyFileIo', () => {
 
   it('saveAssemblyToHandle writes JSON to handle', async () => {
     const source = createAssemblyFileFromProgram(
-      [{ id: 'p1', ref: 'panel.ecdprt', name: 'Panel' }],
+      [samplePart],
       { id: 'asm-1', name: 'Cabinet' },
     )
     const chunks: string[] = []

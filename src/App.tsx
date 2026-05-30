@@ -48,6 +48,7 @@ import type { ApplyTwoFaceStretchOverlay } from './lib/applyStretchOverlay'
 import styles from './App.module.css'
 import {
   appendProgramParts,
+  assignProgramPartLayoutPositions,
   AssemblyLoader,
   createAssemblyFileFromProgram,
   createEmptyPhantomFile,
@@ -65,16 +66,19 @@ import {
   stripEcdasmExtension,
   stripEcdpreExtension,
   PhantomLoader,
+  updateProgramPartTransform,
   type AssemblyFile,
   type AssemblyLoaderHandle,
   type PhantomAssemblyFile,
   type PhantomLoaderHandle,
+  type PhantomTransform,
   type PreAssemblyPanelSelection,
   type PreAssemblyProgramPart,
   type PreAssemblyWizard,
   type ProgramPartFilePickerHandle,
   type ProgramPartPickEntry,
 } from './features/pre-assembly'
+import { layoutProgramPartPositionsMm } from './features/pre-assembly/viewer'
 
 function getFileExtensionLower(name: string | null): string | null {
   if (!name) return null
@@ -140,12 +144,21 @@ function App() {
   const [preAssemblyWizard, setPreAssemblyWizard] = useState<PreAssemblyWizard>(null)
   const [preAssemblySelection, setPreAssemblySelection] =
     useState<PreAssemblyPanelSelection>(null)
+  const [activeProgramPartId, setActiveProgramPartId] = useState<string | null>(null)
   const modelLoaderRef = useRef<ModelLoaderHandle>(null)
   const phantomLoaderRef = useRef<PhantomLoaderHandle>(null)
   const assemblyLoaderRef = useRef<AssemblyLoaderHandle>(null)
   const programPartPickerRef = useRef<ProgramPartFilePickerHandle>(null)
 
   const preAssemblyActive = activeToolbarTab === 'preAssembly'
+
+  const activeProgramPartGeometry =
+    activeProgramPartId && preAssemblyActive
+      ? (programPartGeometries[activeProgramPartId] ?? null)
+      : null
+
+  const viewportSelectionModel =
+    preAssemblyActive && activeProgramPartGeometry ? activeProgramPartGeometry : model
 
   const selectedPhantomAnchorId = preAssemblySelectionAnchorId(preAssemblySelection)
   const selectedPhantomElementId = preAssemblySelectionElementId(preAssemblySelection)
@@ -544,22 +557,41 @@ function App() {
 
   const handleProgramPartsPicked = useCallback((entries: ProgramPartPickEntry[]) => {
     if (entries.length === 0) return
-    setProgramParts((current) => {
-      const descriptors = entries.map((entry) => entry.part)
-      const nextParts = appendProgramParts(current, descriptors)
-      const added = nextParts.slice(current.length)
-      setProgramPartGeometries((geometries) => {
-        const next = { ...geometries }
+    const descriptors = entries.map((entry) => entry.part)
+    setProgramPartGeometries((geometries) => {
+      const nextGeometries = { ...geometries }
+      setProgramParts((current) => {
+        const nextParts = appendProgramParts(current, descriptors)
+        const added = nextParts.slice(current.length)
         for (let i = 0; i < added.length; i++) {
-          next[added[i].id] = entries[i].geometry
+          nextGeometries[added[i].id] = entries[i].geometry
         }
-        return next
+        const positions = layoutProgramPartPositionsMm(
+          nextParts.map((part) => part.id),
+          nextGeometries,
+        )
+        return assignProgramPartLayoutPositions(nextParts, positions)
       })
-      return nextParts
+      return nextGeometries
     })
     setProgramPartsFitToken((token) => token + 1)
     setProgramLoadError(null)
     setActiveToolbarTab('preAssembly')
+  }, [])
+
+  const handleProgramPartTransformChange = useCallback(
+    (partId: string, transform: PhantomTransform) => {
+      setProgramParts((current) => updateProgramPartTransform(current, partId, transform))
+    },
+    [],
+  )
+
+  const handleActiveProgramPartChange = useCallback((partId: string | null) => {
+    setActiveProgramPartId(partId)
+    if (partId) {
+      setSelection(createEmptySelection())
+      setProbableFaces([])
+    }
   }, [])
 
   const handleProgramPartPickError = useCallback((message: string) => {
@@ -577,6 +609,7 @@ function App() {
       }
       return next
     })
+    setActiveProgramPartId((current) => (current === partId ? null : current))
     setProgramPartsFitToken((token) => token + 1)
   }, [])
 
@@ -781,12 +814,16 @@ function App() {
             programParts={programParts}
             programPartGeometries={programPartGeometries}
             programPartsFitToken={programPartsFitToken}
+            preAssemblyActive={preAssemblyActive}
+            activeProgramPartId={activeProgramPartId}
+            onActiveProgramPartChange={handleActiveProgramPartChange}
+            onProgramPartTransformChange={handleProgramPartTransformChange}
           />
         </div>
         <RightPanel
           selection={selection}
           probableFaces={probableFaces}
-          model={model}
+          model={viewportSelectionModel}
           geometryRevision={geometryRevision}
           constraintsLocked={constraintsLocked}
           limitsInstallActive={limitsInstallActive}

@@ -20,6 +20,7 @@ import {
 import type {
   ElementPropertyValues,
   PhantomAssembly,
+  PhantomTransform,
   PreAssemblyProgramPart,
 } from '../features/pre-assembly'
 
@@ -46,6 +47,10 @@ export interface Viewer3DProps {
   programParts?: readonly PreAssemblyProgramPart[]
   programPartGeometries?: Readonly<Record<string, BufferGeometry | null>>
   programPartsFitToken?: number
+  preAssemblyActive?: boolean
+  activeProgramPartId?: string | null
+  onActiveProgramPartChange?: (partId: string | null) => void
+  onProgramPartTransformChange?: (partId: string, transform: PhantomTransform) => void
 }
 
 export function Viewer3D({
@@ -67,6 +72,10 @@ export function Viewer3D({
   programParts = [],
   programPartGeometries = {},
   programPartsFitToken = 0,
+  preAssemblyActive = false,
+  activeProgramPartId = null,
+  onActiveProgramPartChange,
+  onProgramPartTransformChange,
 }: Viewer3DProps) {
   const clearAllSelection = (_source: 'pointerMissed' | 'grid') => {
     if (onClearSelection) {
@@ -114,6 +123,10 @@ export function Viewer3D({
             programParts={programParts}
             programPartGeometries={programPartGeometries}
             programPartsFitToken={programPartsFitToken}
+            preAssemblyActive={preAssemblyActive}
+            activeProgramPartId={activeProgramPartId}
+            onActiveProgramPartChange={onActiveProgramPartChange}
+            onProgramPartTransformChange={onProgramPartTransformChange}
           />
           <MouseOrbitViewControls
             makeDefault

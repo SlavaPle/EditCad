@@ -1,0 +1,191 @@
+import { useCallback, useMemo, useRef, useState } from 'react'
+import type { Dispatch, SetStateAction } from 'react'
+import { Bounds, Edges } from '@react-three/drei'
+import { Box3, BufferGeometry, Vector3 } from 'three'
+import type { ThreeEvent } from '@react-three/fiber'
+import { SelectableModel } from '../../../components/Viewer3D/SelectableModel'
+import type { SelectionState } from '../../../lib/selection'
+import { DEFAULT_MODEL_DISPLAY_MODE } from '../../viewer-display/modelDisplayMode'
+import { DEFAULT_MODEL_APPEARANCE } from '../../viewer-display/modelAppearance'
+import type { ModelSelectionProximityFilter } from '../../model-selection/types'
+import type { PreAssemblyProgramPart } from '../preAssemblyProgram'
+import type { PhantomTransform } from '../model'
+import { mmToScene } from '../phantomUnits'
+import {
+  programPartGroupPosition,
+  programPartGroupRotation,
+} from '../programParts/programPartTransform'
+import { useProgramPartPointerSession } from './useProgramPartPointerSession'
+
+const PROGRAM_PART_COLOR = '#93c5fd'
+const PROGRAM_PART_ACTIVE_COLOR = '#60a5fa'
+const PLACEHOLDER_COLOR = '#64748b'
+const PLACEHOLDER_SIZE_MM = 40
+
+interface InteractiveProgramPartsLayerProps {
+  parts: readonly PreAssemblyProgramPart[]
+  geometries: Readonly<Record<string, BufferGeometry | null | undefined>>
+  fitToken?: number
+  preAssemblyActive: boolean
+  activePartId: string | null
+  onActivePartChange: (partId: string | null) => void
+  selection: SelectionState
+  onSelectionChange: Dispatch<SetStateAction<SelectionState>>
+  selectionProximityFilter: ModelSelectionProximityFilter
+  onProbableFacesChange?: (faces: readonly number[]) => void
+  onPartTransformChange: (partId: string, transform: PhantomTransform) => void
+}
+
+export function InteractiveProgramPartsLayer({
+  parts,
+  geometries,
+  fitToken = 0,
+  preAssemblyActive,
+  activePartId,
+  onActivePartChange,
+  selection,
+  onSelectionChange,
+  selectionProximityFilter,
+  onProbableFacesChange,
+  onPartTransformChange,
+}: InteractiveProgramPartsLayerProps) {
+  const [probableFaces, setProbableFaces] = useState<readonly number[]>([])
+  const primaryFacesRef = useRef<readonly number[]>([])
+
+  const setPrimaryFaces = useCallback((faces: readonly number[]) => {
+    primaryFacesRef.current = faces
+  }, [])
+
+  const getPrimaryFaces = useCallback(() => primaryFacesRef.current, [])
+
+  const handleProbableFacesChange = useCallback(
+    (faces: readonly number[]) => {
+      setProbableFaces(faces)
+      onProbableFacesChange?.(faces)
+    },
+    [onProbableFacesChange],
+  )
+
+  const { onPartPointerDown } = useProgramPartPointerSession({
+    onPartTransformChange,
+    onActivePartChange: (partId) => onActivePartChange(partId),
+    onSelectionChange: (next) => onSelectionChange(next),
+    onProbableFacesChange: handleProbableFacesChange,
+    selection,
+    selectionProximityFilter,
+    probableFaces,
+    getPrimaryFaces,
+    setPrimaryFaces,
+  })
+
+  if (parts.length === 0) return null
+
+  return (
+    <Bounds margin={1.2} fit observe key={fitToken}>
+      <group>
+        {parts.map((part) => (
+          <InteractiveProgramPart
+            key={part.id}
+            part={part}
+            geometry={geometries[part.id] ?? null}
+            preAssemblyActive={preAssemblyActive}
+            isActive={activePartId === part.id}
+            selection={selection}
+            onSelectionChange={onSelectionChange}
+            selectionProximityFilter={selectionProximityFilter}
+            onProbableFacesChange={handleProbableFacesChange}
+            onPartPointerDown={onPartPointerDown}
+          />
+        ))}
+      </group>
+    </Bounds>
+  )
+}
+
+function InteractiveProgramPart({
+  part,
+  geometry,
+  preAssemblyActive,
+  isActive,
+  selection,
+  onSelectionChange,
+  selectionProximityFilter,
+  onProbableFacesChange,
+  onPartPointerDown,
+}: {
+  part: PreAssemblyProgramPart
+  geometry: BufferGeometry | null
+  preAssemblyActive: boolean
+  isActive: boolean
+  selection: SelectionState
+  onSelectionChange: Dispatch<SetStateAction<SelectionState>>
+  selectionProximityFilter: ModelSelectionProximityFilter
+  onProbableFacesChange?: (faces: readonly number[]) => void
+  onPartPointerDown: (
+    partId: string,
+    transform: PhantomTransform,
+    geometry: BufferGeometry | null,
+    event: ThreeEvent<PointerEvent>,
+  ) => void
+}) {
+  const geometryCenterOffset = useMemo(() => {
+    if (!geometry) return [0, 0, 0] as [number, number, number]
+    geometry.computeBoundingBox()
+    const box = geometry.boundingBox ?? new Box3()
+    const center = box.getCenter(new Vector3())
+    return [-center.x, -center.y, -center.z] as [number, number, number]
+  }, [geometry])
+
+  const position = programPartGroupPosition(part.transform)
+  const rotation = programPartGroupRotation(part.transform)
+  const meshColor = isActive ? PROGRAM_PART_ACTIVE_COLOR : PROGRAM_PART_COLOR
+
+  const handlePointerDown = (event: ThreeEvent<PointerEvent>) => {
+    if (!preAssemblyActive) return
+    onPartPointerDown(part.id, part.transform, geometry, event)
+  }
+
+  if (geometry && isActive && preAssemblyActive) {
+    return (
+      <group position={position} rotation={rotation}>
+        <group position={geometryCenterOffset}>
+          <SelectableModel
+            model={geometry}
+            geometryRevision={0}
+            displayMode={DEFAULT_MODEL_DISPLAY_MODE}
+            appearance={DEFAULT_MODEL_APPEARANCE}
+            selection={selection}
+            onSelectionChange={onSelectionChange}
+            selectionProximityFilter={selectionProximityFilter}
+            onProbableFacesChange={onProbableFacesChange}
+            pickOnPointerDown={false}
+            onMeshPointerDown={handlePointerDown}
+          />
+        </group>
+      </group>
+    )
+  }
+
+  if (geometry) {
+    return (
+      <group position={position} rotation={rotation}>
+        <mesh
+          geometry={geometry}
+          position={geometryCenterOffset}
+          onPointerDown={handlePointerDown}
+        >
+          <meshStandardMaterial color={meshColor} />
+        </mesh>
+      </group>
+    )
+  }
+
+  const placeholderSize = mmToScene(PLACEHOLDER_SIZE_MM)
+  return (
+    <mesh position={position} rotation={rotation} onPointerDown={handlePointerDown}>
+      <boxGeometry args={[placeholderSize, placeholderSize, placeholderSize]} />
+      <meshStandardMaterial color={PLACEHOLDER_COLOR} wireframe />
+      <Edges color={PLACEHOLDER_COLOR} />
+    </mesh>
+  )
+}

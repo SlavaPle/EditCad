@@ -10,17 +10,12 @@ import {
   type InterleavedBufferAttribute,
 } from 'three'
 import type { ThreeEvent } from '@react-three/fiber'
-import {
-  createEmptySelection,
-  selectEdge,
-  selectVertex,
-  selectionIsOnlyEdge,
-  selectionIsOnlyFaceSet,
-  selectionIsOnlyVertex,
-  type SelectionState,
-} from '../../lib/selection'
+import type { SelectionState } from '../../lib/selection'
 import { resolveProximityPick } from '../../features/model-selection/proximityPick'
-import { resolveFaceSelectionFlow } from '../../features/model-selection/faceSelectionFlow'
+import {
+  applyPickMeshElementResult,
+  pickMeshElementAtPointer,
+} from '../../features/model-selection/pickMeshElement'
 import type { ModelSelectionProximityFilter } from '../../features/model-selection/types'
 import {
   buildMeshEdgeLinePositions,
@@ -147,6 +142,9 @@ interface SelectableModelProps {
   onSelectionChange: Dispatch<SetStateAction<SelectionState>>
   selectionProximityFilter: ModelSelectionProximityFilter
   onProbableFacesChange?: (faces: readonly number[]) => void
+  /** Gdy false — LKM nie wybiera elementów (np. drag detalu w montażu). */
+  pickOnPointerDown?: boolean
+  onMeshPointerDown?: (event: ThreeEvent<PointerEvent>) => void
 }
 
 export function SelectableModel({
@@ -158,6 +156,8 @@ export function SelectableModel({
   onSelectionChange,
   selectionProximityFilter,
   onProbableFacesChange,
+  pickOnPointerDown = true,
+  onMeshPointerDown,
 }: SelectableModelProps) {
   const meshRef = useRef<Mesh>(null)
   const vertexPointsRef = useRef<Points>(null)
@@ -453,6 +453,9 @@ export function SelectableModel({
     if (event.nativeEvent.button !== 0) return
 
     event.stopPropagation()
+    onMeshPointerDown?.(event)
+    if (!pickOnPointerDown) return
+
     const mesh = meshRef.current
     if (!mesh) return
 
@@ -460,73 +463,22 @@ export function SelectableModel({
     if (typeof faceIndex !== 'number') return
 
     mesh.worldToLocal(scratchLocal.copy(event.point))
-    const target = event.nativeEvent.target as HTMLElement | null
-    const viewportWidth = target?.clientWidth ?? 0
-    const viewportHeight = target?.clientHeight ?? 0
-    const pick = resolveProximityPick(model, faceIndex, scratchLocal, selectionProximityFilter, {
-      camera: event.camera,
+    const result = pickMeshElementAtPointer({
+      model,
       mesh,
-      pointer: { x: event.nativeEvent.offsetX, y: event.nativeEvent.offsetY },
-      viewport: { width: viewportWidth, height: viewportHeight },
+      event,
+      selectionProximityFilter,
+      currentSelection: selectionRef.current,
+      currentPrimaryFaces: primaryFacesRef.current,
+      probableFaces,
+      shiftHeld: event.shiftKey || event.nativeEvent.shiftKey,
+      localPoint: scratchLocal,
     })
-    const currentSelection = selectionRef.current
-    const currentPrimaryFaces = primaryFacesRef.current
-    if (pick.type === 'none') return
-
-    const shiftHeld = event.shiftKey || event.nativeEvent.shiftKey
-    // Shift: toggle — jeśli element jest na liście, usuń; w przeciwnym razie dodaj
-    const mode: 'replace' | 'toggle' = shiftHeld ? 'toggle' : 'replace'
-
-    // Powtórny LKM na tym samym solo-zaznaczeniu — wyczyść (bez Shift)
-    if (!shiftHeld) {
-      if (pick.type === 'faces' && selectionIsOnlyFaceSet(currentSelection, pick.indices)) {
-        onSelectionChange(createEmptySelection())
-        setProbableFaces([])
-        setPrimaryFaces([])
-        return
-      }
-      if (pick.type === 'vertex' && selectionIsOnlyVertex(currentSelection, pick.index)) {
-        onSelectionChange(createEmptySelection())
-        setProbableFaces([])
-        setPrimaryFaces([])
-        return
-      }
-      if (pick.type === 'edge' && selectionIsOnlyEdge(currentSelection, pick.a, pick.b)) {
-        onSelectionChange(createEmptySelection())
-        setProbableFaces([])
-        setPrimaryFaces([])
-        return
-      }
-    }
-
-    if (pick.type === 'faces') {
-      const flow = resolveFaceSelectionFlow({
-        currentSelection,
-        primaryFaces: currentPrimaryFaces,
-        pickedFaces: pick.indices,
-        probableFromPick: pick.probableIndices ?? [],
-        probableFaces,
-        shiftHeld,
-      })
-      if (flow.ignored) {
-        return
-      }
-      setPrimaryFaces(flow.nextPrimaryFaces)
-      setProbableFaces(flow.nextProbableFaces)
-      onSelectionChange(flow.nextSelection)
-      return
-    }
-
-    setPrimaryFaces([])
-    if (pick.type === 'vertex') {
-      setProbableFaces([])
-      onSelectionChange(selectVertex(currentSelection, pick.index, mode))
-      return
-    }
-
-    const edgeProbableFaces = pick.probableFaceIndices ?? []
-    setProbableFaces(edgeProbableFaces)
-    onSelectionChange(selectEdge(currentSelection, pick.a, pick.b, mode))
+    applyPickMeshElementResult(result, {
+      onSelectionChange,
+      onProbableFacesChange: setProbableFaces,
+      setPrimaryFaces,
+    })
   }
 
   return (
