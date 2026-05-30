@@ -21,9 +21,16 @@ export type ProgramPartPointerSession = {
   dragPlaneHitMm: [number, number, number] | null
 }
 
+/** LKM = przesunięcie, ŚKM (kółko) = obrót detalu w montażu. */
+export function programPartPointerModeFromButton(button: number): ProgramPartPointerMode | null {
+  if (button === 0) return 'translate'
+  if (button === 1) return 'rotate'
+  return null
+}
+
 export function beginProgramPartPointerSession(input: {
   partId: string
-  shiftKey: boolean
+  mode: ProgramPartPointerMode
   pointerId: number
   clientX: number
   clientY: number
@@ -32,7 +39,7 @@ export function beginProgramPartPointerSession(input: {
 }): ProgramPartPointerSession {
   return {
     partId: input.partId,
-    mode: input.shiftKey ? 'rotate' : 'translate',
+    mode: input.mode,
     pointerId: input.pointerId,
     startClientX: input.clientX,
     startClientY: input.clientY,

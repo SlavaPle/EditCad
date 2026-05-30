@@ -103,7 +103,8 @@
         "assemblyFile": "Assembly file",
         "addPart": "Add part",
         "empty": "No parts in the program yet — use Add part to choose one or more .ecdprt files.",
-        "remove": "Remove part"
+        "remove": "Remove part",
+        "manipulationHint": "Left button + drag: move part. Middle button (wheel) + drag on part: rotate part. Middle button elsewhere: orbit view. Wheel: zoom. Click: select face, edge, or vertex."
       },
       "tree": {
         "title": "Assembly tree",

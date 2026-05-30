@@ -9,6 +9,7 @@ import {
   intersectRayWithDragPlaneMm,
   markProgramPartSessionDragged,
   pointerSessionShouldDrag,
+  programPartPointerModeFromButton,
   PROGRAM_PART_DRAG_THRESHOLD_PX,
 } from './programPartPointerInteraction'
 
@@ -18,10 +19,16 @@ const baseTransform = {
 }
 
 describe('programPartPointerInteraction', () => {
-  it('starts translate mode without shift', () => {
+  it('maps left button to translate and middle to rotate', () => {
+    expect(programPartPointerModeFromButton(0)).toBe('translate')
+    expect(programPartPointerModeFromButton(1)).toBe('rotate')
+    expect(programPartPointerModeFromButton(2)).toBeNull()
+  })
+
+  it('starts translate mode for left button', () => {
     const session = beginProgramPartPointerSession({
       partId: 'p1',
-      shiftKey: false,
+      mode: 'translate',
       pointerId: 1,
       clientX: 10,
       clientY: 20,
@@ -31,10 +38,10 @@ describe('programPartPointerInteraction', () => {
     expect(session.mode).toBe('translate')
   })
 
-  it('starts rotate mode with shift at down', () => {
+  it('starts rotate mode for middle button', () => {
     const session = beginProgramPartPointerSession({
       partId: 'p1',
-      shiftKey: true,
+      mode: 'rotate',
       pointerId: 1,
       clientX: 10,
       clientY: 20,
@@ -46,7 +53,7 @@ describe('programPartPointerInteraction', () => {
   it('detects drag after threshold', () => {
     const session = beginProgramPartPointerSession({
       partId: 'p1',
-      shiftKey: false,
+      mode: 'translate',
       pointerId: 1,
       clientX: 0,
       clientY: 0,
@@ -61,7 +68,7 @@ describe('programPartPointerInteraction', () => {
   it('computes translate from plane hit delta', () => {
     const session = beginProgramPartPointerSession({
       partId: 'p1',
-      shiftKey: false,
+      mode: 'translate',
       pointerId: 1,
       clientX: 0,
       clientY: 0,
@@ -75,7 +82,7 @@ describe('programPartPointerInteraction', () => {
   it('computes rotate from pointer delta', () => {
     const session = beginProgramPartPointerSession({
       partId: 'p1',
-      shiftKey: true,
+      mode: 'rotate',
       pointerId: 1,
       clientX: 100,
       clientY: 100,
@@ -89,7 +96,7 @@ describe('programPartPointerInteraction', () => {
   it('finish returns click when not dragged', () => {
     const session = beginProgramPartPointerSession({
       partId: 'p1',
-      shiftKey: false,
+      mode: 'translate',
       pointerId: 1,
       clientX: 0,
       clientY: 0,
@@ -101,7 +108,7 @@ describe('programPartPointerInteraction', () => {
   it('finish returns drag when dragged', () => {
     let session = beginProgramPartPointerSession({
       partId: 'p1',
-      shiftKey: false,
+      mode: 'translate',
       pointerId: 1,
       clientX: 0,
       clientY: 0,
@@ -118,7 +125,7 @@ describe('programPartPointerInteraction', () => {
   it('second drag session starts from transform after first drag', () => {
     let session = beginProgramPartPointerSession({
       partId: 'p1',
-      shiftKey: false,
+      mode: 'translate',
       pointerId: 1,
       clientX: 0,
       clientY: 0,
@@ -133,7 +140,7 @@ describe('programPartPointerInteraction', () => {
 
     const session2 = beginProgramPartPointerSession({
       partId: 'p1',
-      shiftKey: false,
+      mode: 'translate',
       pointerId: 2,
       clientX: 50,
       clientY: 50,

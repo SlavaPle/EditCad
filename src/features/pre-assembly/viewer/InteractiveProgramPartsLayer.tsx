@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
+import type { Group } from 'three'
 import type { Dispatch, SetStateAction } from 'react'
 import { Bounds, Edges } from '@react-three/drei'
 import { Box3, BufferGeometry, Vector3 } from 'three'
@@ -16,6 +17,7 @@ import {
   programPartGroupRotation,
 } from '../programParts/programPartTransform'
 import { useProgramPartPointerSession } from './useProgramPartPointerSession'
+import { useProgramPartOrbitGuard } from './useProgramPartOrbitGuard'
 import { useProgramPartTransformsRef } from './programPartTransformsRef'
 
 const PROGRAM_PART_COLOR = '#93c5fd'
@@ -77,6 +79,9 @@ export function InteractiveProgramPartsLayer({
     [onPartTransformChange, setTransform],
   )
 
+  const partsRootRef = useRef<Group>(null)
+  useProgramPartOrbitGuard(partsRootRef, preAssemblyActive)
+
   const { onPartPointerDown } = useProgramPartPointerSession({
     onPartTransformChange: handlePartTransformChange,
     getPartTransform: getTransform,
@@ -95,7 +100,7 @@ export function InteractiveProgramPartsLayer({
   // fit + key=fitToken: kamera tylko przy dodaniu/usunięciu detalu, nie przy drag (bez observe)
   return (
     <Bounds margin={1.2} fit key={fitToken}>
-      <group>
+      <group ref={partsRootRef}>
         {parts.map((part) => (
           <InteractiveProgramPart
             key={part.id}

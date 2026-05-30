@@ -19,6 +19,7 @@ import {
   intersectRayWithDragPlaneMm,
   markProgramPartSessionDragged,
   pointerSessionShouldDrag,
+  programPartPointerModeFromButton,
   type ProgramPartPointerSession,
 } from './programPartPointerInteraction'
 
@@ -120,13 +121,9 @@ export function useProgramPartPointerSession(handlers: ProgramPartPointerSession
 
       if (finish.kind === 'drag') {
         h.onPartTransformChange(session.partId, finish.transform)
-        sessionRef.current = null
-        liveTransformRef.current = null
-        meshRef.current = null
-        geometryRef.current = null
-        setBodyCursor(null)
+        endSession()
         return
-      } else {
+      } else if (session.downEvent.nativeEvent.button === 0) {
         h.onActivePartChange(session.partId)
         const mesh = meshRef.current
         const geometry = geometryRef.current
@@ -171,28 +168,36 @@ export function useProgramPartPointerSession(handlers: ProgramPartPointerSession
       geometry: BufferGeometry | null,
       event: ThreeEvent<PointerEvent>,
     ) => {
-      if (event.nativeEvent.button !== 0) return
-      if (!geometry) return
+      const mode = programPartPointerModeFromButton(event.nativeEvent.button)
+      if (!mode || !geometry) return
 
       event.stopPropagation()
+      if (mode === 'rotate') {
+        event.nativeEvent.preventDefault()
+      }
+
       const mesh = event.object as Mesh
       meshRef.current = mesh
       geometryRef.current = geometry
 
       const transform = handlersRef.current.getPartTransform(partId, fallbackTransform)
-      const shiftKey = event.shiftKey || event.nativeEvent.shiftKey
-      event.camera.getWorldDirection(scratchCameraDir)
-      const plane = createProgramPartDragPlane(transform.positionMm, scratchCameraDir)
-      const hit = intersectRayWithDragPlaneMm(event.ray, plane)
+      const dragPlaneHitMm =
+        mode === 'translate'
+          ? (() => {
+              event.camera.getWorldDirection(scratchCameraDir)
+              const plane = createProgramPartDragPlane(transform.positionMm, scratchCameraDir)
+              return intersectRayWithDragPlaneMm(event.ray, plane)
+            })()
+          : null
 
       const base = beginProgramPartPointerSession({
         partId,
-        shiftKey,
+        mode,
         pointerId: event.nativeEvent.pointerId,
         clientX: event.nativeEvent.clientX,
         clientY: event.nativeEvent.clientY,
         transform,
-        dragPlaneHitMm: hit,
+        dragPlaneHitMm,
       })
       sessionRef.current = { ...base, downEvent: event }
       liveTransformRef.current = {

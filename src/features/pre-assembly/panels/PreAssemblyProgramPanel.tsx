@@ -34,6 +34,7 @@ export function PreAssemblyProgramPanel({
           {programLoadError}
         </p>
       ) : null}
+      <p className={styles.placeholder}>{t('preAssembly.panels.program.manipulationHint')}</p>
       <div className={styles.sectionTitleRow}>
         <div className={styles.sectionTitle}>{t('preAssembly.panels.program.title')}</div>
         {onAddPart ? (
