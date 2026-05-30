@@ -6,6 +6,7 @@ export type PreAssemblyProgramPanelProps = {
   programParts: readonly PreAssemblyProgramPart[]
   assemblySourceFileName?: string | null
   programLoadError?: string | null
+  programSaveMessage?: string | null
   onAddPart?: () => void
   onRemovePart?: (partId: string) => void
 }
@@ -14,6 +15,7 @@ export function PreAssemblyProgramPanel({
   programParts,
   assemblySourceFileName = null,
   programLoadError = null,
+  programSaveMessage = null,
   onAddPart,
   onRemovePart,
 }: PreAssemblyProgramPanelProps) {
@@ -28,6 +30,11 @@ export function PreAssemblyProgramPanel({
             {assemblySourceFileName}
           </p>
         </div>
+      ) : null}
+      {programSaveMessage ? (
+        <p className={styles.success} role="status">
+          {programSaveMessage}
+        </p>
       ) : null}
       {programLoadError ? (
         <p className={styles.error} role="alert">

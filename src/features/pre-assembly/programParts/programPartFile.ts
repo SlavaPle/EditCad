@@ -1,5 +1,6 @@
 import { ECDPRT_EXTENSION } from '../../../lib/saveModel'
 import { parsePreparedElementFile } from '../../../lib/preparedElementFormat'
+import { computeRelativeRefFromRoot } from '../assemblyFile/assemblyRelativePath'
 
 export const PROGRAM_PART_FILE_ACCEPT = '.ecdprt,.ECDPRT'
 
@@ -37,6 +38,29 @@ export async function readProgramPartFromFile(
       name: parsed.file.name?.trim() || stripEcdprtExtension(file.name),
     },
   }
+}
+
+/** ref = ścieżka względna w katalogu projektu złożenia, jeśli znany root. */
+export async function readProgramPartFromFileWithRoot(
+  file: File,
+  projectRoot: FileSystemDirectoryHandle | null,
+  fileHandle?: FileSystemHandle | null,
+): Promise<{ ok: true; part: ProgramPartDescriptor } | { ok: false; error: string }> {
+  const meta = await readProgramPartFromFile(file)
+  if (!meta.ok) return meta
+  if (projectRoot && fileHandle) {
+    const relativeRef = await computeRelativeRefFromRoot(projectRoot, fileHandle)
+    if (relativeRef) {
+      return {
+        ok: true,
+        part: {
+          ref: relativeRef,
+          name: meta.part.name,
+        },
+      }
+    }
+  }
+  return meta
 }
 
 function stripEcdprtExtension(fileName: string): string {

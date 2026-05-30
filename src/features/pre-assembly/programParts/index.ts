@@ -9,6 +9,8 @@ export {
   type AddProgramPartToPhantomResult,
 } from './addProgramPartToPhantom'
 export { loadProgramPartGeometryFromFile } from './programPartGeometry'
+export { loadGeometriesFromAssembly, type LoadAssemblyGeometriesResult } from './loadAssemblyProgramPartGeometries'
+export { readProgramPartFromFileWithRoot } from './programPartFile'
 export {
   defaultProgramPartTransform,
   programPartGroupPosition,

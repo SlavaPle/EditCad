@@ -188,6 +188,13 @@
   line-height: 1.35;
 }
 
+.success {
+  margin: 6px 0 0;
+  color: #4ade80;
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;

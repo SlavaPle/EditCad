@@ -75,13 +75,17 @@
       "button": "Add part"
     },
     "loadAssembly": {
-      "button": "Load assembly"
+      "button": "Load assembly",
+      "missingParts": "Missing program part files (relative to project folder): {{refs}}",
+      "needProjectFolder": "Select the assembly project folder — part paths in the file are relative to it."
     },
     "saveAssembly": {
-      "button": "Save assembly"
+      "button": "Save assembly",
+      "saved": "Assembly saved: {{fileName}}"
     },
     "saveAssemblyAs": {
-      "button": "Save assembly as…"
+      "button": "Save assembly as…",
+      "saved": "Assembly saved as {{fileName}}"
     },
     "createAttachment": {
       "button": "Create attachment",

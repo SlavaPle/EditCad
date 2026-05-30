@@ -22,4 +22,17 @@ export {
   type SaveAssemblyAsResult,
 } from './assemblyFileIo'
 export { phantomDocFromAssemblyFile } from './assemblySession'
+export {
+  normalizeAssemblyRelativeRef,
+  splitAssemblyRelativeRef,
+  programPartRefBaseName,
+  getFileFromAssemblyRoot,
+  computeRelativeRefFromRoot,
+} from './assemblyRelativePath'
+export { persistAssemblyRootHandle, restoreAssemblyRootHandle } from './assemblyRootStore'
+export {
+  pickAssemblyProjectDirectory,
+  openAssemblyFileFromRoot,
+  saveAssemblyInProjectRoot,
+} from './assemblyProjectIo'
 export { AssemblyLoader, type AssemblyLoaderHandle, type AssemblyLoaderProps } from './AssemblyLoader'

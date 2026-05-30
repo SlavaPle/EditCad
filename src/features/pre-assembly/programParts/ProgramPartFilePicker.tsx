@@ -1,12 +1,17 @@
 import { forwardRef, useImperativeHandle, useRef } from 'react'
 import type { BrowserFileHandle } from '../../../lib/saveModel'
-import { PROGRAM_PART_FILE_ACCEPT, readProgramPartFromFile, type ProgramPartDescriptor } from './programPartFile'
+import {
+  PROGRAM_PART_FILE_ACCEPT,
+  readProgramPartFromFileWithRoot,
+  type ProgramPartDescriptor,
+} from './programPartFile'
 import { loadProgramPartGeometryFromFile } from './programPartGeometry'
 import type { BufferGeometry } from 'three'
 
 export type ProgramPartPickEntry = {
   part: ProgramPartDescriptor
   geometry: BufferGeometry
+  sourceHandle?: FileSystemHandle | null
 }
 
 export type ProgramPartPickBatchResult = {
@@ -19,15 +24,23 @@ export interface ProgramPartFilePickerHandle {
 }
 
 export interface ProgramPartFilePickerProps {
+  assemblyFileDirectory: FileSystemDirectoryHandle | null
   onPick: (parts: ProgramPartPickEntry[]) => void
   onError?: (message: string) => void
 }
 
-async function pickFilesFromList(files: FileList | File[]): Promise<ProgramPartPickBatchResult> {
+async function pickFilesFromList(
+  files: FileList | File[],
+  assemblyFileDirectory: FileSystemDirectoryHandle | null,
+  fileHandles?: Array<FileSystemHandle | null>,
+): Promise<ProgramPartPickBatchResult> {
   const picked: ProgramPartPickEntry[] = []
   const errors: string[] = []
-  for (const file of files) {
-    const meta = await readProgramPartFromFile(file)
+  const list = [...files]
+  for (let i = 0; i < list.length; i++) {
+    const file = list[i]
+    const handle = fileHandles?.[i] ?? null
+    const meta = await readProgramPartFromFileWithRoot(file, assemblyFileDirectory, handle)
     if (!meta.ok) {
       errors.push(`${file.name}: ${meta.error}`)
       continue
@@ -37,18 +50,25 @@ async function pickFilesFromList(files: FileList | File[]): Promise<ProgramPartP
       errors.push(`${file.name}: ${geometry.error}`)
       continue
     }
-    picked.push({ part: meta.part, geometry: geometry.geometry })
+    picked.push({
+      part: meta.part,
+      geometry: geometry.geometry,
+      sourceHandle: handle,
+    })
   }
   return { picked, errors }
 }
 
 export const ProgramPartFilePicker = forwardRef<ProgramPartFilePickerHandle, ProgramPartFilePickerProps>(
-  function ProgramPartFilePicker({ onPick, onError }, ref) {
+  function ProgramPartFilePicker({ assemblyFileDirectory, onPick, onError }, ref) {
     const inputRef = useRef<HTMLInputElement>(null)
 
-    const handleFiles = async (files: FileList | File[]) => {
+    const handleFiles = async (
+      files: FileList | File[],
+      fileHandles?: Array<FileSystemHandle | null>,
+    ) => {
       if (files.length === 0) return
-      const { picked, errors } = await pickFilesFromList(files)
+      const { picked, errors } = await pickFilesFromList(files, assemblyFileDirectory, fileHandles)
       if (picked.length > 0) {
         onPick(picked)
       }
@@ -63,6 +83,7 @@ export const ProgramPartFilePicker = forwardRef<ProgramPartFilePickerHandle, Pro
           window as Window & {
             showOpenFilePicker?: (options?: {
               multiple?: boolean
+              startIn?: FileSystemHandle
               types?: Array<{ description?: string; accept: Record<string, string[]> }>
             }) => Promise<Array<BrowserFileHandle & { getFile: () => Promise<File> }>>
           }
@@ -71,6 +92,7 @@ export const ProgramPartFilePicker = forwardRef<ProgramPartFilePickerHandle, Pro
           try {
             const handles = await showOpenFilePicker({
               multiple: true,
+              startIn: assemblyFileDirectory ?? undefined,
               types: [
                 {
                   description: 'EditCad program part',
@@ -80,7 +102,7 @@ export const ProgramPartFilePicker = forwardRef<ProgramPartFilePickerHandle, Pro
             })
             if (handles.length === 0) return
             const files = await Promise.all(handles.map((h) => h.getFile()))
-            await handleFiles(files)
+            await handleFiles(files, handles as unknown as FileSystemHandle[])
             return
           } catch {
             return

@@ -60,6 +60,8 @@ import {
   programPartsFromAssemblyProgram,
   ProgramPartFilePicker,
   removeProgramPart,
+  persistAssemblyRootHandle,
+  restoreAssemblyRootHandle,
   saveAssemblyFileAs,
   saveAssemblyToHandle,
   savePhantomAssemblyFileAs,
@@ -80,6 +82,9 @@ import {
   type ProgramPartPickEntry,
 } from './features/pre-assembly'
 import { layoutProgramPartPositionsMm } from './features/pre-assembly/viewer'
+import { loadGeometriesFromAssembly } from './features/pre-assembly/programParts/loadAssemblyProgramPartGeometries'
+import { isUserCancelError } from './lib/isUserCancelError'
+import i18n from './i18n'
 
 function getFileExtensionLower(name: string | null): string | null {
   if (!name) return null
@@ -135,6 +140,8 @@ function App() {
     Record<string, BufferGeometry>
   >({})
   const [programPartsFitToken, setProgramPartsFitToken] = useState(0)
+  const [assemblyRootDirectoryHandle, setAssemblyRootDirectoryHandle] =
+    useState<FileSystemDirectoryHandle | null>(null)
   const [assemblySourceFileHandle, setAssemblySourceFileHandle] = useState<BrowserFileHandle | null>(null)
   const [assemblySourceFileName, setAssemblySourceFileName] = useState<string | null>(null)
   const [assemblyDocMeta, setAssemblyDocMeta] = useState<{ id: string; name: string }>({
@@ -142,6 +149,7 @@ function App() {
     name: 'Assembly',
   })
   const [programLoadError, setProgramLoadError] = useState<string | null>(null)
+  const [programSaveMessage, setProgramSaveMessage] = useState<string | null>(null)
   const [preAssemblyWizard, setPreAssemblyWizard] = useState<PreAssemblyWizard>(null)
   const [preAssemblySelection, setPreAssemblySelection] =
     useState<PreAssemblyPanelSelection>(null)
@@ -625,17 +633,47 @@ function App() {
     setProgramPartsFitToken((token) => token + 1)
   }, [])
 
+  const applyAssemblyGeometries = useCallback(
+    async (
+      assemblyId: string,
+      loadedParts: PreAssemblyProgramPart[],
+      directory: FileSystemDirectoryHandle | null,
+    ) => {
+      if (loadedParts.length === 0) return
+      const result = await loadGeometriesFromAssembly(assemblyId, loadedParts, directory)
+      if (Object.keys(result.geometries).length > 0) {
+        setProgramPartGeometries(result.geometries)
+        setProgramPartsFitToken((token) => token + 1)
+      }
+      const messages: string[] = []
+      if (result.missingRefs.length > 0) {
+        messages.push(
+          i18n.t('preAssembly.loadAssembly.missingParts', {
+            refs: result.missingRefs.join(', '),
+          }),
+        )
+      }
+      if (result.errors.length > 0) {
+        messages.push(...result.errors)
+      }
+      setProgramLoadError(messages.length > 0 ? messages.join('\n') : null)
+    },
+    [],
+  )
+
   const handleAssemblyLoad = useCallback(
     (
       file: AssemblyFile,
       sourceHandle?: BrowserFileHandle | null,
       fileName?: string,
     ) => {
+      const loadedParts = programPartsFromAssemblyProgram(file.program)
+
       setProgramPartGeometries((geometries) => {
         disposeProgramPartGeometries(geometries)
         return {}
       })
-      setProgramParts(programPartsFromAssemblyProgram(file.program))
+      setProgramParts(loadedParts)
       setProgramPartsFitToken((token) => token + 1)
       const embeddedPhantom = phantomDocFromAssemblyFile(file)
       setPhantomDoc(embeddedPhantom)
@@ -646,13 +684,29 @@ function App() {
       setAssemblySourceFileName(fileName ?? null)
       setAssemblyDocMeta({ id: file.id, name: file.name })
       setProgramLoadError(null)
+      setProgramSaveMessage(null)
       setActiveToolbarTab('preAssembly')
+
+      void (async () => {
+        const root =
+          assemblyRootDirectoryHandle ?? (await restoreAssemblyRootHandle(file.id))
+        if (root) {
+          setAssemblyRootDirectoryHandle(root)
+          await persistAssemblyRootHandle(file.id, root)
+        }
+        await applyAssemblyGeometries(file.id, loadedParts, root)
+      })()
     },
-    [disposeProgramPartGeometries],
+    [
+      applyAssemblyGeometries,
+      assemblyRootDirectoryHandle,
+      disposeProgramPartGeometries,
+    ],
   )
 
   const handleLoadAssemblyClick = useCallback(() => {
     setProgramLoadError(null)
+    setProgramSaveMessage(null)
     void assemblyLoaderRef.current?.openFileDialog()
   }, [])
 
@@ -665,17 +719,30 @@ function App() {
   }, [assemblyDocMeta, phantomDoc, programParts])
 
   const handleSaveAssemblyAsClick = useCallback(() => {
-    if (programParts.length === 0 && !phantomDoc) return
+    const canSave = programParts.length > 0 || !!phantomDoc
+    if (!canSave) return
     const baseName = assemblyDocMeta.name || stripEcdasmExtension(assemblySourceFileName)
-    void saveAssemblyFileAs(buildAssemblyFile(), baseName, assemblySourceFileHandle ?? undefined)
-      .then(({ handle, fileName }) => {
+    const assemblyFile = buildAssemblyFile()
+    void (async () => {
+      try {
+        const { handle, fileName } = await saveAssemblyFileAs(
+          assemblyFile,
+          baseName,
+          assemblySourceFileHandle ?? undefined,
+        )
         setAssemblySourceFileHandle(handle)
         setAssemblySourceFileName(fileName)
-      })
-      .catch((err: unknown) => {
+        setProgramLoadError(null)
+        setProgramSaveMessage(
+          i18n.t('preAssembly.saveAssemblyAs.saved', { fileName }),
+        )
+      } catch (err: unknown) {
+        if (isUserCancelError(err)) return
         const message = err instanceof Error ? err.message : String(err)
+        setProgramSaveMessage(null)
         setProgramLoadError(message)
-      })
+      }
+    })()
   }, [
     assemblyDocMeta,
     assemblySourceFileHandle,
@@ -686,25 +753,31 @@ function App() {
   ])
 
   const handleSaveAssemblyClick = useCallback(() => {
-    if (programParts.length === 0 && !phantomDoc) return
+    const canSave = programParts.length > 0 || !!phantomDoc
+    if (!canSave) return
     const assemblyFile = buildAssemblyFile()
     const canOverwrite =
       !!assemblySourceFileHandle &&
       (assemblySourceFileName?.toLowerCase().endsWith('.ecdasm') ?? false)
-    if (canOverwrite) {
-      void saveAssemblyToHandle(assemblyFile, assemblySourceFileHandle)
-        .then((savedName) => {
-          if (savedName) setAssemblySourceFileName(savedName)
-        })
-        .catch((err: unknown) => {
-          const message = err instanceof Error ? err.message : String(err)
-          setProgramLoadError(message)
-        })
+    if (!canOverwrite) {
+      handleSaveAssemblyAsClick()
       return
     }
-    handleSaveAssemblyAsClick()
+    void (async () => {
+      try {
+        const savedName = await saveAssemblyToHandle(assemblyFile, assemblySourceFileHandle)
+        const fileName = savedName ?? assemblySourceFileName ?? 'assembly.ecdasm'
+        if (savedName) setAssemblySourceFileName(savedName)
+        setProgramLoadError(null)
+        setProgramSaveMessage(i18n.t('preAssembly.saveAssembly.saved', { fileName }))
+      } catch (err: unknown) {
+        if (isUserCancelError(err)) return
+        const message = err instanceof Error ? err.message : String(err)
+        setProgramSaveMessage(null)
+        setProgramLoadError(message)
+      }
+    })()
   }, [
-    assemblyDocMeta,
     assemblySourceFileHandle,
     assemblySourceFileName,
     buildAssemblyFile,
@@ -801,6 +874,7 @@ function App() {
           programParts={programParts}
           assemblySourceFileName={assemblySourceFileName}
           programLoadError={programLoadError}
+          programSaveMessage={programSaveMessage}
           preAssemblySelection={preAssemblySelection}
           onPreAssemblySelectionChange={setPreAssemblySelection}
           onPhantomDocChange={setPhantomDoc}
@@ -872,6 +946,7 @@ function App() {
       />
       <ProgramPartFilePicker
         ref={programPartPickerRef}
+        assemblyFileDirectory={assemblyRootDirectoryHandle}
         onPick={handleProgramPartsPicked}
         onError={handleProgramPartPickError}
       />

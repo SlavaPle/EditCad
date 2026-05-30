@@ -57,6 +57,7 @@ export interface LeftPanelProps {
   programParts?: readonly PreAssemblyProgramPart[]
   assemblySourceFileName?: string | null
   programLoadError?: string | null
+  programSaveMessage?: string | null
   preAssemblySelection?: PreAssemblyPanelSelection
   onPreAssemblySelectionChange?: (next: PreAssemblyPanelSelection) => void
   onPhantomDocChange?: (next: PhantomAssemblyFile) => void
@@ -91,6 +92,7 @@ export function LeftPanel({
   programParts = [],
   assemblySourceFileName = null,
   programLoadError = null,
+  programSaveMessage = null,
   preAssemblySelection = null,
   onPreAssemblySelectionChange,
   onPhantomDocChange,
@@ -150,6 +152,7 @@ export function LeftPanel({
             programParts={programParts}
             assemblySourceFileName={assemblySourceFileName}
             programLoadError={programLoadError}
+            programSaveMessage={programSaveMessage}
             onAddPart={onAddPart}
             onRemovePart={onRemoveProgramPart}
           />

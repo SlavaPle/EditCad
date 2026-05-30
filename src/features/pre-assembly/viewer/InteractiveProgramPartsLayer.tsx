@@ -53,6 +53,7 @@ export function InteractiveProgramPartsLayer({
   onPartTransformChange,
 }: InteractiveProgramPartsLayerProps) {
   const [probableFaces, setProbableFaces] = useState<readonly number[]>([])
+  const [transformPreviewTick, setTransformPreviewTick] = useState(0)
   const primaryFacesRef = useRef<readonly number[]>([])
 
   const setPrimaryFaces = useCallback((faces: readonly number[]) => {
@@ -71,7 +72,15 @@ export function InteractiveProgramPartsLayer({
 
   const { getTransform, setTransform } = useProgramPartTransformsRef(parts)
 
-  const handlePartTransformChange = useCallback(
+  const handlePartTransformPreview = useCallback(
+    (partId: string, transform: PhantomTransform) => {
+      setTransform(partId, transform)
+      setTransformPreviewTick((tick) => tick + 1)
+    },
+    [setTransform],
+  )
+
+  const handlePartTransformCommit = useCallback(
     (partId: string, transform: PhantomTransform) => {
       setTransform(partId, transform)
       onPartTransformChange(partId, transform)
@@ -83,7 +92,8 @@ export function InteractiveProgramPartsLayer({
   useProgramPartOrbitGuard(partsRootRef, preAssemblyActive)
 
   const { onPartPointerDown } = useProgramPartPointerSession({
-    onPartTransformChange: handlePartTransformChange,
+    onPartTransformPreview: handlePartTransformPreview,
+    onPartTransformCommit: handlePartTransformCommit,
     getPartTransform: getTransform,
     onActivePartChange: (partId) => onActivePartChange(partId),
     onSelectionChange: (next) => onSelectionChange(next),
@@ -97,6 +107,8 @@ export function InteractiveProgramPartsLayer({
 
   if (parts.length === 0) return null
 
+  void transformPreviewTick
+
   // fit + key=fitToken: kamera tylko przy dodaniu/usunięciu detalu, nie przy drag (bez observe)
   return (
     <Bounds margin={1.2} fit key={fitToken}>
@@ -105,6 +117,7 @@ export function InteractiveProgramPartsLayer({
           <InteractiveProgramPart
             key={part.id}
             part={part}
+            displayTransform={getTransform(part.id, part.transform)}
             geometry={geometries[part.id] ?? null}
             preAssemblyActive={preAssemblyActive}
             isActive={activePartId === part.id}
@@ -122,6 +135,7 @@ export function InteractiveProgramPartsLayer({
 
 function InteractiveProgramPart({
   part,
+  displayTransform,
   geometry,
   preAssemblyActive,
   isActive,
@@ -132,6 +146,7 @@ function InteractiveProgramPart({
   onPartPointerDown,
 }: {
   part: PreAssemblyProgramPart
+  displayTransform: PhantomTransform
   geometry: BufferGeometry | null
   preAssemblyActive: boolean
   isActive: boolean
@@ -154,13 +169,13 @@ function InteractiveProgramPart({
     return [-center.x, -center.y, -center.z] as [number, number, number]
   }, [geometry])
 
-  const position = programPartGroupPosition(part.transform)
-  const rotation = programPartGroupRotation(part.transform)
+  const position = programPartGroupPosition(displayTransform)
+  const rotation = programPartGroupRotation(displayTransform)
   const meshColor = isActive ? PROGRAM_PART_ACTIVE_COLOR : PROGRAM_PART_COLOR
 
   const handlePointerDown = (event: ThreeEvent<PointerEvent>) => {
     if (!preAssemblyActive) return
-    onPartPointerDown(part.id, part.transform, geometry, event)
+    onPartPointerDown(part.id, displayTransform, geometry, event)
   }
 
   if (geometry && isActive && preAssemblyActive) {

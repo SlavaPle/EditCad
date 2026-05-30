@@ -1,4 +1,5 @@
 import { isMvpSupportedEnvelope, parsePhantomAssembly, parsePhantomTransform } from '../codec'
+import { normalizeAssemblyRelativeRef } from './assemblyRelativePath'
 import { defaultProgramPartTransform } from '../programParts/programPartTransform'
 import type { PhantomAssembly } from '../model'
 import type { PhantomAssemblyFile } from '../model'
@@ -26,7 +27,7 @@ function parseProgramPart(value: unknown): PreAssemblyProgramPart | null {
   if (!transform) return null
   return {
     id: value.id,
-    ref: value.ref.trim(),
+    ref: normalizeAssemblyRelativeRef(value.ref.trim()),
     name: value.name.trim(),
     transform,
   }

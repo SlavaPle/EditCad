@@ -31,7 +31,10 @@ type ActiveSession = ProgramPartPointerSession & {
 }
 
 export type ProgramPartPointerSessionHandlers = {
-  onPartTransformChange: (partId: string, transform: PhantomTransform) => void
+  /** Podgląd podczas drag — tylko ref (bez setState co klatkę). */
+  onPartTransformPreview: (partId: string, transform: PhantomTransform) => void
+  /** Zatwierdzenie transformu (React state + zapis do .ecdasm). */
+  onPartTransformCommit: (partId: string, transform: PhantomTransform) => void
   getPartTransform: (partId: string, fallback: PhantomTransform) => PhantomTransform
   onActivePartChange: (partId: string) => void
   onSelectionChange: (selection: SelectionState) => void
@@ -93,7 +96,7 @@ export function useProgramPartPointerSession(handlers: ProgramPartPointerSession
       if (active.mode === 'rotate') {
         const transform = computeRotateTransform(active, ev.clientX, ev.clientY)
         liveTransformRef.current = transform
-        h.onPartTransformChange(active.partId, transform)
+        h.onPartTransformPreview(active.partId, transform)
         return
       }
 
@@ -104,7 +107,7 @@ export function useProgramPartPointerSession(handlers: ProgramPartPointerSession
       if (!hit) return
       const transform = computeTranslateTransform(active, hit)
       liveTransformRef.current = transform
-      h.onPartTransformChange(active.partId, transform)
+      h.onPartTransformPreview(active.partId, transform)
     }
 
     const onUp = (ev: PointerEvent) => {
@@ -120,7 +123,7 @@ export function useProgramPartPointerSession(handlers: ProgramPartPointerSession
       const finish = finishProgramPartPointerSession(session, finalTransform)
 
       if (finish.kind === 'drag') {
-        h.onPartTransformChange(session.partId, finish.transform)
+        h.onPartTransformCommit(session.partId, finish.transform)
         endSession()
         return
       } else if (session.downEvent.nativeEvent.button === 0) {
