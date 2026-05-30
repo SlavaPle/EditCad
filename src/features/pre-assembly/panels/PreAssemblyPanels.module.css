@@ -112,6 +112,17 @@
   background: #1e293b;
 }
 
+.programPartRow {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.programPartRow .treeItemButton {
+  flex: 1;
+  min-width: 0;
+}
+
 .field {
   margin-bottom: 10px;
 }

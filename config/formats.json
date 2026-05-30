@@ -28,6 +28,13 @@
       "templates": {
         "empty": "config/templates/pre-assembly.empty.json"
       }
+    },
+    "assembly": {
+      "id": "editcad.assembly",
+      "version": 1,
+      "extensions": [".ecdasm"],
+      "implementation": "src/features/pre-assembly/assemblyFile",
+      "description": "Pre-assembly assembly: program (.ecdprt refs) and at most one embedded phantom"
     }
   }
 }

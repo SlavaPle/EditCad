@@ -1,4 +1,35 @@
 export {
+  appendProgramParts,
+  programPartsFromAssemblyProgram,
+  removeProgramPart,
+  type PreAssemblyProgramPart,
+} from './preAssemblyProgram'
+export {
+  ASSEMBLY_FORMAT,
+  ASSEMBLY_VERSION,
+  AssemblyLoader,
+  buildEcdasmFileName,
+  createAssemblyFileFromProgram,
+  ECDASM_EXTENSION,
+  parseAssemblyFile,
+  saveAssemblyFileAs,
+  saveAssemblyToHandle,
+  stripEcdasmExtension,
+  phantomDocFromAssemblyFile,
+  type AssemblyFile,
+  type AssemblyLoaderHandle,
+} from './assemblyFile'
+export {
+  isProgramPartFileName,
+  ProgramPartFilePicker,
+  readProgramPartFromFile,
+  PROGRAM_PART_FILE_ACCEPT,
+  type ProgramPartDescriptor,
+  type ProgramPartPickEntry,
+  type ProgramPartFilePickerHandle,
+  type ProgramPartFilePickerProps,
+} from './programParts'
+export {
   PRE_ASSEMBLY_FORMAT,
   PRE_ASSEMBLY_VERSION,
   SCENE_FORMAT,
@@ -89,10 +120,9 @@ export {
   type ValidateElementAnchorResult,
 } from './phantomStore'
 export {
-  getPreAssemblyAddPartTitleKey,
+  getPreAssemblyCreateAttachmentDisabled,
   getPreAssemblySaveTitleKey,
   getPreAssemblyToolbarUi,
-  type PreAssemblyAddPartDisabledReason,
   type PreAssemblySaveDisabledReason,
   type PreAssemblyToolbarUi,
   type PreAssemblyWizard,
@@ -112,12 +142,14 @@ export {
 } from './fileIo'
 export { PhantomLoader, type PhantomLoaderHandle } from './PhantomLoader'
 export {
+  PreAssemblyProgramPanel,
   PreAssemblyRightPanel,
   PreAssemblyTreePanel,
   preAssemblySelectionAnchorId,
   preAssemblySelectionElementId,
   usePreAssemblyPanelActions,
   type PreAssemblyPanelSelection,
+  type PreAssemblyProgramPanelProps,
 } from './panels'
 export { degToRad, mmToScene, sceneToMm } from './phantomUnits'
 export {

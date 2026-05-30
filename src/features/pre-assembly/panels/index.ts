@@ -4,6 +4,7 @@ export {
   preAssemblySelectionElementId,
 } from './panelSelection'
 export { PreAssemblyTreePanel, type PreAssemblyTreePanelProps } from './PreAssemblyTreePanel'
+export { PreAssemblyProgramPanel, type PreAssemblyProgramPanelProps } from './PreAssemblyProgramPanel'
 export {
   PreAssemblyRightPanel,
   usePreAssemblyPanelActions,

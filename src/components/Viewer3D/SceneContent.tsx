@@ -7,9 +7,11 @@ import type {
   ElementPropertyValues,
   PhantomAssembly,
 } from '../../features/pre-assembly'
+import type { PreAssemblyProgramPart } from '../../features/pre-assembly'
 import {
   ElementInstanceLayer,
   PhantomAssemblyLayer,
+  ProgramPartsLayer,
 } from '../../features/pre-assembly/viewer'
 import { SelectableModel } from './SelectableModel'
 import type { SelectionState } from '../../lib/selection'
@@ -40,6 +42,9 @@ interface SceneContentProps {
   phantomElementProperties?: Readonly<Record<string, ElementPropertyValues>>
   selectedPhantomAnchorId?: string | null
   selectedPhantomElementId?: string | null
+  programParts?: readonly PreAssemblyProgramPart[]
+  programPartGeometries?: Readonly<Record<string, BufferGeometry | null>>
+  programPartsFitToken?: number
 }
 
 export function SceneContent({
@@ -57,6 +62,9 @@ export function SceneContent({
   phantomElementProperties = {},
   selectedPhantomAnchorId = null,
   selectedPhantomElementId = null,
+  programParts = [],
+  programPartGeometries = {},
+  programPartsFitToken = 0,
 }: SceneContentProps) {
   return (
     <>
@@ -64,6 +72,13 @@ export function SceneContent({
       <ambientLight intensity={0.95} />
       <directionalLight position={[12, 18, 10]} intensity={2.6} />
       <directionalLight position={[-10, 8, -12]} intensity={1.35} />
+      {programParts.length > 0 && (
+        <ProgramPartsLayer
+          parts={programParts}
+          geometries={programPartGeometries}
+          fitToken={programPartsFitToken}
+        />
+      )}
       {phantom && (
         <>
           <PhantomAssemblyLayer

@@ -1,47 +1,42 @@
 import { describe, expect, it } from 'vitest'
-import { addAttachment, createEmptyPhantomFile } from './phantomStore'
-import { getPreAssemblyAddPartTitleKey, getPreAssemblyToolbarUi } from './toolbarActions'
+import { createEmptyPhantomFile } from './phantomStore'
+import { getPreAssemblySaveTitleKey, getPreAssemblyToolbarUi } from './toolbarActions'
 
 describe('pre-assembly toolbarActions', () => {
-  it('disables add part when phantom is missing', () => {
-    const ui = getPreAssemblyToolbarUi({ phantomDoc: null })
-    expect(ui).toEqual({
-      hasPhantom: false,
-      addPartDisabled: true,
-      addPartDisabledReason: 'noPhantom',
-      createAttachmentDisabled: true,
-      saveDisabled: true,
-      saveDisabledReason: 'noPhantom',
-    })
-    expect(getPreAssemblyAddPartTitleKey(ui, false)).toBe('preAssembly.addPart.button')
+  it('allows program parts without phantom', () => {
+    const ui = getPreAssemblyToolbarUi({ phantomDoc: null, programPartCount: 2 })
+    expect(ui.hasPhantom).toBe(false)
+    expect(ui.hasProgramParts).toBe(true)
+    expect(ui.createAttachmentDisabled).toBe(true)
   })
 
-  it('disables add part when phantom has no attachments', () => {
-    const ui = getPreAssemblyToolbarUi({ phantomDoc: createEmptyPhantomFile() })
+  it('reports no program parts when list is empty', () => {
+    const ui = getPreAssemblyToolbarUi({ phantomDoc: null, programPartCount: 0 })
+    expect(ui.hasProgramParts).toBe(false)
+    expect(ui.canSaveAssembly).toBe(false)
+  })
+
+  it('allows saving assembly with program parts only', () => {
+    const ui = getPreAssemblyToolbarUi({ phantomDoc: null, programPartCount: 2 })
+    expect(ui.canSaveAssembly).toBe(true)
+  })
+
+  it('phantom save disabled when bindings incomplete', () => {
+    const ui = getPreAssemblyToolbarUi({
+      phantomDoc: createEmptyPhantomFile(),
+      programPartCount: 0,
+    })
     expect(ui.hasPhantom).toBe(true)
-    expect(ui.addPartDisabled).toBe(true)
-    expect(ui.addPartDisabledReason).toBe('noAnchors')
-    expect(ui.createAttachmentDisabled).toBe(false)
     expect(ui.saveDisabled).toBe(false)
     expect(ui.saveDisabledReason).toBe(null)
-    expect(getPreAssemblyAddPartTitleKey(ui, false)).toBe('preAssembly.addPart.noAnchors')
+    expect(getPreAssemblySaveTitleKey(ui)).toBe('preAssembly.savePhantom.button')
   })
 
-  it('enables add part when at least one attachment exists', () => {
-    const file = createEmptyPhantomFile()
-    const anchored = addAttachment(file.phantom, {
-      id: 'floor',
-      role: 'floor',
-      source: { kind: 'boxFace', face: 'posY' },
-    })
-    expect(anchored.ok).toBe(true)
-    if (!anchored.ok) return
-
+  it('allows saving assembly with phantom only', () => {
     const ui = getPreAssemblyToolbarUi({
-      phantomDoc: { ...file, phantom: anchored.phantom },
+      phantomDoc: createEmptyPhantomFile(),
+      programPartCount: 0,
     })
-    expect(ui.addPartDisabled).toBe(false)
-    expect(ui.addPartDisabledReason).toBe(null)
-    expect(getPreAssemblyAddPartTitleKey(ui, true)).toBe('preAssembly.addPart.active')
+    expect(ui.canSaveAssembly).toBe(true)
   })
 })

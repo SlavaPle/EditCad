@@ -477,7 +477,7 @@ function parseConnectionList(value: unknown): ElementConnection[] | null {
   return connections
 }
 
-function parsePhantomAssembly(value: unknown): PhantomAssembly | null {
+export function parsePhantomAssembly(value: unknown): PhantomAssembly | null {
   if (!isObject(value) || typeof value.id !== 'string' || value.id.trim().length === 0) {
     return null
   }

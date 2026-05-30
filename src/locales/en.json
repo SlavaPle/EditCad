@@ -72,9 +72,16 @@
       "button": "Create phantom"
     },
     "addPart": {
-      "button": "Add part",
-      "active": "Add part mode on (click to close)",
-      "noAnchors": "Add part — create an attachment first"
+      "button": "Add part"
+    },
+    "loadAssembly": {
+      "button": "Load assembly"
+    },
+    "saveAssembly": {
+      "button": "Save assembly"
+    },
+    "saveAssemblyAs": {
+      "button": "Save assembly as…"
     },
     "createAttachment": {
       "button": "Create attachment",
@@ -91,6 +98,13 @@
       "button": "Save phantom as…"
     },
     "panels": {
+      "program": {
+        "title": "Program",
+        "assemblyFile": "Assembly file",
+        "addPart": "Add part",
+        "empty": "No parts in the program yet — use Add part to choose one or more .ecdprt files.",
+        "remove": "Remove part"
+      },
       "tree": {
         "title": "Assembly tree",
         "phantomFile": "Phantom file",
@@ -103,7 +117,10 @@
         "envelopeBox": "Box envelope",
         "attachments": "Attachments",
         "attachmentsEmpty": "No attachments yet — use Create attachment in the toolbar.",
+        "program": "Program",
         "elements": "Elements",
+        "addPart": "Add part",
+        "programEmpty": "No parts in the program yet — use Add part to choose an .ecdprt file.",
         "elementsEmpty": "No element slots.",
         "connections": "Connections",
         "connectionsEmpty": "No connections.",

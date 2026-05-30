@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react'
+import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import styles from './Toolbar.module.css'
 import {
@@ -12,8 +12,10 @@ import {
   type ToolbarTabId
 } from './ToolbarTabsConfig'
 import type { PreAssemblyToolbarUi, PreAssemblyWizard } from '../features/pre-assembly'
-import { getPreAssemblyAddPartTitleKey, getPreAssemblySaveTitleKey } from '../features/pre-assembly'
+import { getPreAssemblySaveTitleKey } from '../features/pre-assembly'
 interface ToolbarProps {
+  activeToolbarTab?: ToolbarTabId
+  onActiveToolbarTabChange?: (tabId: ToolbarTabId) => void
   onLoadModelClick?: () => void
   onSaveModelClick?: () => void
   onSaveAsModelClick?: () => void
@@ -27,6 +29,9 @@ interface ToolbarProps {
   onDisplayModeChange?: (mode: ModelDisplayMode) => void
   preAssemblyToolbarUi?: PreAssemblyToolbarUi
   preAssemblyWizard?: PreAssemblyWizard
+  onLoadAssemblyClick?: () => void
+  onSaveAssemblyClick?: () => void
+  onSaveAssemblyAsClick?: () => void
   onLoadPhantomClick?: () => void
   onSavePhantomClick?: () => void
   onSavePhantomAsClick?: () => void
@@ -41,6 +46,8 @@ const LANGUAGES = [
 ] as const
 
 export function Toolbar({
+  activeToolbarTab = DEFAULT_TOOLBAR_TAB_ID,
+  onActiveToolbarTabChange,
   onLoadModelClick,
   onSaveModelClick,
   onSaveAsModelClick,
@@ -54,6 +61,9 @@ export function Toolbar({
   onDisplayModeChange,
   preAssemblyToolbarUi,
   preAssemblyWizard = null,
+  onLoadAssemblyClick,
+  onSaveAssemblyClick,
+  onSaveAssemblyAsClick,
   onLoadPhantomClick,
   onSavePhantomClick,
   onSavePhantomAsClick,
@@ -62,7 +72,7 @@ export function Toolbar({
   onCreateAttachment,
 }: ToolbarProps) {
   const { t, i18n } = useTranslation()
-  const [activeTabId, setActiveTabId] = useState<ToolbarTabId>(DEFAULT_TOOLBAR_TAB_ID)
+  const activeTabId = activeToolbarTab
 
   const handleLoad = () => {
     onLoadModelClick?.()
@@ -330,6 +340,73 @@ export function Toolbar({
             </span>
           </button>
         )
+      case 'loadAssembly':
+        return (
+          <button
+            key={actionId}
+            type="button"
+            className={`${styles.iconBtn} ${styles.btnPrimary}`}
+            title={t('preAssembly.loadAssembly.button')}
+            aria-label={t('preAssembly.loadAssembly.button')}
+            onClick={() => onLoadAssemblyClick?.()}
+          >
+            <span className={styles.icon}>
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path
+                  d="M3 5h4l2 2h8v8H3V5zm2 2v6h10V9H8.5L6.5 7H5z"
+                  fill="currentColor"
+                />
+              </svg>
+            </span>
+          </button>
+        )
+      case 'saveAssembly':
+        return (
+          <button
+            key={actionId}
+            type="button"
+            className={styles.iconBtn}
+            disabled={!preAssemblyToolbarUi?.canSaveAssembly}
+            title={t('preAssembly.saveAssembly.button')}
+            aria-label={t('preAssembly.saveAssembly.button')}
+            onClick={() => onSaveAssemblyClick?.()}
+          >
+            <span className={styles.icon}>
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M3 2.5h11l3 3V17.5H3V2.5zM6 4.5V9h7V4.5H6zm0 7V15h8v-3.5H6z" fill="currentColor" />
+              </svg>
+            </span>
+          </button>
+        )
+      case 'saveAssemblyAs':
+        return (
+          <button
+            key={actionId}
+            type="button"
+            className={styles.iconBtn}
+            disabled={!preAssemblyToolbarUi?.canSaveAssembly}
+            title={t('preAssembly.saveAssemblyAs.button')}
+            aria-label={t('preAssembly.saveAssemblyAs.button')}
+            onClick={() => onSaveAssemblyAsClick?.()}
+          >
+            <span className={styles.icon}>
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path
+                  d="M3 2.5h11l3 3V17.5H3V2.5zM6 4.5V9h7V4.5H6zm0 7V15h8v-3.5H6z"
+                  fill="currentColor"
+                />
+                <path
+                  d="M12.5 3v3.5H16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+          </button>
+        )
       case 'loadPhantom':
         return (
           <button
@@ -421,40 +498,19 @@ export function Toolbar({
             </span>
           </button>
         )
-      case 'addPart': {
-        const addPartActive = preAssemblyWizard === 'element'
-        const addPartTitleKey = preAssemblyToolbarUi
-          ? getPreAssemblyAddPartTitleKey(preAssemblyToolbarUi, addPartActive)
-          : 'preAssembly.addPart.button'
+      case 'addPart':
         return (
           <button
             key={actionId}
             type="button"
-            className={`${styles.iconBtn} ${addPartActive ? styles.iconBtnActive : ''}`}
-            disabled={!preAssemblyToolbarUi || preAssemblyToolbarUi.addPartDisabled}
-            title={t(addPartTitleKey)}
-            aria-label={t(addPartTitleKey)}
-            aria-pressed={addPartActive}
+            className={`${styles.iconBtn} ${styles.textActionBtn} ${styles.textActionBtnPrimary}`}
+            title={t('preAssembly.addPart.button')}
+            aria-label={t('preAssembly.addPart.button')}
             onClick={() => onAddPart?.()}
           >
-            <span className={styles.icon}>
-              <svg viewBox="0 0 20 20" aria-hidden="true">
-                <path
-                  d="M4 6l6-3 6 3v8l-6 3-6-3V6z"
-                  fill="currentColor"
-                  fillOpacity="0.85"
-                />
-                <path
-                  d="M10 8.5v3M8.5 10h3"
-                  stroke="#0f172a"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </span>
+            {t('preAssembly.addPart.button')}
           </button>
         )
-      }
       case 'createAttachment': {
         const attachmentActive = preAssemblyWizard === 'attachment'
         return (
@@ -531,7 +587,7 @@ export function Toolbar({
               key={tab.id}
               type="button"
               className={`${styles.tab} ${tab.id === activeTabId ? styles.tabActive : ''}`}
-              onClick={() => setActiveTabId(tab.id)}
+              onClick={() => onActiveToolbarTabChange?.(tab.id)}
             >
               {t(tab.labelKey)}
             </button>

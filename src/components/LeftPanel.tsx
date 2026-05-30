@@ -13,10 +13,12 @@ import { LeftPanelLimitInlineEditor } from './LeftPanelLimitInlineEditor'
 import { LeftPanelDimensionsSection } from './LeftPanelDimensionsSection'
 import type { ApplyTwoFaceStretchFn } from '../lib/applyTargetDistanceFromInput'
 import {
+  PreAssemblyProgramPanel,
   PreAssemblyTreePanel,
   usePreAssemblyPanelActions,
   type PhantomAssemblyFile,
   type PreAssemblyPanelSelection,
+  type PreAssemblyProgramPart,
 } from '../features/pre-assembly'
 import styles from './LeftPanel.module.css'
 
@@ -51,9 +53,15 @@ export interface LeftPanelProps {
   phantomDoc?: PhantomAssemblyFile | null
   phantomSourceFileName?: string | null
   phantomLoadError?: string | null
+  preAssemblyActive?: boolean
+  programParts?: readonly PreAssemblyProgramPart[]
+  assemblySourceFileName?: string | null
+  programLoadError?: string | null
   preAssemblySelection?: PreAssemblyPanelSelection
   onPreAssemblySelectionChange?: (next: PreAssemblyPanelSelection) => void
   onPhantomDocChange?: (next: PhantomAssemblyFile) => void
+  onAddPart?: () => void
+  onRemoveProgramPart?: (partId: string) => void
 }
 
 export function LeftPanel({
@@ -79,9 +87,15 @@ export function LeftPanel({
   phantomDoc = null,
   phantomSourceFileName = null,
   phantomLoadError = null,
+  preAssemblyActive = false,
+  programParts = [],
+  assemblySourceFileName = null,
+  programLoadError = null,
   preAssemblySelection = null,
   onPreAssemblySelectionChange,
   onPhantomDocChange,
+  onAddPart,
+  onRemoveProgramPart,
 }: LeftPanelProps) {
   const { t } = useTranslation()
   const dropZoneRef = useRef<HTMLDivElement>(null)
@@ -131,6 +145,15 @@ export function LeftPanel({
     <aside className={styles.panel}>
       <div className={styles.header}>{t('leftPanel.header')}</div>
       <div className={styles.content}>
+        {preAssemblyActive ? (
+          <PreAssemblyProgramPanel
+            programParts={programParts}
+            assemblySourceFileName={assemblySourceFileName}
+            programLoadError={programLoadError}
+            onAddPart={onAddPart}
+            onRemovePart={onRemoveProgramPart}
+          />
+        ) : null}
         {phantomDoc && onPreAssemblySelectionChange ? (
           <>
             {phantomSourceFileName ? (

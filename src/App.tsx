@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { BufferGeometry } from 'three'
 import { Toolbar } from './components/Toolbar'
+import {
+  DEFAULT_TOOLBAR_TAB_ID,
+  type ToolbarTabId,
+} from './components/ToolbarTabsConfig'
 import { Viewer3D } from './components/Viewer3D'
 import { LeftPanel } from './components/LeftPanel'
 import { RightPanel } from './components/RightPanel'
@@ -43,18 +47,33 @@ import { resolveConstraintDependentFaceIndices } from './features/part-constrain
 import type { ApplyTwoFaceStretchOverlay } from './lib/applyStretchOverlay'
 import styles from './App.module.css'
 import {
+  appendProgramParts,
+  AssemblyLoader,
+  createAssemblyFileFromProgram,
   createEmptyPhantomFile,
   getPreAssemblyToolbarUi,
   preAssemblySelectionAnchorId,
   preAssemblySelectionElementId,
+  phantomDocFromAssemblyFile,
+  programPartsFromAssemblyProgram,
+  ProgramPartFilePicker,
+  removeProgramPart,
+  saveAssemblyFileAs,
+  saveAssemblyToHandle,
   savePhantomAssemblyFileAs,
   savePhantomAssemblyToHandle,
+  stripEcdasmExtension,
   stripEcdpreExtension,
   PhantomLoader,
+  type AssemblyFile,
+  type AssemblyLoaderHandle,
   type PhantomAssemblyFile,
   type PhantomLoaderHandle,
   type PreAssemblyPanelSelection,
+  type PreAssemblyProgramPart,
   type PreAssemblyWizard,
+  type ProgramPartFilePickerHandle,
+  type ProgramPartPickEntry,
 } from './features/pre-assembly'
 
 function getFileExtensionLower(name: string | null): string | null {
@@ -105,11 +124,28 @@ function App() {
   const [phantomSourceFileHandle, setPhantomSourceFileHandle] = useState<BrowserFileHandle | null>(null)
   const [phantomSourceFileName, setPhantomSourceFileName] = useState<string | null>(null)
   const [phantomLoadError, setPhantomLoadError] = useState<string | null>(null)
+  const [activeToolbarTab, setActiveToolbarTab] = useState<ToolbarTabId>(DEFAULT_TOOLBAR_TAB_ID)
+  const [programParts, setProgramParts] = useState<PreAssemblyProgramPart[]>([])
+  const [programPartGeometries, setProgramPartGeometries] = useState<
+    Record<string, BufferGeometry>
+  >({})
+  const [programPartsFitToken, setProgramPartsFitToken] = useState(0)
+  const [assemblySourceFileHandle, setAssemblySourceFileHandle] = useState<BrowserFileHandle | null>(null)
+  const [assemblySourceFileName, setAssemblySourceFileName] = useState<string | null>(null)
+  const [assemblyDocMeta, setAssemblyDocMeta] = useState<{ id: string; name: string }>({
+    id: 'assembly-root',
+    name: 'Assembly',
+  })
+  const [programLoadError, setProgramLoadError] = useState<string | null>(null)
   const [preAssemblyWizard, setPreAssemblyWizard] = useState<PreAssemblyWizard>(null)
   const [preAssemblySelection, setPreAssemblySelection] =
     useState<PreAssemblyPanelSelection>(null)
   const modelLoaderRef = useRef<ModelLoaderHandle>(null)
   const phantomLoaderRef = useRef<PhantomLoaderHandle>(null)
+  const assemblyLoaderRef = useRef<AssemblyLoaderHandle>(null)
+  const programPartPickerRef = useRef<ProgramPartFilePickerHandle>(null)
+
+  const preAssemblyActive = activeToolbarTab === 'preAssembly'
 
   const selectedPhantomAnchorId = preAssemblySelectionAnchorId(preAssemblySelection)
   const selectedPhantomElementId = preAssemblySelectionElementId(preAssemblySelection)
@@ -412,7 +448,10 @@ function App() {
       })
   }, [model, preparedConstraints, preparedName, sourceFileHandle, sourceFileName, modelAppearance])
 
-  const preAssemblyToolbarUi = getPreAssemblyToolbarUi({ phantomDoc })
+  const preAssemblyToolbarUi = getPreAssemblyToolbarUi({
+    phantomDoc,
+    programPartCount: programParts.length,
+  })
 
   const handlePhantomLoad = useCallback(
     (
@@ -491,16 +530,143 @@ function App() {
   }, [])
 
   const handleAddPart = useCallback(() => {
-    if (preAssemblyToolbarUi.addPartDisabled) return
-    setPreAssemblyWizard((current) => {
-      const next = current === 'element' ? null : 'element'
-      if (next !== null) {
-        setLimitsInstallActive(false)
-        setAppearanceEditActive(false)
+    setProgramLoadError(null)
+    void programPartPickerRef.current?.openFileDialog()
+    setLimitsInstallActive(false)
+    setAppearanceEditActive(false)
+  }, [])
+
+  const disposeProgramPartGeometries = useCallback((geometries: Record<string, BufferGeometry>) => {
+    for (const geometry of Object.values(geometries)) {
+      geometry.dispose()
+    }
+  }, [])
+
+  const handleProgramPartsPicked = useCallback((entries: ProgramPartPickEntry[]) => {
+    if (entries.length === 0) return
+    setProgramParts((current) => {
+      const descriptors = entries.map((entry) => entry.part)
+      const nextParts = appendProgramParts(current, descriptors)
+      const added = nextParts.slice(current.length)
+      setProgramPartGeometries((geometries) => {
+        const next = { ...geometries }
+        for (let i = 0; i < added.length; i++) {
+          next[added[i].id] = entries[i].geometry
+        }
+        return next
+      })
+      return nextParts
+    })
+    setProgramPartsFitToken((token) => token + 1)
+    setProgramLoadError(null)
+    setActiveToolbarTab('preAssembly')
+  }, [])
+
+  const handleProgramPartPickError = useCallback((message: string) => {
+    setProgramLoadError(message)
+  }, [])
+
+  const handleRemoveProgramPart = useCallback((partId: string) => {
+    setProgramParts((current) => removeProgramPart(current, partId))
+    setProgramPartGeometries((geometries) => {
+      const next = { ...geometries }
+      const geometry = next[partId]
+      if (geometry) {
+        geometry.dispose()
+        delete next[partId]
       }
       return next
     })
-  }, [preAssemblyToolbarUi.addPartDisabled])
+    setProgramPartsFitToken((token) => token + 1)
+  }, [])
+
+  const handleAssemblyLoad = useCallback(
+    (
+      file: AssemblyFile,
+      sourceHandle?: BrowserFileHandle | null,
+      fileName?: string,
+    ) => {
+      setProgramPartGeometries((geometries) => {
+        disposeProgramPartGeometries(geometries)
+        return {}
+      })
+      setProgramParts(programPartsFromAssemblyProgram(file.program))
+      setProgramPartsFitToken((token) => token + 1)
+      const embeddedPhantom = phantomDocFromAssemblyFile(file)
+      setPhantomDoc(embeddedPhantom)
+      setPhantomSourceFileHandle(null)
+      setPhantomSourceFileName(null)
+      setPhantomLoadError(null)
+      setAssemblySourceFileHandle(sourceHandle ?? null)
+      setAssemblySourceFileName(fileName ?? null)
+      setAssemblyDocMeta({ id: file.id, name: file.name })
+      setProgramLoadError(null)
+      setActiveToolbarTab('preAssembly')
+    },
+    [disposeProgramPartGeometries],
+  )
+
+  const handleLoadAssemblyClick = useCallback(() => {
+    setProgramLoadError(null)
+    void assemblyLoaderRef.current?.openFileDialog()
+  }, [])
+
+  const buildAssemblyFile = useCallback(() => {
+    return createAssemblyFileFromProgram(programParts, {
+      id: assemblyDocMeta.id,
+      name: assemblyDocMeta.name,
+      phantomDoc,
+    })
+  }, [assemblyDocMeta, phantomDoc, programParts])
+
+  const handleSaveAssemblyAsClick = useCallback(() => {
+    if (programParts.length === 0 && !phantomDoc) return
+    const baseName = assemblyDocMeta.name || stripEcdasmExtension(assemblySourceFileName)
+    void saveAssemblyFileAs(buildAssemblyFile(), baseName, assemblySourceFileHandle ?? undefined)
+      .then(({ handle, fileName }) => {
+        setAssemblySourceFileHandle(handle)
+        setAssemblySourceFileName(fileName)
+      })
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err)
+        setProgramLoadError(message)
+      })
+  }, [
+    assemblyDocMeta,
+    assemblySourceFileHandle,
+    assemblySourceFileName,
+    buildAssemblyFile,
+    phantomDoc,
+    programParts.length,
+  ])
+
+  const handleSaveAssemblyClick = useCallback(() => {
+    if (programParts.length === 0 && !phantomDoc) return
+    const assemblyFile = buildAssemblyFile()
+    const canOverwrite =
+      !!assemblySourceFileHandle &&
+      (assemblySourceFileName?.toLowerCase().endsWith('.ecdasm') ?? false)
+    if (canOverwrite) {
+      void saveAssemblyToHandle(assemblyFile, assemblySourceFileHandle)
+        .then((savedName) => {
+          if (savedName) setAssemblySourceFileName(savedName)
+        })
+        .catch((err: unknown) => {
+          const message = err instanceof Error ? err.message : String(err)
+          setProgramLoadError(message)
+        })
+      return
+    }
+    handleSaveAssemblyAsClick()
+  }, [
+    assemblyDocMeta,
+    assemblySourceFileHandle,
+    assemblySourceFileName,
+    buildAssemblyFile,
+    handleSaveAssemblyAsClick,
+    phantomDoc,
+    programParts.length,
+  ])
 
   const handleCreateAttachment = useCallback(() => {
     if (preAssemblyToolbarUi.createAttachmentDisabled) return
@@ -517,6 +683,8 @@ function App() {
   return (
     <div className={styles.app}>
       <Toolbar
+        activeToolbarTab={activeToolbarTab}
+        onActiveToolbarTabChange={setActiveToolbarTab}
         onLoadModelClick={handleLoadModelClick}
         onSaveModelClick={handleSaveModelClick}
         onSaveAsModelClick={handleSaveAsModelClick}
@@ -548,6 +716,9 @@ function App() {
         onDisplayModeChange={setDisplayMode}
         preAssemblyToolbarUi={preAssemblyToolbarUi}
         preAssemblyWizard={preAssemblyWizard}
+        onLoadAssemblyClick={handleLoadAssemblyClick}
+        onSaveAssemblyClick={handleSaveAssemblyClick}
+        onSaveAssemblyAsClick={handleSaveAssemblyAsClick}
         onLoadPhantomClick={handleLoadPhantomClick}
         onSavePhantomClick={handleSavePhantomClick}
         onSavePhantomAsClick={handleSavePhantomAsClick}
@@ -581,9 +752,15 @@ function App() {
           phantomDoc={phantomDoc}
           phantomSourceFileName={phantomSourceFileName}
           phantomLoadError={phantomLoadError}
+          preAssemblyActive={preAssemblyActive}
+          programParts={programParts}
+          assemblySourceFileName={assemblySourceFileName}
+          programLoadError={programLoadError}
           preAssemblySelection={preAssemblySelection}
           onPreAssemblySelectionChange={setPreAssemblySelection}
           onPhantomDocChange={setPhantomDoc}
+          onAddPart={handleAddPart}
+          onRemoveProgramPart={handleRemoveProgramPart}
         />
         <div className={styles.viewport}>
           <Viewer3D
@@ -601,6 +778,9 @@ function App() {
             phantom={phantomDoc?.phantom ?? null}
             selectedPhantomAnchorId={selectedPhantomAnchorId}
             selectedPhantomElementId={selectedPhantomElementId}
+            programParts={programParts}
+            programPartGeometries={programPartGeometries}
+            programPartsFitToken={programPartsFitToken}
           />
         </div>
         <RightPanel
@@ -635,6 +815,16 @@ function App() {
         ref={phantomLoaderRef}
         onLoad={handlePhantomLoad}
         onError={setPhantomLoadError}
+      />
+      <AssemblyLoader
+        ref={assemblyLoaderRef}
+        onLoad={handleAssemblyLoad}
+        onError={setProgramLoadError}
+      />
+      <ProgramPartFilePicker
+        ref={programPartPickerRef}
+        onPick={handleProgramPartsPicked}
+        onError={handleProgramPartPickError}
       />
     </div>
   )

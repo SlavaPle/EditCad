@@ -147,11 +147,9 @@ export function PreAssemblyTreePanel({
         )}
       </div>
 
-      <div className={styles.treeGroup}>
-        <div className={styles.treeGroupLabel}>{t('preAssembly.panels.tree.elements')}</div>
-        {phantom.elements.length === 0 ? (
-          <p className={styles.placeholder}>{t('preAssembly.panels.tree.elementsEmpty')}</p>
-        ) : (
+      {phantom.elements.length > 0 ? (
+        <div className={styles.treeGroup}>
+          <div className={styles.treeGroupLabel}>{t('preAssembly.panels.tree.elements')}</div>
           <ul className={styles.treeList}>
             {phantom.elements.map((slot) => {
               const anchor = phantom.attachments.find((a) => a.id === slot.anchorId)
@@ -167,8 +165,8 @@ export function PreAssemblyTreePanel({
               )
             })}
           </ul>
-        )}
-      </div>
+        </div>
+      ) : null}
 
       <div className={styles.treeGroup}>
         <div className={styles.sectionTitleRow}>

@@ -161,6 +161,27 @@
   display: block;
 }
 
+.textActionBtn {
+  width: auto;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 12px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.textActionBtnPrimary:not(:disabled) {
+  background: #2563eb;
+  border-color: #3b82f6;
+  color: #f8fafc;
+}
+
+.textActionBtnPrimary:hover:not(:disabled) {
+  background: #1d4ed8;
+  border-color: #60a5fa;
+}
+
 .langSelect {
   padding: 6px 28px 6px 10px;
   font-size: 0.875rem;
