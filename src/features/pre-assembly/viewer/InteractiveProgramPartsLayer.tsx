@@ -16,6 +16,7 @@ import {
   programPartGroupRotation,
 } from '../programParts/programPartTransform'
 import { useProgramPartPointerSession } from './useProgramPartPointerSession'
+import { useProgramPartTransformsRef } from './programPartTransformsRef'
 
 const PROGRAM_PART_COLOR = '#93c5fd'
 const PROGRAM_PART_ACTIVE_COLOR = '#60a5fa'
@@ -66,8 +67,19 @@ export function InteractiveProgramPartsLayer({
     [onProbableFacesChange],
   )
 
+  const { getTransform, setTransform } = useProgramPartTransformsRef(parts)
+
+  const handlePartTransformChange = useCallback(
+    (partId: string, transform: PhantomTransform) => {
+      setTransform(partId, transform)
+      onPartTransformChange(partId, transform)
+    },
+    [onPartTransformChange, setTransform],
+  )
+
   const { onPartPointerDown } = useProgramPartPointerSession({
-    onPartTransformChange,
+    onPartTransformChange: handlePartTransformChange,
+    getPartTransform: getTransform,
     onActivePartChange: (partId) => onActivePartChange(partId),
     onSelectionChange: (next) => onSelectionChange(next),
     onProbableFacesChange: handleProbableFacesChange,
@@ -80,8 +92,9 @@ export function InteractiveProgramPartsLayer({
 
   if (parts.length === 0) return null
 
+  // fit + key=fitToken: kamera tylko przy dodaniu/usunięciu detalu, nie przy drag (bez observe)
   return (
-    <Bounds margin={1.2} fit observe key={fitToken}>
+    <Bounds margin={1.2} fit key={fitToken}>
       <group>
         {parts.map((part) => (
           <InteractiveProgramPart
@@ -123,7 +136,7 @@ function InteractiveProgramPart({
   onProbableFacesChange?: (faces: readonly number[]) => void
   onPartPointerDown: (
     partId: string,
-    transform: PhantomTransform,
+    fallbackTransform: PhantomTransform,
     geometry: BufferGeometry | null,
     event: ThreeEvent<PointerEvent>,
   ) => void

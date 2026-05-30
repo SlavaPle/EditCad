@@ -28,7 +28,7 @@ export function ProgramPartsLayer({ parts, geometries, fitToken = 0 }: ProgramPa
   if (parts.length === 0) return null
 
   return (
-    <Bounds margin={1.2} fit observe key={fitToken}>
+    <Bounds margin={1.2} fit key={fitToken}>
       <group>
         {parts.map((part) => (
           <ProgramPartMesh

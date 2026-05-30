@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { appendProgramParts, programPartsFromAssemblyProgram, removeProgramPart } from './preAssemblyProgram'
+import {
+  appendProgramParts,
+  assignProgramPartLayoutPositions,
+  mergeProgramPartsBatch,
+  programPartsFromAssemblyProgram,
+  removeProgramPart,
+} from './preAssemblyProgram'
 
 describe('preAssemblyProgram', () => {
   it('appends multiple program parts', () => {
@@ -25,6 +31,30 @@ describe('preAssemblyProgram', () => {
     const parts = appendProgramParts([], [{ ref: 'a.ecdprt', name: 'A' }])
     const id = parts[0]!.id
     expect(removeProgramPart(parts, id)).toHaveLength(0)
+  })
+
+  it('mergeProgramPartsBatch is idempotent for the same newParts ids', () => {
+    const newParts = appendProgramParts([], [{ ref: 'a.ecdprt', name: 'A' }])
+    const once = mergeProgramPartsBatch([], newParts)
+    const twice = mergeProgramPartsBatch(once, newParts)
+    expect(twice).toHaveLength(1)
+    expect(twice[0]?.id).toBe(once[0]?.id)
+  })
+
+  it('mergeProgramPartsBatch appends only missing ids', () => {
+    const batchA = appendProgramParts([], [{ ref: 'a.ecdprt', name: 'A' }])
+    const batchB = appendProgramParts([], [{ ref: 'b.ecdprt', name: 'B' }])
+    const merged = mergeProgramPartsBatch(batchA, batchB)
+    expect(merged).toHaveLength(2)
+    expect(merged.map((p) => p.id)).toEqual([batchA[0]!.id, batchB[0]!.id])
+  })
+
+  it('assignProgramPartLayoutPositions keeps moved parts', () => {
+    const parts = appendProgramParts([], [{ ref: 'a.ecdprt', name: 'A' }])
+    const moved = assignProgramPartLayoutPositions(parts, { [parts[0]!.id]: [100, 0, 0] })
+    expect(moved[0]?.transform.positionMm).toEqual([100, 0, 0])
+    const relayout = assignProgramPartLayoutPositions(moved, { [parts[0]!.id]: [0, 0, 0] })
+    expect(relayout[0]?.transform.positionMm).toEqual([100, 0, 0])
   })
 
   it('clones program parts from assembly file', () => {

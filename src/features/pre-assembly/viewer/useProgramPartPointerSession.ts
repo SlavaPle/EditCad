@@ -31,6 +31,7 @@ type ActiveSession = ProgramPartPointerSession & {
 
 export type ProgramPartPointerSessionHandlers = {
   onPartTransformChange: (partId: string, transform: PhantomTransform) => void
+  getPartTransform: (partId: string, fallback: PhantomTransform) => PhantomTransform
   onActivePartChange: (partId: string) => void
   onSelectionChange: (selection: SelectionState) => void
   onProbableFacesChange?: (faces: readonly number[]) => void
@@ -119,6 +120,12 @@ export function useProgramPartPointerSession(handlers: ProgramPartPointerSession
 
       if (finish.kind === 'drag') {
         h.onPartTransformChange(session.partId, finish.transform)
+        sessionRef.current = null
+        liveTransformRef.current = null
+        meshRef.current = null
+        geometryRef.current = null
+        setBodyCursor(null)
+        return
       } else {
         h.onActivePartChange(session.partId)
         const mesh = meshRef.current
@@ -160,7 +167,7 @@ export function useProgramPartPointerSession(handlers: ProgramPartPointerSession
   const onPartPointerDown = useCallback(
     (
       partId: string,
-      transform: PhantomTransform,
+      fallbackTransform: PhantomTransform,
       geometry: BufferGeometry | null,
       event: ThreeEvent<PointerEvent>,
     ) => {
@@ -172,6 +179,7 @@ export function useProgramPartPointerSession(handlers: ProgramPartPointerSession
       meshRef.current = mesh
       geometryRef.current = geometry
 
+      const transform = handlersRef.current.getPartTransform(partId, fallbackTransform)
       const shiftKey = event.shiftKey || event.nativeEvent.shiftKey
       event.camera.getWorldDirection(scratchCameraDir)
       const plane = createProgramPartDragPlane(transform.positionMm, scratchCameraDir)

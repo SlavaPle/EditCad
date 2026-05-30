@@ -115,6 +115,36 @@ describe('programPartPointerInteraction', () => {
     })
   })
 
+  it('second drag session starts from transform after first drag', () => {
+    let session = beginProgramPartPointerSession({
+      partId: 'p1',
+      shiftKey: false,
+      pointerId: 1,
+      clientX: 0,
+      clientY: 0,
+      transform: baseTransform,
+      dragPlaneHitMm: [100, 0, 0],
+    })
+    session = markProgramPartSessionDragged(session)
+    const afterFirst = computeTranslateTransform(session, [130, 0, 0])
+    const finish = finishProgramPartPointerSession(session, afterFirst)
+    expect(finish.kind).toBe('drag')
+    if (finish.kind !== 'drag') return
+
+    const session2 = beginProgramPartPointerSession({
+      partId: 'p1',
+      shiftKey: false,
+      pointerId: 2,
+      clientX: 50,
+      clientY: 50,
+      transform: finish.transform,
+      dragPlaneHitMm: [130, 0, 0],
+    })
+    expect(session2.startTransform.positionMm).toEqual([130, 0, 0])
+    const afterSecond = computeTranslateTransform(session2, [140, 10, 0])
+    expect(afterSecond.positionMm).toEqual([140, 10, 0])
+  })
+
   it('intersects ray with drag plane', () => {
     const plane = createProgramPartDragPlane([0, 0, 0], new Vector3(0, 0, 1))
     const ray = new Ray(new Vector3(0, 0, 10), new Vector3(0, 0, -1))

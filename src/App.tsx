@@ -49,6 +49,7 @@ import styles from './App.module.css'
 import {
   appendProgramParts,
   assignProgramPartLayoutPositions,
+  mergeProgramPartsBatch,
   AssemblyLoader,
   createAssemblyFileFromProgram,
   createEmptyPhantomFile,
@@ -558,26 +559,37 @@ function App() {
   const handleProgramPartsPicked = useCallback((entries: ProgramPartPickEntry[]) => {
     if (entries.length === 0) return
     const descriptors = entries.map((entry) => entry.part)
+    // Identyfikatory detali generujemy raz — unikamy podwójnego append w React Strict Mode.
+    const newParts = appendProgramParts([], descriptors)
+
     setProgramPartGeometries((geometries) => {
       const nextGeometries = { ...geometries }
-      setProgramParts((current) => {
-        const nextParts = appendProgramParts(current, descriptors)
-        const added = nextParts.slice(current.length)
-        for (let i = 0; i < added.length; i++) {
-          nextGeometries[added[i].id] = entries[i].geometry
-        }
-        const positions = layoutProgramPartPositionsMm(
-          nextParts.map((part) => part.id),
-          nextGeometries,
-        )
-        return assignProgramPartLayoutPositions(nextParts, positions)
-      })
+      for (let i = 0; i < newParts.length; i++) {
+        nextGeometries[newParts[i].id] = entries[i].geometry
+      }
       return nextGeometries
     })
+
+    setProgramParts((current) => {
+      const merged = mergeProgramPartsBatch(current, newParts)
+
+      const geometriesForLayout: Record<string, BufferGeometry> = {
+        ...programPartGeometries,
+      }
+      for (let i = 0; i < newParts.length; i++) {
+        geometriesForLayout[newParts[i].id] = entries[i].geometry
+      }
+      const positions = layoutProgramPartPositionsMm(
+        merged.map((part) => part.id),
+        geometriesForLayout,
+      )
+      return assignProgramPartLayoutPositions(merged, positions)
+    })
+
     setProgramPartsFitToken((token) => token + 1)
     setProgramLoadError(null)
     setActiveToolbarTab('preAssembly')
-  }, [])
+  }, [programPartGeometries])
 
   const handleProgramPartTransformChange = useCallback(
     (partId: string, transform: PhantomTransform) => {

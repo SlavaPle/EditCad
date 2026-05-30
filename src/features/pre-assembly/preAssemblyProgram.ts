@@ -67,6 +67,20 @@ export function updateProgramPartTransform(
   )
 }
 
+/** Scala wsadowo wygenerowane detale (np. React Strict Mode — ten sam zestaw id). */
+export function mergeProgramPartsBatch(
+  current: readonly PreAssemblyProgramPart[],
+  newParts: readonly PreAssemblyProgramPart[],
+): PreAssemblyProgramPart[] {
+  const alreadyAdded =
+    newParts.length > 0 && newParts.every((part) => current.some((c) => c.id === part.id))
+  if (alreadyAdded) return [...current]
+  return [
+    ...current,
+    ...newParts.filter((part) => !current.some((c) => c.id === part.id)),
+  ]
+}
+
 export function assignProgramPartLayoutPositions(
   parts: readonly PreAssemblyProgramPart[],
   positionsMm: Readonly<Record<string, [number, number, number]>>,

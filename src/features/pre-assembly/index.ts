@@ -1,6 +1,7 @@
 export {
   appendProgramParts,
   assignProgramPartLayoutPositions,
+  mergeProgramPartsBatch,
   programPartsFromAssemblyProgram,
   removeProgramPart,
   updateProgramPartTransform,
