@@ -9,6 +9,12 @@ export {
   type AddProgramPartToPhantomResult,
 } from './addProgramPartToPhantom'
 export { loadProgramPartGeometryFromFile } from './programPartGeometry'
+export { resolveProgramPartAppearance } from './programPartAppearance'
+export {
+  pickProgramPartsFromFiles,
+  type ProgramPartPickBatchResult,
+  type ProgramPartPickEntry,
+} from './programPartPickBatch'
 export { loadGeometriesFromAssembly, type LoadAssemblyGeometriesResult } from './loadAssemblyProgramPartGeometries'
 export { readProgramPartFromFileWithRoot } from './programPartFile'
 export {

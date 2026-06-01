@@ -1,23 +1,13 @@
 import { forwardRef, useImperativeHandle, useRef } from 'react'
 import type { BrowserFileHandle } from '../../../lib/saveModel'
+import { PROGRAM_PART_FILE_ACCEPT } from './programPartFile'
 import {
-  PROGRAM_PART_FILE_ACCEPT,
-  readProgramPartFromFileWithRoot,
-  type ProgramPartDescriptor,
-} from './programPartFile'
-import { loadProgramPartGeometryFromFile } from './programPartGeometry'
-import type { BufferGeometry } from 'three'
+  pickProgramPartsFromFiles,
+  type ProgramPartPickBatchResult,
+  type ProgramPartPickEntry,
+} from './programPartPickBatch'
 
-export type ProgramPartPickEntry = {
-  part: ProgramPartDescriptor
-  geometry: BufferGeometry
-  sourceHandle?: FileSystemHandle | null
-}
-
-export type ProgramPartPickBatchResult = {
-  picked: ProgramPartPickEntry[]
-  errors: string[]
-}
+export type { ProgramPartPickEntry, ProgramPartPickBatchResult }
 
 export interface ProgramPartFilePickerHandle {
   openFileDialog: () => void | Promise<void>
@@ -29,36 +19,6 @@ export interface ProgramPartFilePickerProps {
   onError?: (message: string) => void
 }
 
-async function pickFilesFromList(
-  files: FileList | File[],
-  assemblyFileDirectory: FileSystemDirectoryHandle | null,
-  fileHandles?: Array<FileSystemHandle | null>,
-): Promise<ProgramPartPickBatchResult> {
-  const picked: ProgramPartPickEntry[] = []
-  const errors: string[] = []
-  const list = [...files]
-  for (let i = 0; i < list.length; i++) {
-    const file = list[i]
-    const handle = fileHandles?.[i] ?? null
-    const meta = await readProgramPartFromFileWithRoot(file, assemblyFileDirectory, handle)
-    if (!meta.ok) {
-      errors.push(`${file.name}: ${meta.error}`)
-      continue
-    }
-    const geometry = await loadProgramPartGeometryFromFile(file)
-    if (!geometry.ok) {
-      errors.push(`${file.name}: ${geometry.error}`)
-      continue
-    }
-    picked.push({
-      part: meta.part,
-      geometry: geometry.geometry,
-      sourceHandle: handle,
-    })
-  }
-  return { picked, errors }
-}
-
 export const ProgramPartFilePicker = forwardRef<ProgramPartFilePickerHandle, ProgramPartFilePickerProps>(
   function ProgramPartFilePicker({ assemblyFileDirectory, onPick, onError }, ref) {
     const inputRef = useRef<HTMLInputElement>(null)
@@ -68,7 +28,11 @@ export const ProgramPartFilePicker = forwardRef<ProgramPartFilePickerHandle, Pro
       fileHandles?: Array<FileSystemHandle | null>,
     ) => {
       if (files.length === 0) return
-      const { picked, errors } = await pickFilesFromList(files, assemblyFileDirectory, fileHandles)
+      const { picked, errors } = await pickProgramPartsFromFiles(
+        files,
+        assemblyFileDirectory,
+        fileHandles,
+      )
       if (picked.length > 0) {
         onPick(picked)
       }

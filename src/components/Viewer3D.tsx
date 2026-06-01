@@ -46,6 +46,7 @@ export interface Viewer3DProps {
   selectedPhantomElementId?: string | null
   programParts?: readonly PreAssemblyProgramPart[]
   programPartGeometries?: Readonly<Record<string, BufferGeometry | null>>
+  programPartAppearances?: Readonly<Record<string, ModelAppearance | undefined>>
   programPartsFitToken?: number
   preAssemblyActive?: boolean
   activeProgramPartId?: string | null
@@ -71,6 +72,7 @@ export function Viewer3D({
   selectedPhantomElementId = null,
   programParts = [],
   programPartGeometries = {},
+  programPartAppearances = {},
   programPartsFitToken = 0,
   preAssemblyActive = false,
   activeProgramPartId = null,
@@ -122,6 +124,7 @@ export function Viewer3D({
             selectedPhantomElementId={selectedPhantomElementId}
             programParts={programParts}
             programPartGeometries={programPartGeometries}
+            programPartAppearances={programPartAppearances}
             programPartsFitToken={programPartsFitToken}
             preAssemblyActive={preAssemblyActive}
             activeProgramPartId={activeProgramPartId}

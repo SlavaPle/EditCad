@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { BufferGeometry } from 'three'
 import { Toolbar } from './components/Toolbar'
 import {
@@ -19,6 +19,7 @@ import {
   DEFAULT_MODEL_DISPLAY_MODE,
   type ModelDisplayMode,
 } from './features/viewer-display/modelDisplayMode'
+import { canChangeViewDisplayMode } from './features/viewer-display/viewToolbarState'
 import {
   DEFAULT_MODEL_APPEARANCE,
   type ModelAppearance,
@@ -68,12 +69,10 @@ import {
   savePhantomAssemblyToHandle,
   stripEcdasmExtension,
   stripEcdpreExtension,
-  PhantomLoader,
   updateProgramPartTransform,
   type AssemblyFile,
   type AssemblyLoaderHandle,
   type PhantomAssemblyFile,
-  type PhantomLoaderHandle,
   type PhantomTransform,
   type PreAssemblyPanelSelection,
   type PreAssemblyProgramPart,
@@ -139,6 +138,9 @@ function App() {
   const [programPartGeometries, setProgramPartGeometries] = useState<
     Record<string, BufferGeometry>
   >({})
+  const [programPartAppearances, setProgramPartAppearances] = useState<
+    Record<string, ModelAppearance>
+  >({})
   const [programPartsFitToken, setProgramPartsFitToken] = useState(0)
   const [assemblyRootDirectoryHandle, setAssemblyRootDirectoryHandle] =
     useState<FileSystemDirectoryHandle | null>(null)
@@ -155,7 +157,6 @@ function App() {
     useState<PreAssemblyPanelSelection>(null)
   const [activeProgramPartId, setActiveProgramPartId] = useState<string | null>(null)
   const modelLoaderRef = useRef<ModelLoaderHandle>(null)
-  const phantomLoaderRef = useRef<PhantomLoaderHandle>(null)
   const assemblyLoaderRef = useRef<AssemblyLoaderHandle>(null)
   const programPartPickerRef = useRef<ProgramPartFilePickerHandle>(null)
 
@@ -475,28 +476,15 @@ function App() {
     programPartCount: programParts.length,
   })
 
-  const handlePhantomLoad = useCallback(
-    (
-      file: PhantomAssemblyFile,
-      sourceHandle?: BrowserFileHandle | null,
-      fileName?: string,
-    ) => {
-      setPhantomDoc(file)
-      setPhantomSourceFileHandle(sourceHandle ?? null)
-      setPhantomSourceFileName(fileName ?? null)
-      setPhantomLoadError(null)
-      setPreAssemblyWizard(null)
-      setPreAssemblySelection({ kind: 'envelope' })
-      setLimitsInstallActive(false)
-      setAppearanceEditActive(false)
-    },
-    [],
+  const canChangeViewMode = useMemo(
+    () =>
+      canChangeViewDisplayMode({
+        hasMainModel: !!model,
+        programPartGeometryCount: Object.keys(programPartGeometries).length,
+        hasPhantomAssembly: !!phantomDoc,
+      }),
+    [model, programPartGeometries, phantomDoc],
   )
-
-  const handleLoadPhantomClick = useCallback(() => {
-    setPhantomLoadError(null)
-    void phantomLoaderRef.current?.openFileDialog()
-  }, [])
 
   const handleSavePhantomClick = useCallback(() => {
     if (!phantomDoc || preAssemblyToolbarUi.saveDisabled) return
@@ -578,6 +566,14 @@ function App() {
       return nextGeometries
     })
 
+    setProgramPartAppearances((appearances) => {
+      const nextAppearances = { ...appearances }
+      for (let i = 0; i < newParts.length; i++) {
+        nextAppearances[newParts[i].id] = entries[i].appearance
+      }
+      return nextAppearances
+    })
+
     setProgramParts((current) => {
       const merged = mergeProgramPartsBatch(current, newParts)
 
@@ -629,6 +625,11 @@ function App() {
       }
       return next
     })
+    setProgramPartAppearances((appearances) => {
+      const next = { ...appearances }
+      delete next[partId]
+      return next
+    })
     setActiveProgramPartId((current) => (current === partId ? null : current))
     setProgramPartsFitToken((token) => token + 1)
   }, [])
@@ -643,6 +644,7 @@ function App() {
       const result = await loadGeometriesFromAssembly(assemblyId, loadedParts, directory)
       if (Object.keys(result.geometries).length > 0) {
         setProgramPartGeometries(result.geometries)
+        setProgramPartAppearances(result.appearances)
         setProgramPartsFitToken((token) => token + 1)
       }
       const messages: string[] = []
@@ -673,6 +675,7 @@ function App() {
         disposeProgramPartGeometries(geometries)
         return {}
       })
+      setProgramPartAppearances({})
       setProgramParts(loadedParts)
       setProgramPartsFitToken((token) => token + 1)
       const embeddedPhantom = phantomDocFromAssemblyFile(file)
@@ -807,6 +810,7 @@ function App() {
         onSaveModelClick={handleSaveModelClick}
         onSaveAsModelClick={handleSaveAsModelClick}
         hasModel={!!model}
+        canChangeViewMode={canChangeViewMode}
         limitsInstallActive={limitsInstallActive}
         limitsAddDisabled={limitsAddDisabled}
         onToggleLimitsInstall={() => {
@@ -837,7 +841,6 @@ function App() {
         onLoadAssemblyClick={handleLoadAssemblyClick}
         onSaveAssemblyClick={handleSaveAssemblyClick}
         onSaveAssemblyAsClick={handleSaveAssemblyAsClick}
-        onLoadPhantomClick={handleLoadPhantomClick}
         onSavePhantomClick={handleSavePhantomClick}
         onSavePhantomAsClick={handleSavePhantomAsClick}
         onCreatePhantom={handleCreatePhantom}
@@ -899,6 +902,7 @@ function App() {
             selectedPhantomElementId={selectedPhantomElementId}
             programParts={programParts}
             programPartGeometries={programPartGeometries}
+            programPartAppearances={programPartAppearances}
             programPartsFitToken={programPartsFitToken}
             preAssemblyActive={preAssemblyActive}
             activeProgramPartId={activeProgramPartId}
@@ -934,11 +938,6 @@ function App() {
           onPreAssemblyWizardDone={() => setPreAssemblyWizard(null)}
         />
       </div>
-      <PhantomLoader
-        ref={phantomLoaderRef}
-        onLoad={handlePhantomLoad}
-        onError={setPhantomLoadError}
-      />
       <AssemblyLoader
         ref={assemblyLoaderRef}
         onLoad={handleAssemblyLoad}

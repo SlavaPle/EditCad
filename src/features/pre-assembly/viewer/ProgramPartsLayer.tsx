@@ -1,22 +1,38 @@
 import { useMemo } from 'react'
 import { Bounds, Edges } from '@react-three/drei'
 import { Box3, BufferGeometry, Vector3 } from 'three'
+import { SelectableModel } from '../../../components/Viewer3D/SelectableModel'
+import { DEFAULT_MODEL_SELECTION_PROXIMITY_FILTER } from '../../model-selection/types'
+import { createEmptySelection } from '../../../lib/selection'
+import {
+  DEFAULT_MODEL_DISPLAY_MODE,
+  type ModelDisplayMode,
+} from '../../viewer-display/modelDisplayMode'
+import type { ModelAppearance } from '../../viewer-display/modelAppearance'
+import { resolveProgramPartAppearance } from '../programParts/programPartAppearance'
 import type { PreAssemblyProgramPart } from '../preAssemblyProgram'
 import { mmToScene } from '../phantomUnits'
 import { layoutProgramPartPositionsMm } from './layoutProgramPartPositionsMm'
 
-const PROGRAM_PART_COLOR = '#93c5fd'
 const PLACEHOLDER_COLOR = '#64748b'
 const PLACEHOLDER_SIZE_MM = 40
 
 interface ProgramPartsLayerProps {
   parts: readonly PreAssemblyProgramPart[]
   geometries: Readonly<Record<string, BufferGeometry | null | undefined>>
+  appearances?: Readonly<Record<string, ModelAppearance | undefined>>
+  displayMode?: ModelDisplayMode
   fitToken?: number
 }
 
 /** Detale programu (.ecdprt) w widoku 3D — niezależnie od fantomu. */
-export function ProgramPartsLayer({ parts, geometries, fitToken = 0 }: ProgramPartsLayerProps) {
+export function ProgramPartsLayer({
+  parts,
+  geometries,
+  appearances = {},
+  displayMode = DEFAULT_MODEL_DISPLAY_MODE,
+  fitToken = 0,
+}: ProgramPartsLayerProps) {
   const positionsMm = useMemo(
     () => layoutProgramPartPositionsMm(
       parts.map((part) => part.id),
@@ -34,6 +50,8 @@ export function ProgramPartsLayer({ parts, geometries, fitToken = 0 }: ProgramPa
           <ProgramPartMesh
             key={part.id}
             geometry={geometries[part.id] ?? null}
+            appearance={resolveProgramPartAppearance(part.id, appearances)}
+            displayMode={displayMode}
             positionMm={positionsMm[part.id] ?? [0, 0, 0]}
           />
         ))}
@@ -44,9 +62,13 @@ export function ProgramPartsLayer({ parts, geometries, fitToken = 0 }: ProgramPa
 
 function ProgramPartMesh({
   geometry,
+  appearance,
+  displayMode,
   positionMm,
 }: {
   geometry: BufferGeometry | null
+  appearance: ModelAppearance
+  displayMode: ModelDisplayMode
   positionMm: [number, number, number]
 }) {
   const geometryCenterOffset = useMemo(() => {
@@ -66,9 +88,18 @@ function ProgramPartMesh({
   if (geometry) {
     return (
       <group position={position}>
-        <mesh geometry={geometry} position={geometryCenterOffset}>
-          <meshStandardMaterial color={PROGRAM_PART_COLOR} />
-        </mesh>
+        <group position={geometryCenterOffset}>
+          <SelectableModel
+            model={geometry}
+            geometryRevision={0}
+            displayMode={displayMode}
+            appearance={appearance}
+            selection={createEmptySelection()}
+            onSelectionChange={() => {}}
+            selectionProximityFilter={DEFAULT_MODEL_SELECTION_PROXIMITY_FILTER}
+            pickOnPointerDown={false}
+          />
+        </group>
       </group>
     )
   }

@@ -1,4 +1,5 @@
 import type { BufferGeometry } from 'three'
+import type { ModelAppearance } from '../../viewer-display/modelAppearance'
 import { getFileFromAssemblyRoot } from '../assemblyFile/assemblyRelativePath'
 import { restorePartFileHandle } from '../assemblyFile/assemblyPartHandleStore'
 import type { PreAssemblyProgramPart } from '../preAssemblyProgram'
@@ -6,6 +7,7 @@ import { loadProgramPartGeometryFromFile } from './programPartGeometry'
 
 export type LoadAssemblyGeometriesResult = {
   geometries: Record<string, BufferGeometry>
+  appearances: Record<string, ModelAppearance>
   loadedCount: number
   missingRefs: string[]
   errors: string[]
@@ -15,7 +17,10 @@ async function loadPartGeometry(
   assemblyId: string,
   part: PreAssemblyProgramPart,
   directory: FileSystemDirectoryHandle | null,
-): Promise<{ ok: true; geometry: BufferGeometry } | { ok: false; error: string }> {
+): Promise<
+  | { ok: true; geometry: BufferGeometry; appearance: ModelAppearance }
+  | { ok: false; error: string }
+> {
   const storedHandle = await restorePartFileHandle(assemblyId, part.ref)
   if (storedHandle && 'getFile' in storedHandle) {
     try {
@@ -49,6 +54,7 @@ export async function loadGeometriesFromAssembly(
   directory: FileSystemDirectoryHandle | null,
 ): Promise<LoadAssemblyGeometriesResult> {
   const geometries: Record<string, BufferGeometry> = {}
+  const appearances: Record<string, ModelAppearance> = {}
   const errors: string[] = []
   const missingRefs: string[] = []
   let loadedCount = 0
@@ -57,6 +63,7 @@ export async function loadGeometriesFromAssembly(
     const result = await loadPartGeometry(assemblyId, part, directory)
     if (result.ok) {
       geometries[part.id] = result.geometry
+      appearances[part.id] = result.appearance
       loadedCount += 1
     } else {
       errors.push(`${part.ref}: ${result.error}`)
@@ -64,5 +71,5 @@ export async function loadGeometriesFromAssembly(
     }
   }
 
-  return { geometries, loadedCount, missingRefs, errors }
+  return { geometries, appearances, loadedCount, missingRefs, errors }
 }

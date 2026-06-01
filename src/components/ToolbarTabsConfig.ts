@@ -15,7 +15,6 @@ export type ToolbarActionId =
   | 'loadAssembly'
   | 'saveAssembly'
   | 'saveAssemblyAs'
-  | 'loadPhantom'
   | 'savePhantom'
   | 'savePhantomAs'
   | 'createPhantom'
@@ -52,7 +51,6 @@ export const TOOLBAR_TABS: ToolbarTabConfig[] = [
       'saveAssembly',
       'saveAssemblyAs',
       'addPart',
-      'loadPhantom',
       'savePhantom',
       'savePhantomAs',
       'createPhantom',

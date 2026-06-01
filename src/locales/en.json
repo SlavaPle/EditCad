@@ -91,9 +91,6 @@
       "button": "Create attachment",
       "active": "Create attachment mode on (click to close)"
     },
-    "loadPhantom": {
-      "button": "Load phantom"
-    },
     "savePhantom": {
       "button": "Save phantom",
       "incomplete": "Save phantom — complete bindings first"

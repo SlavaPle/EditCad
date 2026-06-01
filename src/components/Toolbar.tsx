@@ -20,6 +20,8 @@ interface ToolbarProps {
   onSaveModelClick?: () => void
   onSaveAsModelClick?: () => void
   hasModel?: boolean
+  /** Tryby VIEW — także przy detalach w montażu bez otwartego pliku detali. */
+  canChangeViewMode?: boolean
   limitsInstallActive?: boolean
   limitsAddDisabled?: boolean
   onToggleLimitsInstall?: () => void
@@ -32,7 +34,6 @@ interface ToolbarProps {
   onLoadAssemblyClick?: () => void
   onSaveAssemblyClick?: () => void
   onSaveAssemblyAsClick?: () => void
-  onLoadPhantomClick?: () => void
   onSavePhantomClick?: () => void
   onSavePhantomAsClick?: () => void
   onCreatePhantom?: () => void
@@ -52,6 +53,7 @@ export function Toolbar({
   onSaveModelClick,
   onSaveAsModelClick,
   hasModel = false,
+  canChangeViewMode,
   limitsInstallActive = false,
   limitsAddDisabled = false,
   onToggleLimitsInstall,
@@ -64,7 +66,6 @@ export function Toolbar({
   onLoadAssemblyClick,
   onSaveAssemblyClick,
   onSaveAssemblyAsClick,
-  onLoadPhantomClick,
   onSavePhantomClick,
   onSavePhantomAsClick,
   onCreatePhantom,
@@ -73,6 +74,7 @@ export function Toolbar({
 }: ToolbarProps) {
   const { t, i18n } = useTranslation()
   const activeTabId = activeToolbarTab
+  const viewModeEnabled = canChangeViewMode ?? hasModel
 
   const handleLoad = () => {
     onLoadModelClick?.()
@@ -263,7 +265,7 @@ export function Toolbar({
             key={actionId}
             type="button"
             className={`${styles.iconBtn} ${displayMode === 'edgesOnly' ? styles.iconBtnActive : ''}`}
-            disabled={!hasModel}
+            disabled={!viewModeEnabled}
             title={t('toolbar.view.edgesOnly')}
             aria-label={t('toolbar.view.edgesOnly')}
             aria-pressed={displayMode === 'edgesOnly'}
@@ -283,7 +285,7 @@ export function Toolbar({
             key={actionId}
             type="button"
             className={`${styles.iconBtn} ${displayMode === 'solid' ? styles.iconBtnActive : ''}`}
-            disabled={!hasModel}
+            disabled={!viewModeEnabled}
             title={t('toolbar.view.solid')}
             aria-label={t('toolbar.view.solid')}
             aria-pressed={displayMode === 'solid'}
@@ -302,7 +304,7 @@ export function Toolbar({
             key={actionId}
             type="button"
             className={`${styles.iconBtn} ${displayMode === 'solidTextured' ? styles.iconBtnActive : ''}`}
-            disabled={!hasModel}
+            disabled={!viewModeEnabled}
             title={t('toolbar.view.solidTextured')}
             aria-label={t('toolbar.view.solidTextured')}
             aria-pressed={displayMode === 'solidTextured'}
@@ -326,7 +328,7 @@ export function Toolbar({
             key={actionId}
             type="button"
             className={`${styles.iconBtn} ${displayMode === 'solidWithEdges' ? styles.iconBtnActive : ''}`}
-            disabled={!hasModel}
+            disabled={!viewModeEnabled}
             title={t('toolbar.view.solidWithEdges')}
             aria-label={t('toolbar.view.solidWithEdges')}
             aria-pressed={displayMode === 'solidWithEdges'}
@@ -402,26 +404,6 @@ export function Toolbar({
                   strokeWidth="1.4"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                />
-              </svg>
-            </span>
-          </button>
-        )
-      case 'loadPhantom':
-        return (
-          <button
-            key={actionId}
-            type="button"
-            className={`${styles.iconBtn} ${styles.btnPrimary}`}
-            title={t('preAssembly.loadPhantom.button')}
-            aria-label={t('preAssembly.loadPhantom.button')}
-            onClick={() => onLoadPhantomClick?.()}
-          >
-            <span className={styles.icon}>
-              <svg viewBox="0 0 20 20" aria-hidden="true">
-                <path
-                  d="M3 5h4l2 2h8v8H3V5zm2 2v6h10V9H8.5L6.5 7H5z"
-                  fill="currentColor"
                 />
               </svg>
             </span>

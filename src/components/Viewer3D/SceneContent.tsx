@@ -45,6 +45,7 @@ interface SceneContentProps {
   selectedPhantomElementId?: string | null
   programParts?: readonly PreAssemblyProgramPart[]
   programPartGeometries?: Readonly<Record<string, BufferGeometry | null>>
+  programPartAppearances?: Readonly<Record<string, ModelAppearance | undefined>>
   programPartsFitToken?: number
   preAssemblyActive?: boolean
   activeProgramPartId?: string | null
@@ -69,6 +70,7 @@ export function SceneContent({
   selectedPhantomElementId = null,
   programParts = [],
   programPartGeometries = {},
+  programPartAppearances = {},
   programPartsFitToken = 0,
   preAssemblyActive = false,
   activeProgramPartId = null,
@@ -85,6 +87,8 @@ export function SceneContent({
         <InteractiveProgramPartsLayer
           parts={programParts}
           geometries={programPartGeometries}
+          appearances={programPartAppearances}
+          displayMode={displayMode}
           fitToken={programPartsFitToken}
           preAssemblyActive={preAssemblyActive}
           activePartId={activeProgramPartId}

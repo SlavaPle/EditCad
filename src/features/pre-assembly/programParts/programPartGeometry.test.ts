@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { BoxGeometry } from 'three'
+import { DEFAULT_MODEL_APPEARANCE } from '../../viewer-display/modelAppearance'
 import { loadProgramPartGeometryFromFile } from './programPartGeometry'
 
 vi.mock('../../../lib/loadModel', () => ({
@@ -23,6 +24,33 @@ describe('loadProgramPartGeometryFromFile', () => {
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(result.geometry).toBe(geometry)
+    expect(result.appearance).toEqual(DEFAULT_MODEL_APPEARANCE)
+    geometry.dispose()
+  })
+
+  it('returns appearance from ecdprt prepared metadata', async () => {
+    const geometry = new BoxGeometry(1, 1, 1)
+    const appearance = {
+      surface: 'texture' as const,
+      color: '#aabbcc',
+      texture: { kind: 'default' as const },
+      opacity: 1,
+    }
+    mockedLoadModel.mockResolvedValueOnce({
+      ok: true,
+      format: 'ecdprt',
+      geometry,
+      prepared: {
+        name: 'Panel',
+        constraints: { mode: 'fixed' },
+        appearance,
+      },
+    })
+    const file = new File(['{}'], 'panel.ecdprt', { type: 'application/json' })
+    const result = await loadProgramPartGeometryFromFile(file)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.appearance).toEqual(appearance)
     geometry.dispose()
   })
 

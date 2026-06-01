@@ -6,8 +6,12 @@ import { Box3, BufferGeometry, Vector3 } from 'three'
 import type { ThreeEvent } from '@react-three/fiber'
 import { SelectableModel } from '../../../components/Viewer3D/SelectableModel'
 import type { SelectionState } from '../../../lib/selection'
-import { DEFAULT_MODEL_DISPLAY_MODE } from '../../viewer-display/modelDisplayMode'
-import { DEFAULT_MODEL_APPEARANCE } from '../../viewer-display/modelAppearance'
+import {
+  DEFAULT_MODEL_DISPLAY_MODE,
+  type ModelDisplayMode,
+} from '../../viewer-display/modelDisplayMode'
+import type { ModelAppearance } from '../../viewer-display/modelAppearance'
+import { resolveProgramPartAppearance } from '../programParts/programPartAppearance'
 import type { ModelSelectionProximityFilter } from '../../model-selection/types'
 import type { PreAssemblyProgramPart } from '../preAssemblyProgram'
 import type { PhantomTransform } from '../model'
@@ -20,14 +24,14 @@ import { useProgramPartPointerSession } from './useProgramPartPointerSession'
 import { useProgramPartOrbitGuard } from './useProgramPartOrbitGuard'
 import { useProgramPartTransformsRef } from './programPartTransformsRef'
 
-const PROGRAM_PART_COLOR = '#93c5fd'
-const PROGRAM_PART_ACTIVE_COLOR = '#60a5fa'
 const PLACEHOLDER_COLOR = '#64748b'
 const PLACEHOLDER_SIZE_MM = 40
 
 interface InteractiveProgramPartsLayerProps {
   parts: readonly PreAssemblyProgramPart[]
   geometries: Readonly<Record<string, BufferGeometry | null | undefined>>
+  appearances?: Readonly<Record<string, ModelAppearance | undefined>>
+  displayMode?: ModelDisplayMode
   fitToken?: number
   preAssemblyActive: boolean
   activePartId: string | null
@@ -42,6 +46,8 @@ interface InteractiveProgramPartsLayerProps {
 export function InteractiveProgramPartsLayer({
   parts,
   geometries,
+  appearances = {},
+  displayMode = DEFAULT_MODEL_DISPLAY_MODE,
   fitToken = 0,
   preAssemblyActive,
   activePartId,
@@ -119,6 +125,8 @@ export function InteractiveProgramPartsLayer({
             part={part}
             displayTransform={getTransform(part.id, part.transform)}
             geometry={geometries[part.id] ?? null}
+            appearance={resolveProgramPartAppearance(part.id, appearances)}
+            displayMode={displayMode}
             preAssemblyActive={preAssemblyActive}
             isActive={activePartId === part.id}
             selection={selection}
@@ -137,6 +145,8 @@ function InteractiveProgramPart({
   part,
   displayTransform,
   geometry,
+  appearance,
+  displayMode,
   preAssemblyActive,
   isActive,
   selection,
@@ -148,6 +158,8 @@ function InteractiveProgramPart({
   part: PreAssemblyProgramPart
   displayTransform: PhantomTransform
   geometry: BufferGeometry | null
+  appearance: ModelAppearance
+  displayMode: ModelDisplayMode
   preAssemblyActive: boolean
   isActive: boolean
   selection: SelectionState
@@ -171,44 +183,30 @@ function InteractiveProgramPart({
 
   const position = programPartGroupPosition(displayTransform)
   const rotation = programPartGroupRotation(displayTransform)
-  const meshColor = isActive ? PROGRAM_PART_ACTIVE_COLOR : PROGRAM_PART_COLOR
+  const allowFacePick = preAssemblyActive && isActive
 
   const handlePointerDown = (event: ThreeEvent<PointerEvent>) => {
     if (!preAssemblyActive) return
     onPartPointerDown(part.id, displayTransform, geometry, event)
   }
 
-  if (geometry && isActive && preAssemblyActive) {
+  if (geometry) {
     return (
       <group position={position} rotation={rotation}>
         <group position={geometryCenterOffset}>
           <SelectableModel
             model={geometry}
             geometryRevision={0}
-            displayMode={DEFAULT_MODEL_DISPLAY_MODE}
-            appearance={DEFAULT_MODEL_APPEARANCE}
+            displayMode={displayMode}
+            appearance={appearance}
             selection={selection}
             onSelectionChange={onSelectionChange}
             selectionProximityFilter={selectionProximityFilter}
-            onProbableFacesChange={onProbableFacesChange}
-            pickOnPointerDown={false}
-            onMeshPointerDown={handlePointerDown}
+            onProbableFacesChange={allowFacePick ? onProbableFacesChange : undefined}
+            pickOnPointerDown={allowFacePick}
+            onMeshPointerDown={preAssemblyActive ? handlePointerDown : undefined}
           />
         </group>
-      </group>
-    )
-  }
-
-  if (geometry) {
-    return (
-      <group position={position} rotation={rotation}>
-        <mesh
-          geometry={geometry}
-          position={geometryCenterOffset}
-          onPointerDown={handlePointerDown}
-        >
-          <meshStandardMaterial color={meshColor} />
-        </mesh>
       </group>
     )
   }
