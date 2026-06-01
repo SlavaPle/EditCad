@@ -21,7 +21,7 @@ import {
   programPartGroupRotation,
 } from '../programParts/programPartTransform'
 import { useProgramPartPointerSession } from './useProgramPartPointerSession'
-import { useProgramPartOrbitGuard } from './useProgramPartOrbitGuard'
+import { useManipulableSceneOrbitGuard } from '../../viewer-camera/useManipulableSceneOrbitGuard'
 import { useProgramPartTransformsRef } from './programPartTransformsRef'
 
 const PLACEHOLDER_COLOR = '#64748b'
@@ -95,7 +95,11 @@ export function InteractiveProgramPartsLayer({
   )
 
   const partsRootRef = useRef<Group>(null)
-  useProgramPartOrbitGuard(partsRootRef, preAssemblyActive)
+  const manipulableSceneLayers = useMemo(
+    () => [{ rootRef: partsRootRef, enabled: preAssemblyActive }],
+    [preAssemblyActive],
+  )
+  useManipulableSceneOrbitGuard(manipulableSceneLayers)
 
   const { onPartPointerDown } = useProgramPartPointerSession({
     onPartTransformPreview: handlePartTransformPreview,

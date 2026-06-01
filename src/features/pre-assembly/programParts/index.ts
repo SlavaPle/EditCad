@@ -27,6 +27,4 @@ export {
   ProgramPartFilePicker,
   type ProgramPartFilePickerHandle,
   type ProgramPartFilePickerProps,
-  type ProgramPartPickBatchResult,
-  type ProgramPartPickEntry,
 } from './ProgramPartFilePicker'

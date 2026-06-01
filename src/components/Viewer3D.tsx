@@ -137,8 +137,9 @@ export function Viewer3D({
             dampingFactor={0.05}
             enableZoom
             mouseButtons={{
-              // Wartość spoza ROTATE/DOLLY/PAN — brak orbitu na LKM (wybór elementów)
+              // LKM na scenie: brak orbitu (wybór); na detalu: manipulacja (guard + sesja wskaźnika)
               LEFT: -1 as unknown as (typeof MOUSE)['ROTATE'],
+              // ŚKM na pustej scenie: obrót widoku; na detalu: obrót detalu
               MIDDLE: MOUSE.ROTATE,
               RIGHT: MOUSE.PAN,
             }}

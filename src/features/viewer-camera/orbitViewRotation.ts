@@ -1,4 +1,5 @@
 import { Object3D, Quaternion, Vector3, type Camera } from 'three'
+import { isSceneOrbitSuspended } from './orbitControlsSuspend'
 
 const scratchLookAt = /* @__PURE__ */ new Vector3()
 const scratchOffset = /* @__PURE__ */ new Vector3()
@@ -62,7 +63,7 @@ export function syncOrbitViewFocus(controls: unknown, focusPoint: Vector3): void
  */
 export function updateOrbitViewFromMouse(controls: unknown, delta?: number): void {
   if (!isOrbitControlsLike(controls)) return
-  if (controls.enabled === false) return
+  if (isSceneOrbitSuspended() || controls.enabled === false) return
   controls.update(delta)
 }
 

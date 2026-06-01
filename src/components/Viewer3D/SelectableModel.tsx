@@ -449,8 +449,16 @@ export function SelectableModel({
   }, [probableFaceOverlayGeometry])
 
   const handlePointerDown = (event: ThreeEvent<PointerEvent>) => {
-    // ŚPM / PPM zostawiamy pod kątem OrbitControls (obrót / pan); wybór tylko LKM
-    if (event.nativeEvent.button !== 0) return
+    const button = event.nativeEvent.button
+
+    // ŚKM / PPM: OrbitControls, chyba że rodzic obsługuje (np. obrót detalu w montażu)
+    if (button !== 0) {
+      if (onMeshPointerDown) {
+        event.stopPropagation()
+        onMeshPointerDown(event)
+      }
+      return
+    }
 
     event.stopPropagation()
     onMeshPointerDown?.(event)

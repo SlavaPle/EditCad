@@ -10,6 +10,7 @@ import {
 } from '../../model-selection/pickMeshElement'
 import type { ModelSelectionProximityFilter } from '../../model-selection/types'
 import type { SelectionState } from '../../../lib/selection'
+import { resumeSceneOrbit, suspendSceneOrbit } from '../../viewer-camera/orbitControlsSuspend'
 import {
   beginProgramPartPointerSession,
   computeRotateTransform,
@@ -47,7 +48,7 @@ export type ProgramPartPointerSessionHandlers = {
 }
 
 export function useProgramPartPointerSession(handlers: ProgramPartPointerSessionHandlers) {
-  const { raycaster, camera, gl } = useThree()
+  const { raycaster, camera, gl, controls } = useThree()
   const sessionRef = useRef<ActiveSession | null>(null)
   const liveTransformRef = useRef<PhantomTransform | null>(null)
   const meshRef = useRef<Mesh | null>(null)
@@ -65,7 +66,8 @@ export function useProgramPartPointerSession(handlers: ProgramPartPointerSession
     meshRef.current = null
     geometryRef.current = null
     setBodyCursor(null)
-  }, [setBodyCursor])
+    resumeSceneOrbit(controls)
+  }, [controls, setBodyCursor])
 
   const pointerNdc = useMemo(() => new Vector2(), [])
   const rayFromClient = useCallback(
@@ -192,6 +194,8 @@ export function useProgramPartPointerSession(handlers: ProgramPartPointerSession
               return intersectRayWithDragPlaneMm(event.ray, plane)
             })()
           : null
+
+      suspendSceneOrbit(controls)
 
       const base = beginProgramPartPointerSession({
         partId,

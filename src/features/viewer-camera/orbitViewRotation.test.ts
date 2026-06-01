@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 import { PerspectiveCamera, Quaternion, Vector3 } from 'three'
 import {
+  resetSceneOrbitSuspendForTests,
+  suspendSceneOrbit,
+} from './orbitControlsSuspend'
+import {
   applyOrbitViewOrientation,
   computeOrbitViewQuaternionForDirection,
   getOrbitViewRadius,
@@ -35,6 +39,15 @@ describe('updateOrbitViewFromMouse', () => {
     controls.enabled = false
     updateOrbitViewFromMouse(controls)
     expect(controls.update).not.toHaveBeenCalled()
+  })
+
+  it('skips update while scene manipulator holds orbit suspended', () => {
+    const controls = mockOrbitControls()
+    suspendSceneOrbit(controls)
+    updateOrbitViewFromMouse(controls)
+    expect(controls.update).not.toHaveBeenCalled()
+    resetSceneOrbitSuspendForTests()
+    controls.enabled = true
   })
 })
 
