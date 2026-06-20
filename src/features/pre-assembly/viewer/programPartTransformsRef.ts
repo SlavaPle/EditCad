@@ -1,26 +1,24 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PhantomTransform } from '../model'
 import type { PreAssemblyProgramPart } from '../preAssemblyProgram'
 import {
+  applyProgramPartTransformsFromParts,
   cloneProgramPartTransform,
-  syncProgramPartTransformsMap,
 } from './programPartTransformsSync'
 
 /** Ostatni znany transform detali — baza dla kolejnego drag/obrotu. */
 export function useProgramPartTransformsRef(parts: readonly PreAssemblyProgramPart[]) {
   const transformsRef = useRef<Map<string, PhantomTransform>>(new Map())
-
-  const partIdsKey = useMemo(() => parts.map((part) => part.id).join('\0'), [parts])
-  const partsRef = useRef(parts)
-  partsRef.current = parts
+  const [partsSyncTick, setPartsSyncTick] = useState(0)
 
   useEffect(() => {
-    syncProgramPartTransformsMap(partsRef.current, transformsRef.current)
-  }, [partIdsKey])
+    applyProgramPartTransformsFromParts(parts, transformsRef.current)
+    setPartsSyncTick((tick) => tick + 1)
+  }, [parts])
 
   const getTransform = useCallback((partId: string, fallback: PhantomTransform): PhantomTransform => {
     return transformsRef.current.get(partId) ?? cloneProgramPartTransform(fallback)
-  }, [])
+  }, [partsSyncTick])
 
   const setTransform = useCallback((partId: string, transform: PhantomTransform) => {
     transformsRef.current.set(partId, cloneProgramPartTransform(transform))

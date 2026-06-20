@@ -28,3 +28,19 @@ export function syncProgramPartTransformsMap(
     }
   }
 }
+
+/** Nadpisuje ref z props — np. po Apply przywiązania (poza aktywnym dragiem). */
+export function applyProgramPartTransformsFromParts(
+  parts: readonly PreAssemblyProgramPart[],
+  map: Map<string, PhantomTransform>,
+): void {
+  const partIds = new Set(parts.map((part) => part.id))
+  for (const part of parts) {
+    map.set(part.id, cloneProgramPartTransform(part.transform))
+  }
+  for (const id of [...map.keys()]) {
+    if (!partIds.has(id)) {
+      map.delete(id)
+    }
+  }
+}

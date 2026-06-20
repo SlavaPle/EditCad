@@ -86,13 +86,12 @@ import { isUserCancelError } from './lib/isUserCancelError'
 import { MatesPopup } from './components/assembly-mates'
 import {
   createMateDraftSession,
-  mateDraftApply,
   mateDraftHasUnsavedApply,
   mateDraftRevert,
   mateDraftSave,
   mateDraftSetPlane,
   mateDraftUpdateDraft,
-  solveParallelMate,
+  executeMateApply,
   validateParallelMateDraft,
   type AssemblyMate,
   type MateDraftSession,
@@ -187,6 +186,22 @@ function App() {
   const [mateOffsetInput, setMateOffsetInput] = useState('0')
   const [mateSolverErrorKey, setMateSolverErrorKey] = useState<string | null>(null)
   const [assemblyMates, setAssemblyMates] = useState<AssemblyMate[]>([])
+  const mateDraftSessionRef = useRef(mateDraftSession)
+  mateDraftSessionRef.current = mateDraftSession
+  const commitMateDraftSession = useCallback((next: MateDraftSession) => {
+    mateDraftSessionRef.current = next
+    setMateDraftSession(next)
+  }, [])
+  const patchMateDraftSession = useCallback(
+    (patch: (session: MateDraftSession) => MateDraftSession) => {
+      const next = patch(mateDraftSessionRef.current)
+      mateDraftSessionRef.current = next
+      setMateDraftSession(next)
+    },
+    [],
+  )
+  const programPartsRef = useRef(programParts)
+  programPartsRef.current = programParts
   const modelLoaderRef = useRef<ModelLoaderHandle>(null)
   const assemblyLoaderRef = useRef<AssemblyLoaderHandle>(null)
   const programPartPickerRef = useRef<ProgramPartFilePickerHandle>(null)
@@ -882,11 +897,11 @@ function App() {
   )
 
   const closeMatesPopup = useCallback(() => {
-    setMateDraftSession((session) => revertMatePreviewIfNeeded(session))
+    patchMateDraftSession((session) => revertMatePreviewIfNeeded(session))
     setMatesPopupOpen(false)
     applyMatesPickSlot(null)
     setMateSolverErrorKey(null)
-  }, [applyMatesPickSlot, revertMatePreviewIfNeeded])
+  }, [applyMatesPickSlot, patchMateDraftSession, revertMatePreviewIfNeeded])
 
   const handleToggleMatesPopup = useCallback(() => {
     if (matesPopupOpen) {
@@ -896,20 +911,20 @@ function App() {
     setLimitsInstallActive(false)
     setAppearanceEditActive(false)
     setPreAssemblyWizard(null)
-    setMateDraftSession(createMateDraftSession())
+    commitMateDraftSession(createMateDraftSession())
     applyMatesPickSlot(null)
     setMateOffsetInput('0')
     setMateSolverErrorKey(null)
     setMatesPopupOpen(true)
-  }, [applyMatesPickSlot, closeMatesPopup, matesPopupOpen])
+  }, [applyMatesPickSlot, closeMatesPopup, commitMateDraftSession, matesPopupOpen])
 
   const handleMatePlanePicked = useCallback(
     (slot: MatesPickSlot, plane: MateDraftSession['draft']['planeA']) => {
-      setMateDraftSession((session) => mateDraftSetPlane(session, slot, plane))
+      patchMateDraftSession((session) => mateDraftSetPlane(session, slot, plane))
       applyMatesPickSlot(null)
       setMateSolverErrorKey(null)
     },
-    [applyMatesPickSlot],
+    [applyMatesPickSlot, patchMateDraftSession],
   )
 
   const parsedMateOffsetMm = useMemo(() => {
@@ -935,84 +950,60 @@ function App() {
   const canSaveMate = mateDraftSession.applyState === 'applied'
 
   const handleMateApply = useCallback(() => {
-    if (!canApplyMate || !mateDraftSession.draft.planeA || !mateDraftSession.draft.planeB) return
-    const { planeA, planeB } = mateDraftSession.draft
-    const geometryA = programPartGeometries[planeA.partId]
-    const geometryB = programPartGeometries[planeB.partId]
-    if (!geometryA || !geometryB) {
-      setMateSolverErrorKey('mates.errors.missingGeometry')
-      return
-    }
-    const partA = programParts.find((p) => p.id === planeA.partId)
-    const partB = programParts.find((p) => p.id === planeB.partId)
-    if (!partA || !partB) return
-
-    const solved = solveParallelMate({
-      planeA,
-      planeB,
-      geometryA,
-      geometryB,
-      transformA: partA.transform,
-      transformB: partB.transform,
-      alignment: mateDraftSession.draft.alignment,
+    const draft = {
+      ...mateDraftSessionRef.current.draft,
       offsetMm: parsedMateOffsetMm,
+    }
+    const result = executeMateApply({
+      session: mateDraftSessionRef.current,
+      draft,
+      programParts: programPartsRef.current,
+      programPartGeometries,
     })
-    if (!solved.ok) {
-      setMateSolverErrorKey(
-        solved.reason === 'notParallel'
-          ? 'mates.errors.notParallel'
-          : 'mates.errors.missingGeometry',
-      )
+    if (!result.ok) {
+      if (result.reason === 'solverFailed') {
+        setMateSolverErrorKey('mates.errors.missingGeometry')
+      } else if (result.reason === 'missingGeometry' || result.reason === 'missingPart') {
+        setMateSolverErrorKey('mates.errors.missingGeometry')
+      }
       return
     }
-
-    const revertTransform = partB.transform
-    handleProgramPartTransformChange(planeB.partId, solved.transform)
-    const applied = mateDraftApply(mateDraftSession, revertTransform)
-    if (applied.ok) {
-      setMateDraftSession(applied.session)
-      setMateSolverErrorKey(null)
-    }
-  }, [
-    canApplyMate,
-    handleProgramPartTransformChange,
-    mateDraftSession,
-    parsedMateOffsetMm,
-    programPartGeometries,
-    programParts,
-  ])
+    handleProgramPartTransformChange(result.movingPartId, result.transform)
+    commitMateDraftSession(result.nextSession)
+    setMateSolverErrorKey(null)
+  }, [commitMateDraftSession, handleProgramPartTransformChange, parsedMateOffsetMm, programPartGeometries])
 
   const handleMateRevert = useCallback(() => {
-    const partId = mateDraftSession.movingPartId
-    const revert = mateDraftRevert(mateDraftSession)
+    const partId = mateDraftSessionRef.current.movingPartId
+    const revert = mateDraftRevert(mateDraftSessionRef.current)
     if (!revert.ok) return
     if (partId) {
       handleProgramPartTransformChange(partId, revert.transform)
     }
-    setMateDraftSession(revert.session)
+    commitMateDraftSession(revert.session)
     setMateSolverErrorKey(null)
-  }, [handleProgramPartTransformChange, mateDraftSession])
+  }, [commitMateDraftSession, handleProgramPartTransformChange])
 
   const handleMateSave = useCallback(() => {
     const saved = mateDraftSave(mateDraftSession, assemblyMates)
     if (!saved.ok) return
     setAssemblyMates(saved.mates)
-    setMateDraftSession(saved.session)
+    commitMateDraftSession(saved.session)
     setMateOffsetInput('0')
     applyMatesPickSlot(null)
     setMateSolverErrorKey(null)
-  }, [applyMatesPickSlot, assemblyMates, mateDraftSession])
+  }, [applyMatesPickSlot, assemblyMates, commitMateDraftSession, mateDraftSession])
 
   const handleMateSaveAndClose = useCallback(() => {
     const saved = mateDraftSave(mateDraftSession, assemblyMates)
     if (!saved.ok) return
     setAssemblyMates(saved.mates)
-    setMateDraftSession(saved.session)
+    commitMateDraftSession(saved.session)
     setMateOffsetInput('0')
     applyMatesPickSlot(null)
     setMateSolverErrorKey(null)
     setMatesPopupOpen(false)
-  }, [applyMatesPickSlot, assemblyMates, mateDraftSession])
+  }, [applyMatesPickSlot, assemblyMates, commitMateDraftSession, mateDraftSession])
 
   return (
     <div className={styles.app}>
@@ -1141,7 +1132,7 @@ function App() {
             canApply={canApplyMate}
             canSave={canSaveMate}
             onAlignmentChange={(alignment) => {
-              setMateDraftSession((session) => mateDraftUpdateDraft(session, { alignment }))
+              patchMateDraftSession((session) => mateDraftUpdateDraft(session, { alignment }))
             }}
             onOffsetChange={setMateOffsetInput}
             onStartPick={(slot) => {

@@ -76,14 +76,15 @@ describe('parallelMateSolver', () => {
     expect(gap).toBeCloseTo(3, 2)
   })
 
-  it('rejects non-parallel planes', () => {
+  it('aligns originally perpendicular planes (face-to-face)', () => {
     const geometryA = quadInPlaneZ(0, true)
     const geometrySide = quadInPlaneZ(0, true)
     geometrySide.rotateX(Math.PI / 2)
+    const planeRef = { partId: 'x', faceIndex: 0, faceIndices: [0, 1] }
 
     const result = solveParallelMate({
-      planeA: { partId: 'a', faceIndex: 0, faceIndices: [0, 1] },
-      planeB: { partId: 'b', faceIndex: 0, faceIndices: [0, 1] },
+      planeA: { ...planeRef, partId: 'a' },
+      planeB: { ...planeRef, partId: 'b' },
       geometryA,
       geometryB: geometrySide,
       transformA: defaultProgramPartTransform(),
@@ -92,8 +93,38 @@ describe('parallelMateSolver', () => {
       offsetMm: 0,
     })
 
-    expect(result.ok).toBe(false)
-    if (result.ok) return
-    expect(result.reason).toBe('notParallel')
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+
+    const frameA = matePlaneWorldFrame(geometryA, defaultProgramPartTransform(), [0, 1])
+    const frameB = matePlaneWorldFrame(geometrySide, result.transform, [0, 1])
+    if (!frameA || !frameB) throw new Error('missing frame')
+    expect(frameB.normal.dot(frameA.normal)).toBeCloseTo(-1, 2)
+  })
+
+  it('aligns same-direction when planes start at arbitrary angle', () => {
+    const geometryA = quadInPlaneZ(0, true)
+    const geometryB = quadInPlaneZ(5, true)
+    geometryB.rotateY(Math.PI / 3)
+    const planeRef = { partId: 'x', faceIndex: 0, faceIndices: [0, 1] }
+
+    const result = solveParallelMate({
+      planeA: { ...planeRef, partId: 'a' },
+      planeB: { ...planeRef, partId: 'b' },
+      geometryA,
+      geometryB,
+      transformA: defaultProgramPartTransform(),
+      transformB: defaultProgramPartTransform(),
+      alignment: 'sameDirection',
+      offsetMm: 0,
+    })
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+
+    const frameA = matePlaneWorldFrame(geometryA, defaultProgramPartTransform(), [0, 1])
+    const frameB = matePlaneWorldFrame(geometryB, result.transform, [0, 1])
+    if (!frameA || !frameB) throw new Error('missing frame')
+    expect(frameB.normal.dot(frameA.normal)).toBeCloseTo(1, 2)
   })
 })

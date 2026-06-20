@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { defaultProgramPartTransform } from '../programParts/programPartTransform'
 import type { PreAssemblyProgramPart } from '../preAssemblyProgram'
-import { cloneProgramPartTransform, syncProgramPartTransformsMap } from './programPartTransformsSync'
+import { cloneProgramPartTransform, syncProgramPartTransformsMap, applyProgramPartTransformsFromParts } from './programPartTransformsSync'
 
 function part(
   id: string,
@@ -46,5 +46,13 @@ describe('programPartTransformsSync', () => {
     syncProgramPartTransformsMap([part('a', [0, 0, 0])], map)
     expect(map.has('b')).toBe(false)
     expect(map.size).toBe(1)
+  })
+
+  it('applyProgramPartTransformsFromParts overwrites ref when props change (mate apply)', () => {
+    const map = new Map<string, ReturnType<typeof defaultProgramPartTransform>>()
+    map.set('a', { positionMm: [199, 0, 0], rotationDeg: [0, 0, 0] })
+    applyProgramPartTransformsFromParts([part('a', [149, 0, 10], [180, 0, 180])], map)
+    expect(map.get('a')?.positionMm).toEqual([149, 0, 10])
+    expect(map.get('a')?.rotationDeg).toEqual([180, 0, 180])
   })
 })

@@ -48,6 +48,11 @@ export {
   type MatesPickSlot,
 } from './matesPickMode'
 export {
+  executeMateApply,
+  type ExecuteMateApplyReason,
+  type ExecuteMateApplyResult,
+} from './executeMateApply'
+export {
   MATE_PLANE_PICK_FILTER,
   meshBuiltinFacePickOnPointerDown,
   pickMatePlaneAtPointer,

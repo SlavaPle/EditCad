@@ -24,7 +24,6 @@ import {
 import type { MatePlaneRef } from '../../assembly-mates/model'
 import type { MatesPickMode, MatesPickSlot } from '../../assembly-mates/matesPickMode'
 import {
-  MATE_PLANE_PICK_FILTER,
   meshBuiltinFacePickOnPointerDown,
   pickMatePlaneAtPointer,
   resolveActiveMatesPickSlot,
@@ -263,7 +262,7 @@ function InteractiveProgramPart({
   const meshPickOnPointerDown = meshBuiltinFacePickOnPointerDown(allowFacePick, matesPickContextActive)
 
   const handlePointerDown = (event: ThreeEvent<PointerEvent>) => {
-    if (shouldBeginMatePlanePick(matesPickSlotRef?.current, !!geometry)) {
+    if (geometry && shouldBeginMatePlanePick(matesPickSlotRef?.current, true)) {
       event.stopPropagation()
       onMatePartPointerDown(part.id, geometry, event)
       return

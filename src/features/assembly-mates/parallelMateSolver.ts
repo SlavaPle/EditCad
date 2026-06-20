@@ -4,10 +4,9 @@ import { degToRad } from '../pre-assembly/phantomUnits'
 import type { MateAlignment, MatePlaneRef } from './model'
 import { getGeometryCenterOffset, matePlaneWorldFrame } from './planeWorldFrame'
 
-const PARALLEL_ABS_DOT_MIN = 0.92
 const RAD_TO_DEG = 180 / Math.PI
 
-export type ParallelMateSolverReason = 'notParallel' | 'invalidGeometry' | 'invalidPlane'
+export type ParallelMateSolverReason = 'invalidGeometry' | 'invalidPlane'
 
 export type ParallelMateSolverInput = {
   planeA: MatePlaneRef
@@ -86,9 +85,6 @@ export function solveParallelMate(input: ParallelMateSolverInput): ParallelMateS
 
   const nA = frameA.normal
   const nB = frameB.normal
-  if (Math.abs(nA.dot(nB)) < PARALLEL_ABS_DOT_MIN && Math.abs(nA.dot(nB.clone().negate())) < PARALLEL_ABS_DOT_MIN) {
-    return { ok: false, reason: 'notParallel' }
-  }
 
   const targetNormal =
     input.alignment === 'faceToFace' ? nA.clone().negate().normalize() : nA.clone().normalize()
