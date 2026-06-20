@@ -53,6 +53,13 @@ export {
   type ExecuteMateApplyResult,
 } from './executeMateApply'
 export {
+  applyAssemblyMateConstraints,
+  filterAssemblyMatesForPartIds,
+  reapplyAllAssemblyMates,
+  type ApplyAssemblyMateConstraintsInput,
+  type ReapplyAllAssemblyMatesInput,
+} from './applyAssemblyMateConstraints'
+export {
   MATE_PLANE_PICK_FILTER,
   meshBuiltinFacePickOnPointerDown,
   pickMatePlaneAtPointer,

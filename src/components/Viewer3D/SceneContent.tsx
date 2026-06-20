@@ -53,6 +53,10 @@ interface SceneContentProps {
   activeProgramPartId?: string | null
   onActiveProgramPartChange?: (partId: string | null) => void
   onProgramPartTransformChange?: (partId: string, transform: PhantomTransform) => void
+  resolveMateFollowers?: (
+    movedPartId: string,
+    movedTransform: PhantomTransform,
+  ) => readonly PreAssemblyProgramPart[]
   matesPickMode?: MatesPickMode
   matesPickSlotRef?: RefObject<MatesPickSlot | null>
   onMatePlanePicked?: (slot: NonNullable<MatesPickMode['slot']>, plane: MatePlaneRef) => void
@@ -81,6 +85,7 @@ export function SceneContent({
   activeProgramPartId = null,
   onActiveProgramPartChange,
   onProgramPartTransformChange,
+  resolveMateFollowers,
   matesPickMode = { active: false, slot: null },
   matesPickSlotRef,
   onMatePlanePicked,
@@ -106,6 +111,7 @@ export function SceneContent({
           selectionProximityFilter={selectionProximityFilter}
           onProbableFacesChange={onProbableFacesChange}
           onPartTransformChange={onProgramPartTransformChange}
+          resolveMateFollowers={resolveMateFollowers}
           matesPickMode={matesPickMode}
           matesPickSlotRef={matesPickSlotRef}
           onMatePlanePicked={onMatePlanePicked}

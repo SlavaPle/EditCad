@@ -69,7 +69,6 @@ import {
   savePhantomAssemblyToHandle,
   stripEcdasmExtension,
   stripEcdpreExtension,
-  updateProgramPartTransform,
   type AssemblyFile,
   type AssemblyLoaderHandle,
   type PhantomAssemblyFile,
@@ -82,6 +81,7 @@ import {
 } from './features/pre-assembly'
 import { layoutProgramPartPositionsMm } from './features/pre-assembly/viewer'
 import { loadGeometriesFromAssembly } from './features/pre-assembly/programParts/loadAssemblyProgramPartGeometries'
+import { buildProgramPartDisplayNameById } from './features/pre-assembly/programParts/programPartDisplayName'
 import { isUserCancelError } from './lib/isUserCancelError'
 import { MatesPopup } from './components/assembly-mates'
 import {
@@ -93,6 +93,9 @@ import {
   mateDraftUpdateDraft,
   executeMateApply,
   validateParallelMateDraft,
+  applyAssemblyMateConstraints,
+  filterAssemblyMatesForPartIds,
+  reapplyAllAssemblyMates,
   type AssemblyMate,
   type MateDraftSession,
   type MatesPickMode,
@@ -202,6 +205,10 @@ function App() {
   )
   const programPartsRef = useRef(programParts)
   programPartsRef.current = programParts
+  const assemblyMatesRef = useRef(assemblyMates)
+  assemblyMatesRef.current = assemblyMates
+  const programPartGeometriesRef = useRef(programPartGeometries)
+  programPartGeometriesRef.current = programPartGeometries
   const modelLoaderRef = useRef<ModelLoaderHandle>(null)
   const assemblyLoaderRef = useRef<AssemblyLoaderHandle>(null)
   const programPartPickerRef = useRef<ProgramPartFilePickerHandle>(null)
@@ -211,13 +218,10 @@ function App() {
     ? { active: true, slot: matesPickSlot }
     : { active: false, slot: null }
 
-  const programPartNameById = useMemo(() => {
-    const map: Record<string, string> = {}
-    for (const part of programParts) {
-      map[part.id] = part.name
-    }
-    return map
-  }, [programParts])
+  const programPartNameById = useMemo(
+    () => buildProgramPartDisplayNameById(programParts),
+    [programParts],
+  )
 
   const matesToolbarDisabled = programParts.length < 2
 
@@ -674,11 +678,24 @@ function App() {
     setActiveToolbarTab('preAssembly')
   }, [programPartGeometries])
 
-  const handleProgramPartTransformChange = useCallback(
-    (partId: string, transform: PhantomTransform) => {
-      setProgramParts((current) => updateProgramPartTransform(current, partId, transform))
+  const applyTransformWithMates = useCallback(
+    (partId: string, transform: PhantomTransform): PreAssemblyProgramPart[] => {
+      return applyAssemblyMateConstraints({
+        parts: programPartsRef.current,
+        mates: assemblyMatesRef.current,
+        geometries: programPartGeometriesRef.current,
+        movedPartId: partId,
+        movedTransform: transform,
+      })
     },
     [],
+  )
+
+  const handleProgramPartTransformChange = useCallback(
+    (partId: string, transform: PhantomTransform) => {
+      setProgramParts(applyTransformWithMates(partId, transform))
+    },
+    [applyTransformWithMates],
   )
 
   const handleActiveProgramPartChange = useCallback((partId: string | null) => {
@@ -694,7 +711,12 @@ function App() {
   }, [])
 
   const handleRemoveProgramPart = useCallback((partId: string) => {
-    setProgramParts((current) => removeProgramPart(current, partId))
+    setProgramParts((current) => {
+      const next = removeProgramPart(current, partId)
+      const partIds = new Set(next.map((part) => part.id))
+      setAssemblyMates((mates) => filterAssemblyMatesForPartIds(mates, partIds))
+      return next
+    })
     setProgramPartGeometries((geometries) => {
       const next = { ...geometries }
       const geometry = next[partId]
@@ -724,6 +746,13 @@ function App() {
       if (Object.keys(result.geometries).length > 0) {
         setProgramPartGeometries(result.geometries)
         setProgramPartAppearances(result.appearances)
+        setProgramParts((current) =>
+          reapplyAllAssemblyMates({
+            parts: current,
+            mates: assemblyMatesRef.current,
+            geometries: result.geometries,
+          }),
+        )
         setProgramPartsFitToken((token) => token + 1)
       }
       const messages: string[] = []
@@ -1117,6 +1146,9 @@ function App() {
             activeProgramPartId={activeProgramPartId}
             onActiveProgramPartChange={handleActiveProgramPartChange}
             onProgramPartTransformChange={handleProgramPartTransformChange}
+            resolveMateFollowers={
+              assemblyMates.length > 0 ? applyTransformWithMates : undefined
+            }
             matesPickMode={matesPickMode}
             matesPickSlotRef={matesPickSlotRef}
             onMatePlanePicked={handleMatePlanePicked}

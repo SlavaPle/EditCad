@@ -54,6 +54,10 @@ export interface Viewer3DProps {
   activeProgramPartId?: string | null
   onActiveProgramPartChange?: (partId: string | null) => void
   onProgramPartTransformChange?: (partId: string, transform: PhantomTransform) => void
+  resolveMateFollowers?: (
+    movedPartId: string,
+    movedTransform: PhantomTransform,
+  ) => readonly PreAssemblyProgramPart[]
   matesPickMode?: MatesPickMode
   matesPickSlotRef?: RefObject<MatesPickSlot | null>
   onMatePlanePicked?: (slot: NonNullable<MatesPickMode['slot']>, plane: MatePlaneRef) => void
@@ -83,6 +87,7 @@ export function Viewer3D({
   activeProgramPartId = null,
   onActiveProgramPartChange,
   onProgramPartTransformChange,
+  resolveMateFollowers,
   matesPickMode = { active: false, slot: null },
   matesPickSlotRef,
   onMatePlanePicked,
@@ -138,6 +143,7 @@ export function Viewer3D({
             activeProgramPartId={activeProgramPartId}
             onActiveProgramPartChange={onActiveProgramPartChange}
             onProgramPartTransformChange={onProgramPartTransformChange}
+            resolveMateFollowers={resolveMateFollowers}
             matesPickMode={matesPickMode}
             matesPickSlotRef={matesPickSlotRef}
             onMatePlanePicked={onMatePlanePicked}

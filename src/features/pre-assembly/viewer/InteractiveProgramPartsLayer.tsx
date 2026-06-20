@@ -50,6 +50,10 @@ interface InteractiveProgramPartsLayerProps {
   selectionProximityFilter: ModelSelectionProximityFilter
   onProbableFacesChange?: (faces: readonly number[]) => void
   onPartTransformChange: (partId: string, transform: PhantomTransform) => void
+  resolveMateFollowers?: (
+    movedPartId: string,
+    movedTransform: PhantomTransform,
+  ) => readonly PreAssemblyProgramPart[]
   matesPickMode?: MatesPickMode
   matesPickSlotRef?: RefObject<MatesPickSlot | null>
   onMatePlanePicked?: (slot: NonNullable<MatesPickMode['slot']>, plane: MatePlaneRef) => void
@@ -69,6 +73,7 @@ export function InteractiveProgramPartsLayer({
   selectionProximityFilter,
   onProbableFacesChange,
   onPartTransformChange,
+  resolveMateFollowers,
   matesPickMode = { active: false, slot: null },
   matesPickSlotRef,
   onMatePlanePicked,
@@ -100,10 +105,17 @@ export function InteractiveProgramPartsLayer({
 
   const handlePartTransformPreview = useCallback(
     (partId: string, transform: PhantomTransform) => {
-      setTransform(partId, transform)
+      const resolved = resolveMateFollowers?.(partId, transform)
+      if (resolved) {
+        for (const part of resolved) {
+          setTransform(part.id, part.transform)
+        }
+      } else {
+        setTransform(partId, transform)
+      }
       setTransformPreviewTick((tick) => tick + 1)
     },
-    [setTransform],
+    [resolveMateFollowers, setTransform],
   )
 
   const handlePartTransformCommit = useCallback(
