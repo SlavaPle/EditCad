@@ -100,7 +100,7 @@ export function pickMeshElementAtPointer(input: {
   return {
     kind: 'picked',
     selection: selectEdge(currentSelection, pick.a, pick.b, mode),
-    probableFaces: pick.probableFaceIndices ?? [],
+    probableFaces: shiftHeld ? (pick.probableFaceIndices ?? []) : [],
     primaryFaces: [],
   }
 }

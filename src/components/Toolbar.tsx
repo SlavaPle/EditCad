@@ -1,5 +1,6 @@
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ParallelMateTypeIcon } from './assembly-mates/ParallelMateTypeIcon'
 import styles from './Toolbar.module.css'
 import {
   DEFAULT_MODEL_DISPLAY_MODE,
@@ -27,6 +28,9 @@ interface ToolbarProps {
   onToggleLimitsInstall?: () => void
   appearanceEditActive?: boolean
   onToggleAppearanceEdit?: () => void
+  matesPopupOpen?: boolean
+  matesToolbarDisabled?: boolean
+  onToggleMatesPopup?: () => void
   displayMode?: ModelDisplayMode
   onDisplayModeChange?: (mode: ModelDisplayMode) => void
   preAssemblyToolbarUi?: PreAssemblyToolbarUi
@@ -59,6 +63,9 @@ export function Toolbar({
   onToggleLimitsInstall,
   appearanceEditActive = false,
   onToggleAppearanceEdit,
+  matesPopupOpen = false,
+  matesToolbarDisabled = true,
+  onToggleMatesPopup,
   displayMode = DEFAULT_MODEL_DISPLAY_MODE,
   onDisplayModeChange,
   preAssemblyToolbarUi,
@@ -177,6 +184,27 @@ export function Toolbar({
                   fill="currentColor"
                 />
               </svg>
+            </span>
+          </button>
+        )
+      case 'editMates':
+        return (
+          <button
+            key={actionId}
+            type="button"
+            className={`${styles.iconBtn} ${matesPopupOpen ? styles.iconBtnActive : ''}`}
+            title={
+              matesPopupOpen ? t('toolbar.mates.active') : t('toolbar.mates.button')
+            }
+            aria-label={
+              matesPopupOpen ? t('toolbar.mates.active') : t('toolbar.mates.button')
+            }
+            aria-pressed={matesPopupOpen}
+            disabled={matesToolbarDisabled}
+            onClick={() => onToggleMatesPopup?.()}
+          >
+            <span className={styles.icon}>
+              <ParallelMateTypeIcon />
             </span>
           </button>
         )

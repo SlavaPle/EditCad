@@ -1,8 +1,9 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Group } from 'three'
-import type { Dispatch, SetStateAction } from 'react'
+import type { Dispatch, SetStateAction, RefObject } from 'react'
 import { Bounds, Edges } from '@react-three/drei'
-import { Box3, BufferGeometry, Vector3 } from 'three'
+import { useThree } from '@react-three/fiber'
+import { Box3, BufferGeometry, Mesh, Vector3 } from 'three'
 import type { ThreeEvent } from '@react-three/fiber'
 import { SelectableModel } from '../../../components/Viewer3D/SelectableModel'
 import type { SelectionState } from '../../../lib/selection'
@@ -20,6 +21,15 @@ import {
   programPartGroupPosition,
   programPartGroupRotation,
 } from '../programParts/programPartTransform'
+import type { MatePlaneRef } from '../../assembly-mates/model'
+import type { MatesPickMode, MatesPickSlot } from '../../assembly-mates/matesPickMode'
+import {
+  MATE_PLANE_PICK_FILTER,
+  meshBuiltinFacePickOnPointerDown,
+  pickMatePlaneAtPointer,
+  resolveActiveMatesPickSlot,
+  shouldBeginMatePlanePick,
+} from '../../assembly-mates/pickMatePlaneAtPointer'
 import { useProgramPartPointerSession } from './useProgramPartPointerSession'
 import { useManipulableSceneOrbitGuard } from '../../viewer-camera/useManipulableSceneOrbitGuard'
 import { useProgramPartTransformsRef } from './programPartTransformsRef'
@@ -41,6 +51,9 @@ interface InteractiveProgramPartsLayerProps {
   selectionProximityFilter: ModelSelectionProximityFilter
   onProbableFacesChange?: (faces: readonly number[]) => void
   onPartTransformChange: (partId: string, transform: PhantomTransform) => void
+  matesPickMode?: MatesPickMode
+  matesPickSlotRef?: RefObject<MatesPickSlot | null>
+  onMatePlanePicked?: (slot: NonNullable<MatesPickMode['slot']>, plane: MatePlaneRef) => void
 }
 
 export function InteractiveProgramPartsLayer({
@@ -57,7 +70,15 @@ export function InteractiveProgramPartsLayer({
   selectionProximityFilter,
   onProbableFacesChange,
   onPartTransformChange,
+  matesPickMode = { active: false, slot: null },
+  matesPickSlotRef,
+  onMatePlanePicked,
 }: InteractiveProgramPartsLayerProps) {
+  const { invalidate } = useThree()
+  useEffect(() => {
+    invalidate()
+  }, [invalidate, matesPickMode.active, matesPickMode.slot])
+
   const [probableFaces, setProbableFaces] = useState<readonly number[]>([])
   const [transformPreviewTick, setTransformPreviewTick] = useState(0)
   const primaryFacesRef = useRef<readonly number[]>([])
@@ -94,10 +115,42 @@ export function InteractiveProgramPartsLayer({
     [onPartTransformChange, setTransform],
   )
 
+  const assemblyInteractionActive = preAssemblyActive || matesPickMode.active
+
+  const handleMatePartPointerDown = useCallback(
+    (
+      partId: string,
+      geometry: BufferGeometry,
+      event: ThreeEvent<PointerEvent>,
+    ) => {
+      const slot = resolveActiveMatesPickSlot(matesPickSlotRef?.current, matesPickMode.slot)
+      const result = pickMatePlaneAtPointer({
+        partId,
+        geometry,
+        mesh: event.object as Mesh,
+        worldPoint: event.point,
+        faceIndex: event.faceIndex,
+        pickSlot: slot,
+        pointerButton: event.nativeEvent.button,
+        camera: event.camera,
+        pointer: { x: event.nativeEvent.offsetX, y: event.nativeEvent.offsetY },
+        viewport: {
+          width: (event.nativeEvent.target as HTMLElement | null)?.clientWidth ?? 0,
+          height: (event.nativeEvent.target as HTMLElement | null)?.clientHeight ?? 0,
+        },
+      })
+      if (!result.ok) return
+
+      event.stopPropagation()
+      onMatePlanePicked?.(result.slot, result.plane)
+    },
+    [matesPickMode.slot, matesPickSlotRef, onMatePlanePicked],
+  )
+
   const partsRootRef = useRef<Group>(null)
   const manipulableSceneLayers = useMemo(
-    () => [{ rootRef: partsRootRef, enabled: preAssemblyActive }],
-    [preAssemblyActive],
+    () => [{ rootRef: partsRootRef, enabled: assemblyInteractionActive }],
+    [assemblyInteractionActive],
   )
   useManipulableSceneOrbitGuard(manipulableSceneLayers)
 
@@ -113,6 +166,8 @@ export function InteractiveProgramPartsLayer({
     probableFaces,
     getPrimaryFaces,
     setPrimaryFaces,
+    matesPickActive: (matesPickSlotRef?.current ?? matesPickMode.slot) !== null,
+    matesPickSlotRef,
   })
 
   if (parts.length === 0) return null
@@ -131,13 +186,17 @@ export function InteractiveProgramPartsLayer({
             geometry={geometries[part.id] ?? null}
             appearance={resolveProgramPartAppearance(part.id, appearances)}
             displayMode={displayMode}
-            preAssemblyActive={preAssemblyActive}
+            preAssemblyActive={assemblyInteractionActive}
+            matesPickContextActive={matesPickMode.active}
+            matesPickActive={matesPickMode.active && matesPickMode.slot !== null}
             isActive={activePartId === part.id}
             selection={selection}
             onSelectionChange={onSelectionChange}
             selectionProximityFilter={selectionProximityFilter}
             onProbableFacesChange={handleProbableFacesChange}
             onPartPointerDown={onPartPointerDown}
+            matesPickSlotRef={matesPickSlotRef}
+            onMatePartPointerDown={handleMatePartPointerDown}
           />
         ))}
       </group>
@@ -152,12 +211,16 @@ function InteractiveProgramPart({
   appearance,
   displayMode,
   preAssemblyActive,
+  matesPickContextActive,
+  matesPickActive,
   isActive,
   selection,
   onSelectionChange,
   selectionProximityFilter,
   onProbableFacesChange,
   onPartPointerDown,
+  matesPickSlotRef,
+  onMatePartPointerDown,
 }: {
   part: PreAssemblyProgramPart
   displayTransform: PhantomTransform
@@ -165,15 +228,23 @@ function InteractiveProgramPart({
   appearance: ModelAppearance
   displayMode: ModelDisplayMode
   preAssemblyActive: boolean
+  matesPickContextActive: boolean
+  matesPickActive: boolean
   isActive: boolean
   selection: SelectionState
   onSelectionChange: Dispatch<SetStateAction<SelectionState>>
   selectionProximityFilter: ModelSelectionProximityFilter
   onProbableFacesChange?: (faces: readonly number[]) => void
+  matesPickSlotRef?: RefObject<MatesPickSlot | null>
   onPartPointerDown: (
     partId: string,
     fallbackTransform: PhantomTransform,
     geometry: BufferGeometry | null,
+    event: ThreeEvent<PointerEvent>,
+  ) => void
+  onMatePartPointerDown: (
+    partId: string,
+    geometry: BufferGeometry,
     event: ThreeEvent<PointerEvent>,
   ) => void
 }) {
@@ -187,9 +258,16 @@ function InteractiveProgramPart({
 
   const position = programPartGroupPosition(displayTransform)
   const rotation = programPartGroupRotation(displayTransform)
-  const allowFacePick = preAssemblyActive && isActive
+  const allowFacePick =
+    (preAssemblyActive && isActive && !matesPickActive) || matesPickActive
+  const meshPickOnPointerDown = meshBuiltinFacePickOnPointerDown(allowFacePick, matesPickContextActive)
 
   const handlePointerDown = (event: ThreeEvent<PointerEvent>) => {
+    if (shouldBeginMatePlanePick(matesPickSlotRef?.current, !!geometry)) {
+      event.stopPropagation()
+      onMatePartPointerDown(part.id, geometry, event)
+      return
+    }
     if (!preAssemblyActive) return
     onPartPointerDown(part.id, displayTransform, geometry, event)
   }
@@ -207,8 +285,10 @@ function InteractiveProgramPart({
             onSelectionChange={onSelectionChange}
             selectionProximityFilter={selectionProximityFilter}
             onProbableFacesChange={allowFacePick ? onProbableFacesChange : undefined}
-            pickOnPointerDown={allowFacePick}
-            onMeshPointerDown={preAssemblyActive ? handlePointerDown : undefined}
+            pickOnPointerDown={meshPickOnPointerDown}
+            onMeshPointerDown={
+              preAssemblyActive || matesPickContextActive ? handlePointerDown : undefined
+            }
           />
         </group>
       </group>

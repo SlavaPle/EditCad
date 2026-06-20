@@ -125,4 +125,26 @@ describe('assemblyCodec', () => {
     )
     expect(file.phantom).toBeUndefined()
   })
+
+  it('round-trips assembly mates', () => {
+    const mate = {
+      id: 'mate-1',
+      kind: 'parallel' as const,
+      planeA: { partId: 'p1', faceIndex: 0, faceIndices: [0, 1] },
+      planeB: { partId: 'p2', faceIndex: 2, faceIndices: [2, 3] },
+      alignment: 'faceToFace' as const,
+      offsetMm: 0,
+    }
+    const file = createAssemblyFileFromProgram(
+      [
+        partWithTransform('p1', 'left.ecdprt', 'Left'),
+        partWithTransform('p2', 'right.ecdprt', 'Right'),
+      ],
+      { id: 'asm-1', name: 'Cabinet', mates: [mate] },
+    )
+    const parsed = parseAssemblyFile(serializeAssemblyFile(file))
+    expect(parsed.ok).toBe(true)
+    if (!parsed.ok) return
+    expect(parsed.file.mates).toEqual([mate])
+  })
 })

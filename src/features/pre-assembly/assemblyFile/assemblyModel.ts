@@ -1,3 +1,4 @@
+import type { AssemblyMate } from '../../assembly-mates/model'
 import type { PhantomAssembly } from '../model'
 import type { PreAssemblyProgramPart } from '../preAssemblyProgram'
 
@@ -17,6 +18,8 @@ export type AssemblyDocument = {
   program: PreAssemblyProgramPart[]
   /** Co najwyżej jeden fantom w złożeniu (elementy, connections, parametry). */
   phantom?: PhantomAssembly
+  /** Przywiązania geometryczne między detalami programu. */
+  mates?: AssemblyMate[]
 }
 
 export type AssemblyFile = {
@@ -26,6 +29,7 @@ export type AssemblyFile = {
   name: string
   program: PreAssemblyProgramPart[]
   phantom?: PhantomAssembly
+  mates?: AssemblyMate[]
 }
 
 export type ParseAssemblyFileResult =

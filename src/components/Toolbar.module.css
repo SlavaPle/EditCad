@@ -161,6 +161,12 @@
   display: block;
 }
 
+.icon :global(.matesTypeIconSvg) {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
 .textActionBtn {
   width: auto;
   min-width: 32px;

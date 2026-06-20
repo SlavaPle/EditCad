@@ -13,9 +13,10 @@ describe('TOOLBAR_TABS configuration', () => {
     expect(ids).toContain('view')
   })
 
-  it('edit tab includes appearance action', () => {
+  it('edit tab includes appearance and mates actions', () => {
     const edit = TOOLBAR_TABS.find((t) => t.id === 'edit')
     expect(edit?.actions).toContain('editAppearance')
+    expect(edit?.actions).toContain('editMates')
   })
 
   it('places view tab after edit', () => {

@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from 'react'
+import type { Dispatch, SetStateAction, RefObject } from 'react'
 import type { BufferGeometry } from 'three'
 import { Bounds } from '@react-three/drei'
 import { FitModelOnLoad } from '../../features/viewer-camera/FitModelOnLoad'
@@ -9,6 +9,8 @@ import type {
   PhantomTransform,
 } from '../../features/pre-assembly'
 import type { PreAssemblyProgramPart } from '../../features/pre-assembly'
+import type { MatePlaneRef } from '../../features/assembly-mates/model'
+import type { MatesPickMode, MatesPickSlot } from '../../features/assembly-mates/matesPickMode'
 import {
   ElementInstanceLayer,
   InteractiveProgramPartsLayer,
@@ -51,6 +53,9 @@ interface SceneContentProps {
   activeProgramPartId?: string | null
   onActiveProgramPartChange?: (partId: string | null) => void
   onProgramPartTransformChange?: (partId: string, transform: PhantomTransform) => void
+  matesPickMode?: MatesPickMode
+  matesPickSlotRef?: RefObject<MatesPickSlot | null>
+  onMatePlanePicked?: (slot: NonNullable<MatesPickMode['slot']>, plane: MatePlaneRef) => void
 }
 
 export function SceneContent({
@@ -76,6 +81,9 @@ export function SceneContent({
   activeProgramPartId = null,
   onActiveProgramPartChange,
   onProgramPartTransformChange,
+  matesPickMode = { active: false, slot: null },
+  matesPickSlotRef,
+  onMatePlanePicked,
 }: SceneContentProps) {
   return (
     <>
@@ -98,6 +106,9 @@ export function SceneContent({
           selectionProximityFilter={selectionProximityFilter}
           onProbableFacesChange={onProbableFacesChange}
           onPartTransformChange={onProgramPartTransformChange}
+          matesPickMode={matesPickMode}
+          matesPickSlotRef={matesPickSlotRef}
+          onMatePlanePicked={onMatePlanePicked}
         />
       )}
       {phantom && (
@@ -115,7 +126,7 @@ export function SceneContent({
           />
         </>
       )}
-      {model && (
+      {model && programParts.length === 0 && (
         <Bounds margin={1.2}>
           <SelectableModel
             model={model}

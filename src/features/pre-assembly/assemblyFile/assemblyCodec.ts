@@ -1,3 +1,4 @@
+import { validateAssemblyMate } from '../../assembly-mates/model'
 import { isMvpSupportedEnvelope, parsePhantomAssembly, parsePhantomTransform } from '../codec'
 import { normalizeAssemblyRelativeRef } from './assemblyRelativePath'
 import { defaultProgramPartTransform } from '../programParts/programPartTransform'
@@ -47,6 +48,20 @@ function parseProgram(value: unknown): PreAssemblyProgramPart[] | null {
     parts.push(part)
   }
   return parts
+}
+
+function parseAssemblyMates(value: unknown): AssemblyFile['mates'] | 'invalid' {
+  if (value === undefined) return undefined
+  if (!Array.isArray(value)) return 'invalid'
+  const mates: NonNullable<AssemblyFile['mates']> = []
+  const seenIds = new Set<string>()
+  for (const entry of value) {
+    if (!validateAssemblyMate(entry)) return 'invalid'
+    if (seenIds.has(entry.id)) return 'invalid'
+    seenIds.add(entry.id)
+    mates.push(entry)
+  }
+  return mates
 }
 
 function parseAssemblyPhantomField(value: unknown): PhantomAssembly | null | 'invalid' | 'multiple' {
@@ -100,6 +115,10 @@ export function parseAssemblyFile(content: string): ParseAssemblyFileResult {
   if (phantomParsed === 'invalid') {
     return { ok: false, error: 'Invalid phantom in assembly file.' }
   }
+  const matesParsed = parseAssemblyMates(raw.mates)
+  if (matesParsed === 'invalid') {
+    return { ok: false, error: 'Invalid mates in assembly file.' }
+  }
   return {
     ok: true,
     file: {
@@ -109,6 +128,7 @@ export function parseAssemblyFile(content: string): ParseAssemblyFileResult {
       name: raw.name,
       program,
       ...(phantomParsed ? { phantom: phantomParsed } : {}),
+      ...(matesParsed && matesParsed.length > 0 ? { mates: matesParsed } : {}),
     },
   }
 }
@@ -124,12 +144,20 @@ export function serializeAssemblyFile(file: AssemblyFile): string {
   if (file.phantom) {
     payload.phantom = file.phantom
   }
+  if (file.mates && file.mates.length > 0) {
+    payload.mates = file.mates
+  }
   return JSON.stringify(payload, null, 2)
 }
 
 export function createAssemblyFileFromProgram(
   program: readonly PreAssemblyProgramPart[],
-  options?: { id?: string; name?: string; phantomDoc?: PhantomAssemblyFile | null },
+  options?: {
+    id?: string
+    name?: string
+    phantomDoc?: PhantomAssemblyFile | null
+    mates?: AssemblyFile['mates']
+  },
 ): AssemblyFile {
   const file: AssemblyFile = {
     format: ASSEMBLY_FORMAT,
@@ -140,6 +168,9 @@ export function createAssemblyFileFromProgram(
   }
   if (options?.phantomDoc?.phantom) {
     file.phantom = structuredClone(options.phantomDoc.phantom)
+  }
+  if (options?.mates && options.mates.length > 0) {
+    file.mates = options.mates.map((mate) => structuredClone(mate))
   }
   return file
 }

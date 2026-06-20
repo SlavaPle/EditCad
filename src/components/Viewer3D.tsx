@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from 'react'
+import type { Dispatch, SetStateAction, RefObject } from 'react'
 import { Color, MOUSE, NoToneMapping, SRGBColorSpace, type BufferGeometry } from 'three'
 import { Canvas } from '@react-three/fiber'
 import { Grid } from '@react-three/drei'
@@ -23,6 +23,8 @@ import type {
   PhantomTransform,
   PreAssemblyProgramPart,
 } from '../features/pre-assembly'
+import type { MatePlaneRef } from '../features/assembly-mates/model'
+import type { MatesPickMode, MatesPickSlot } from '../features/assembly-mates/matesPickMode'
 
 const VIEWER_BACKGROUND = '#2d3b52'
 
@@ -52,6 +54,9 @@ export interface Viewer3DProps {
   activeProgramPartId?: string | null
   onActiveProgramPartChange?: (partId: string | null) => void
   onProgramPartTransformChange?: (partId: string, transform: PhantomTransform) => void
+  matesPickMode?: MatesPickMode
+  matesPickSlotRef?: RefObject<MatesPickSlot | null>
+  onMatePlanePicked?: (slot: NonNullable<MatesPickMode['slot']>, plane: MatePlaneRef) => void
 }
 
 export function Viewer3D({
@@ -78,6 +83,9 @@ export function Viewer3D({
   activeProgramPartId = null,
   onActiveProgramPartChange,
   onProgramPartTransformChange,
+  matesPickMode = { active: false, slot: null },
+  matesPickSlotRef,
+  onMatePlanePicked,
 }: Viewer3DProps) {
   const clearAllSelection = (_source: 'pointerMissed' | 'grid') => {
     if (onClearSelection) {
@@ -130,6 +138,9 @@ export function Viewer3D({
             activeProgramPartId={activeProgramPartId}
             onActiveProgramPartChange={onActiveProgramPartChange}
             onProgramPartTransformChange={onProgramPartTransformChange}
+            matesPickMode={matesPickMode}
+            matesPickSlotRef={matesPickSlotRef}
+            onMatePlanePicked={onMatePlanePicked}
           />
           <MouseOrbitViewControls
             makeDefault

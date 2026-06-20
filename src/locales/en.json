@@ -64,8 +64,50 @@
       "button": "Appearance",
       "active": "Appearance editor on (click to close)"
     },
+    "mates": {
+      "button": "Constraints",
+      "active": "Constraints on (click to close)"
+    },
     "saveFormatPrompt": "Choose save format: ecdprt or stl",
     "saveFormatInvalid": "Invalid format. Enter ecdprt or stl."
+  },
+  "mates": {
+    "popup": {
+      "title": "Constraints"
+    },
+    "types": {
+      "parallel": "Parallel"
+    },
+    "plane": {
+      "first": "First plane",
+      "second": "Second plane",
+      "pick": "Pick plane",
+      "redefine": "Redefine",
+      "notSelected": "Not selected",
+      "summary": "{{name}} · {{count}} faces"
+    },
+    "alignment": {
+      "label": "Plane alignment",
+      "faceToFace": "Face to face",
+      "sameDirection": "Same direction"
+    },
+    "distance": {
+      "label": "Distance between planes"
+    },
+    "pickHint": "Click a planar face on a program part in the viewport.",
+    "actions": {
+      "apply": "Apply",
+      "revert": "Revert",
+      "save": "Save",
+      "saveAndClose": "Save and close"
+    },
+    "errors": {
+      "notParallel": "The two planes are not parallel enough.",
+      "samePart": "Pick planes on two different parts.",
+      "missingPlane": "Select both planes before applying.",
+      "invalidOffset": "Enter a valid distance in millimetres.",
+      "missingGeometry": "Part geometry is not loaded."
+    }
   },
   "preAssembly": {
     "createPhantom": {

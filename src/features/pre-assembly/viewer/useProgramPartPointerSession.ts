@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, type RefObject } from 'react'
 import { useThree } from '@react-three/fiber'
 import type { BufferGeometry, Mesh } from 'three'
 import { Vector2, Vector3 } from 'three'
@@ -11,6 +11,7 @@ import {
 import type { ModelSelectionProximityFilter } from '../../model-selection/types'
 import type { SelectionState } from '../../../lib/selection'
 import { resumeSceneOrbit, suspendSceneOrbit } from '../../viewer-camera/orbitControlsSuspend'
+import type { MatesPickSlot } from '../../assembly-mates/matesPickMode'
 import {
   beginProgramPartPointerSession,
   computeRotateTransform,
@@ -45,6 +46,9 @@ export type ProgramPartPointerSessionHandlers = {
   probableFaces: readonly number[]
   getPrimaryFaces: () => readonly number[]
   setPrimaryFaces: (faces: readonly number[]) => void
+  /** Tryb wyboru płaszczyzny przywiązania — bez drag detalu. */
+  matesPickActive?: boolean
+  matesPickSlotRef?: RefObject<MatesPickSlot | null>
 }
 
 export function useProgramPartPointerSession(handlers: ProgramPartPointerSessionHandlers) {
@@ -173,6 +177,9 @@ export function useProgramPartPointerSession(handlers: ProgramPartPointerSession
       geometry: BufferGeometry | null,
       event: ThreeEvent<PointerEvent>,
     ) => {
+      if (handlersRef.current.matesPickSlotRef?.current ?? handlersRef.current.matesPickActive) {
+        return
+      }
       const mode = programPartPointerModeFromButton(event.nativeEvent.button)
       if (!mode || !geometry) return
 

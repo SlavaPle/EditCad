@@ -83,6 +83,23 @@ import {
 import { layoutProgramPartPositionsMm } from './features/pre-assembly/viewer'
 import { loadGeometriesFromAssembly } from './features/pre-assembly/programParts/loadAssemblyProgramPartGeometries'
 import { isUserCancelError } from './lib/isUserCancelError'
+import { MatesPopup } from './components/assembly-mates'
+import {
+  createMateDraftSession,
+  mateDraftApply,
+  mateDraftHasUnsavedApply,
+  mateDraftRevert,
+  mateDraftSave,
+  mateDraftSetPlane,
+  mateDraftUpdateDraft,
+  solveParallelMate,
+  validateParallelMateDraft,
+  type AssemblyMate,
+  type MateDraftSession,
+  type MatesPickMode,
+  type MatesPickSlot,
+  toggleMatesPickSlot,
+} from './features/assembly-mates'
 import i18n from './i18n'
 
 function getFileExtensionLower(name: string | null): string | null {
@@ -156,11 +173,38 @@ function App() {
   const [preAssemblySelection, setPreAssemblySelection] =
     useState<PreAssemblyPanelSelection>(null)
   const [activeProgramPartId, setActiveProgramPartId] = useState<string | null>(null)
+  const [matesPopupOpen, setMatesPopupOpen] = useState(false)
+  const [mateDraftSession, setMateDraftSession] = useState<MateDraftSession>(() =>
+    createMateDraftSession(),
+  )
+  const [matesPickSlot, setMatesPickSlot] = useState<MatesPickSlot | null>(null)
+  const matesPickSlotRef = useRef<MatesPickSlot | null>(null)
+  matesPickSlotRef.current = matesPickSlot
+  const applyMatesPickSlot = useCallback((slot: MatesPickSlot | null) => {
+    matesPickSlotRef.current = slot
+    setMatesPickSlot(slot)
+  }, [])
+  const [mateOffsetInput, setMateOffsetInput] = useState('0')
+  const [mateSolverErrorKey, setMateSolverErrorKey] = useState<string | null>(null)
+  const [assemblyMates, setAssemblyMates] = useState<AssemblyMate[]>([])
   const modelLoaderRef = useRef<ModelLoaderHandle>(null)
   const assemblyLoaderRef = useRef<AssemblyLoaderHandle>(null)
   const programPartPickerRef = useRef<ProgramPartFilePickerHandle>(null)
 
   const preAssemblyActive = activeToolbarTab === 'preAssembly'
+  const matesPickMode: MatesPickMode = matesPopupOpen
+    ? { active: true, slot: matesPickSlot }
+    : { active: false, slot: null }
+
+  const programPartNameById = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const part of programParts) {
+      map[part.id] = part.name
+    }
+    return map
+  }, [programParts])
+
+  const matesToolbarDisabled = programParts.length < 2
 
   const activeProgramPartGeometry =
     activeProgramPartId && preAssemblyActive
@@ -237,6 +281,26 @@ function App() {
       appearance?: ModelAppearance
     },
   ) => {
+    setProgramPartGeometries((geometries) => {
+      for (const g of Object.values(geometries)) {
+        g.dispose()
+      }
+      return {}
+    })
+    setProgramPartAppearances({})
+    setProgramParts([])
+    setActiveProgramPartId(null)
+    setAssemblySourceFileHandle(null)
+    setAssemblySourceFileName(null)
+    setAssemblyRootDirectoryHandle(null)
+    setAssemblyDocMeta({ id: 'assembly-root', name: 'Assembly' })
+    setPhantomDoc(null)
+    setPhantomSourceFileHandle(null)
+    setPhantomSourceFileName(null)
+    setProgramLoadError(null)
+    setProgramSaveMessage(null)
+    setPreAssemblyWizard(null)
+    setActiveToolbarTab('file')
     setModel(geometry)
     setModelKey((k) => k + 1)
     setLoadError(null)
@@ -686,6 +750,7 @@ function App() {
       setAssemblySourceFileHandle(sourceHandle ?? null)
       setAssemblySourceFileName(fileName ?? null)
       setAssemblyDocMeta({ id: file.id, name: file.name })
+      setAssemblyMates(file.mates ? [...file.mates] : [])
       setProgramLoadError(null)
       setProgramSaveMessage(null)
       setActiveToolbarTab('preAssembly')
@@ -718,8 +783,9 @@ function App() {
       id: assemblyDocMeta.id,
       name: assemblyDocMeta.name,
       phantomDoc,
+      mates: assemblyMates.length > 0 ? assemblyMates : undefined,
     })
-  }, [assemblyDocMeta, phantomDoc, programParts])
+  }, [assemblyDocMeta, assemblyMates, phantomDoc, programParts])
 
   const handleSaveAssemblyAsClick = useCallback(() => {
     const canSave = programParts.length > 0 || !!phantomDoc
@@ -796,10 +862,157 @@ function App() {
       if (next !== null) {
         setLimitsInstallActive(false)
         setAppearanceEditActive(false)
+        closeMatesPopup()
       }
       return next
     })
   }, [preAssemblyToolbarUi.createAttachmentDisabled])
+
+  const revertMatePreviewIfNeeded = useCallback(
+    (session: MateDraftSession): MateDraftSession => {
+      if (!mateDraftHasUnsavedApply(session)) return session
+      const partId = session.movingPartId
+      const revert = mateDraftRevert(session)
+      if (revert.ok && partId) {
+        handleProgramPartTransformChange(partId, revert.transform)
+      }
+      return revert.ok ? revert.session : session
+    },
+    [handleProgramPartTransformChange],
+  )
+
+  const closeMatesPopup = useCallback(() => {
+    setMateDraftSession((session) => revertMatePreviewIfNeeded(session))
+    setMatesPopupOpen(false)
+    applyMatesPickSlot(null)
+    setMateSolverErrorKey(null)
+  }, [applyMatesPickSlot, revertMatePreviewIfNeeded])
+
+  const handleToggleMatesPopup = useCallback(() => {
+    if (matesPopupOpen) {
+      closeMatesPopup()
+      return
+    }
+    setLimitsInstallActive(false)
+    setAppearanceEditActive(false)
+    setPreAssemblyWizard(null)
+    setMateDraftSession(createMateDraftSession())
+    applyMatesPickSlot(null)
+    setMateOffsetInput('0')
+    setMateSolverErrorKey(null)
+    setMatesPopupOpen(true)
+  }, [applyMatesPickSlot, closeMatesPopup, matesPopupOpen])
+
+  const handleMatePlanePicked = useCallback(
+    (slot: MatesPickSlot, plane: MateDraftSession['draft']['planeA']) => {
+      setMateDraftSession((session) => mateDraftSetPlane(session, slot, plane))
+      applyMatesPickSlot(null)
+      setMateSolverErrorKey(null)
+    },
+    [applyMatesPickSlot],
+  )
+
+  const parsedMateOffsetMm = useMemo(() => {
+    const trimmed = mateOffsetInput.trim()
+    if (trimmed.length === 0) return 0
+    const value = Number(trimmed.replace(',', '.'))
+    return Number.isFinite(value) ? value : NaN
+  }, [mateOffsetInput])
+
+  const mateDraftForApply = useMemo(() => {
+    if (!Number.isFinite(parsedMateOffsetMm)) return mateDraftSession.draft
+    return { ...mateDraftSession.draft, offsetMm: parsedMateOffsetMm }
+  }, [mateDraftSession.draft, parsedMateOffsetMm])
+
+  const mateValidation = useMemo(
+    () => validateParallelMateDraft(mateDraftForApply),
+    [mateDraftForApply],
+  )
+
+  const canApplyMate =
+    mateDraftSession.applyState === 'idle' && mateValidation.ok && Number.isFinite(parsedMateOffsetMm)
+
+  const canSaveMate = mateDraftSession.applyState === 'applied'
+
+  const handleMateApply = useCallback(() => {
+    if (!canApplyMate || !mateDraftSession.draft.planeA || !mateDraftSession.draft.planeB) return
+    const { planeA, planeB } = mateDraftSession.draft
+    const geometryA = programPartGeometries[planeA.partId]
+    const geometryB = programPartGeometries[planeB.partId]
+    if (!geometryA || !geometryB) {
+      setMateSolverErrorKey('mates.errors.missingGeometry')
+      return
+    }
+    const partA = programParts.find((p) => p.id === planeA.partId)
+    const partB = programParts.find((p) => p.id === planeB.partId)
+    if (!partA || !partB) return
+
+    const solved = solveParallelMate({
+      planeA,
+      planeB,
+      geometryA,
+      geometryB,
+      transformA: partA.transform,
+      transformB: partB.transform,
+      alignment: mateDraftSession.draft.alignment,
+      offsetMm: parsedMateOffsetMm,
+    })
+    if (!solved.ok) {
+      setMateSolverErrorKey(
+        solved.reason === 'notParallel'
+          ? 'mates.errors.notParallel'
+          : 'mates.errors.missingGeometry',
+      )
+      return
+    }
+
+    const revertTransform = partB.transform
+    handleProgramPartTransformChange(planeB.partId, solved.transform)
+    const applied = mateDraftApply(mateDraftSession, revertTransform)
+    if (applied.ok) {
+      setMateDraftSession(applied.session)
+      setMateSolverErrorKey(null)
+    }
+  }, [
+    canApplyMate,
+    handleProgramPartTransformChange,
+    mateDraftSession,
+    parsedMateOffsetMm,
+    programPartGeometries,
+    programParts,
+  ])
+
+  const handleMateRevert = useCallback(() => {
+    const partId = mateDraftSession.movingPartId
+    const revert = mateDraftRevert(mateDraftSession)
+    if (!revert.ok) return
+    if (partId) {
+      handleProgramPartTransformChange(partId, revert.transform)
+    }
+    setMateDraftSession(revert.session)
+    setMateSolverErrorKey(null)
+  }, [handleProgramPartTransformChange, mateDraftSession])
+
+  const handleMateSave = useCallback(() => {
+    const saved = mateDraftSave(mateDraftSession, assemblyMates)
+    if (!saved.ok) return
+    setAssemblyMates(saved.mates)
+    setMateDraftSession(saved.session)
+    setMateOffsetInput('0')
+    applyMatesPickSlot(null)
+    setMateSolverErrorKey(null)
+  }, [applyMatesPickSlot, assemblyMates, mateDraftSession])
+
+  const handleMateSaveAndClose = useCallback(() => {
+    const saved = mateDraftSave(mateDraftSession, assemblyMates)
+    if (!saved.ok) return
+    setAssemblyMates(saved.mates)
+    setMateDraftSession(saved.session)
+    setMateOffsetInput('0')
+    applyMatesPickSlot(null)
+    setMateSolverErrorKey(null)
+    setMatesPopupOpen(false)
+  }, [applyMatesPickSlot, assemblyMates, mateDraftSession])
 
   return (
     <div className={styles.app}>
@@ -819,6 +1032,7 @@ function App() {
             if (next) {
               setAppearanceEditActive(false)
               setPreAssemblyWizard(null)
+              closeMatesPopup()
             }
             return next
           })
@@ -830,10 +1044,14 @@ function App() {
             if (next) {
               setLimitsInstallActive(false)
               setPreAssemblyWizard(null)
+              closeMatesPopup()
             }
             return next
           })
         }}
+        matesPopupOpen={matesPopupOpen}
+        matesToolbarDisabled={matesToolbarDisabled}
+        onToggleMatesPopup={handleToggleMatesPopup}
         displayMode={displayMode}
         onDisplayModeChange={setDisplayMode}
         preAssemblyToolbarUi={preAssemblyToolbarUi}
@@ -908,8 +1126,34 @@ function App() {
             activeProgramPartId={activeProgramPartId}
             onActiveProgramPartChange={handleActiveProgramPartChange}
             onProgramPartTransformChange={handleProgramPartTransformChange}
+            matesPickMode={matesPickMode}
+            matesPickSlotRef={matesPickSlotRef}
+            onMatePlanePicked={handleMatePlanePicked}
           />
         </div>
+        {matesPopupOpen && (
+          <MatesPopup
+            session={mateDraftSession}
+            activePickSlot={matesPickSlot}
+            offsetInput={mateOffsetInput}
+            partNameById={programPartNameById}
+            solverErrorKey={mateSolverErrorKey}
+            canApply={canApplyMate}
+            canSave={canSaveMate}
+            onAlignmentChange={(alignment) => {
+              setMateDraftSession((session) => mateDraftUpdateDraft(session, { alignment }))
+            }}
+            onOffsetChange={setMateOffsetInput}
+            onStartPick={(slot) => {
+              applyMatesPickSlot(toggleMatesPickSlot(matesPickSlotRef.current, slot))
+              setMateSolverErrorKey(null)
+            }}
+            onApply={handleMateApply}
+            onRevert={handleMateRevert}
+            onSave={handleMateSave}
+            onSaveAndClose={handleMateSaveAndClose}
+          />
+        )}
         <RightPanel
           selection={selection}
           probableFaces={probableFaces}
