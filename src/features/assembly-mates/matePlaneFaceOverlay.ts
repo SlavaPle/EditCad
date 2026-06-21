@@ -3,10 +3,11 @@ import {
   BufferGeometry,
   type InterleavedBufferAttribute,
 } from 'three'
+import type { MatePlaneRef } from './model'
 
 export type MatePlaneHighlights = {
-  planeA: { partId: string; faceIndices: readonly number[] } | null
-  planeB: { partId: string; faceIndices: readonly number[] } | null
+  planeA: MatePlaneRef | null
+  planeB: MatePlaneRef | null
 }
 
 export const MATE_PLANE_OVERLAY = {
@@ -122,4 +123,20 @@ export function matePlaneHighlightsForPart(
     planeB:
       highlights.planeB?.partId === partId ? highlights.planeB.faceIndices : null,
   }
+}
+
+/** Podświetlenie aktywne, dopóki otwarte okno przywiązania (nawet po Apply). */
+export function buildMatePlaneHighlightsForPopup(
+  popupOpen: boolean,
+  planeA: MatePlaneRef | null,
+  planeB: MatePlaneRef | null,
+): MatePlaneHighlights | null {
+  if (!popupOpen) return null
+  return { planeA, planeB }
+}
+
+export function hasMatePlaneHighlights(
+  highlights: MatePlaneHighlights | null | undefined,
+): boolean {
+  return !!(highlights?.planeA || highlights?.planeB)
 }

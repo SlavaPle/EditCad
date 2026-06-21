@@ -98,6 +98,7 @@ import {
   reapplyAllAssemblyMates,
   initialMatesPickSlot,
   nextMatesPickFlowStep,
+  buildMatePlaneHighlightsForPopup,
   type AssemblyMate,
   type MateDraftSession,
   type MatesPickMode,
@@ -223,12 +224,11 @@ function App() {
 
   const matePlaneHighlights = useMemo(
     () =>
-      matesPopupOpen
-        ? {
-            planeA: mateDraftSession.draft.planeA,
-            planeB: mateDraftSession.draft.planeB,
-          }
-        : null,
+      buildMatePlaneHighlightsForPopup(
+        matesPopupOpen,
+        mateDraftSession.draft.planeA,
+        mateDraftSession.draft.planeB,
+      ),
     [matesPopupOpen, mateDraftSession.draft.planeA, mateDraftSession.draft.planeB],
   )
 

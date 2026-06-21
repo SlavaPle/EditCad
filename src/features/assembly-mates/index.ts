@@ -77,6 +77,8 @@ export {
 } from './pickMatePlaneAtPointer'
 export {
   buildMatePlaneFaceOverlayGeometry,
+  buildMatePlaneHighlightsForPopup,
+  hasMatePlaneHighlights,
   matePlaneHighlightsForPart,
   MATE_PLANE_OVERLAY,
   type MatePlaneHighlights,

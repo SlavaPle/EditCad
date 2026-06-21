@@ -28,6 +28,21 @@ describe('matesPickFlow', () => {
     ).toBeNull()
   })
 
+  it('does not auto-pick when both planes are already chosen', () => {
+    let session = createMateDraftSession()
+    session = mateDraftSetPlane(session, 'planeA', {
+      partId: 'a',
+      faceIndex: 0,
+      faceIndices: [0],
+    })
+    session = mateDraftSetPlane(session, 'planeB', {
+      partId: 'b',
+      faceIndex: 0,
+      faceIndices: [0],
+    })
+    expect(initialMatesPickSlot(session)).toBeNull()
+  })
+
   it('next step after planeA pick is planeB', () => {
     expect(nextMatesPickFlowStep('planeA')).toBe('planeB')
   })
