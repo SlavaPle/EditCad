@@ -19,29 +19,44 @@ export function createEmptyParallelMateDraft(): ParallelMateDraft {
   }
 }
 
-function parallelMatePartPairKey(partAId: string, partBId: string): string {
-  return partAId < partBId ? `${partAId}\0${partBId}` : `${partBId}\0${partAId}`
+function matePlaneRefsMatch(a: ParallelMate['planeA'], b: ParallelMate['planeA']): boolean {
+  if (a.partId !== b.partId || a.faceIndex !== b.faceIndex) return false
+  if (a.faceIndices.length !== b.faceIndices.length) return false
+  return a.faceIndices.every((face, index) => face === b.faceIndices[index])
 }
 
-/** Czy nowy parallel mate koliduje z już zapisanymi przywiązkami. */
+function sameMatePartPair(
+  planeA: ParallelMate['planeA'],
+  planeB: ParallelMate['planeB'],
+  mate: AssemblyMate,
+): boolean {
+  const partIds = new Set([planeA.partId, planeB.partId])
+  return partIds.has(mate.planeA.partId) && partIds.has(mate.planeB.partId)
+}
+
+/** Czy nowy mate używa tej samej płaszczyzny co już zapisany (niezależnie od roli A/B). */
+function parallelMatePlaneRefsOverlap(
+  planeA: ParallelMate['planeA'],
+  planeB: ParallelMate['planeB'],
+  mate: AssemblyMate,
+): boolean {
+  const refs = [planeA, planeB]
+  const existingRefs = [mate.planeA, mate.planeB]
+  return refs.some((ref) =>
+    existingRefs.some((existing) => matePlaneRefsMatch(ref, existing)),
+  )
+}
+
+/** Czy nowy parallel mate koliduje z już zapisaną przywiązką tej samej pary detali. */
 export function parallelMateConflictsWithExisting(
   planeA: ParallelMate['planeA'],
   planeB: ParallelMate['planeB'],
   existingMates: readonly AssemblyMate[],
 ): boolean {
-  const anchorId = planeA.partId
-  const drivenId = planeB.partId
-  const pairKey = parallelMatePartPairKey(anchorId, drivenId)
-
   for (const mate of existingMates) {
     if (mate.kind !== 'parallel') continue
-    const existingAnchor = mate.planeA.partId
-    const existingDriven = mate.planeB.partId
-
-    if (parallelMatePartPairKey(existingAnchor, existingDriven) === pairKey) {
-      return true
-    }
-    if (drivenId === existingDriven) {
+    if (!sameMatePartPair(planeA, planeB, mate)) continue
+    if (parallelMatePlaneRefsOverlap(planeA, planeB, mate)) {
       return true
     }
   }

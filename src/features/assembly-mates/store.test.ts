@@ -8,13 +8,18 @@ import {
 
 const planeA = { partId: 'a', faceIndex: 0, faceIndices: [0] }
 const planeB = { partId: 'b', faceIndex: 0, faceIndices: [0] }
+const planeAOtherFace = { partId: 'a', faceIndex: 2, faceIndices: [4, 5] }
+const planeBOtherFace = { partId: 'b', faceIndex: 1, faceIndices: [2, 3] }
 const planeC = { partId: 'c', faceIndex: 0, faceIndices: [0] }
 
-const existingMate = (anchorId: string, drivenId: string): AssemblyMate => ({
-  id: `mate-${anchorId}-${drivenId}`,
+const existingMate = (
+  anchor: typeof planeA,
+  driven: typeof planeB,
+): AssemblyMate => ({
+  id: `mate-${anchor.partId}-${driven.partId}`,
   kind: 'parallel',
-  planeA: { partId: anchorId, faceIndex: 0, faceIndices: [0] },
-  planeB: { partId: drivenId, faceIndex: 0, faceIndices: [0] },
+  planeA: anchor,
+  planeB: driven,
   alignment: 'faceToFace',
   offsetMm: 0,
 })
@@ -29,23 +34,41 @@ describe('validateParallelMateDraft', () => {
     expect(validateParallelMateDraft(draft)).toEqual({ ok: false, reason: 'samePart' })
   })
 
-  it('rejects when the moving part is already constrained', () => {
+  it('allows another mate when only the moving part overlaps on a different pair', () => {
     const draft = {
       ...createEmptyParallelMateDraft(),
       planeA: planeC,
       planeB,
     }
-    const result = validateParallelMateDraft(draft, [existingMate('a', 'b')])
+    expect(validateParallelMateDraft(draft, [existingMate(planeA, planeB)])).toEqual({ ok: true })
+  })
+
+  it('allows another mate on the same pair when different planes are used', () => {
+    const draft = {
+      ...createEmptyParallelMateDraft(),
+      planeA: planeAOtherFace,
+      planeB: planeBOtherFace,
+    }
+    expect(validateParallelMateDraft(draft, [existingMate(planeA, planeB)])).toEqual({ ok: true })
+  })
+
+  it('rejects when the same pair reuses an already constrained plane', () => {
+    const draft = {
+      ...createEmptyParallelMateDraft(),
+      planeA,
+      planeB: planeBOtherFace,
+    }
+    const result = validateParallelMateDraft(draft, [existingMate(planeA, planeB)])
     expect(result).toEqual({ ok: false, reason: 'conflictsWithExisting' })
   })
 
-  it('rejects duplicate pair even when roles are reversed', () => {
+  it('rejects duplicate mate even when roles are reversed', () => {
     const draft = {
       ...createEmptyParallelMateDraft(),
       planeA: planeB,
       planeB: planeA,
     }
-    const result = validateParallelMateDraft(draft, [existingMate('a', 'b')])
+    const result = validateParallelMateDraft(draft, [existingMate(planeA, planeB)])
     expect(result).toEqual({ ok: false, reason: 'conflictsWithExisting' })
   })
 
@@ -55,20 +78,30 @@ describe('validateParallelMateDraft', () => {
       planeA: planeC,
       planeB: { partId: 'd', faceIndex: 0, faceIndices: [0] },
     }
-    expect(validateParallelMateDraft(draft, [existingMate('a', 'b')])).toEqual({ ok: true })
+    expect(validateParallelMateDraft(draft, [existingMate(planeA, planeB)])).toEqual({ ok: true })
   })
 })
 
 describe('parallelMateConflictsWithExisting', () => {
-  it('detects driven-part conflict', () => {
+  it('does not conflict across different part pairs', () => {
     expect(
-      parallelMateConflictsWithExisting(planeC, planeB, [existingMate('a', 'b')]),
+      parallelMateConflictsWithExisting(planeC, planeB, [existingMate(planeA, planeB)]),
+    ).toBe(false)
+  })
+
+  it('detects overlap on the same pair', () => {
+    expect(
+      parallelMateConflictsWithExisting(planeA, planeBOtherFace, [existingMate(planeA, planeB)]),
     ).toBe(true)
   })
 
-  it('detects duplicate pair', () => {
+  it('allows independent planes on the same pair', () => {
     expect(
-      parallelMateConflictsWithExisting(planeA, planeB, [existingMate('a', 'b')]),
-    ).toBe(true)
+      parallelMateConflictsWithExisting(
+        planeAOtherFace,
+        planeBOtherFace,
+        [existingMate(planeA, planeB)],
+      ),
+    ).toBe(false)
   })
 })
