@@ -9,8 +9,8 @@ import type {
   PhantomTransform,
 } from '../../features/pre-assembly'
 import type { PreAssemblyProgramPart } from '../../features/pre-assembly'
-import type { MatePlaneRef } from '../../features/assembly-mates/model'
-import type { MatePlaneHighlights } from '../../features/assembly-mates/matePlaneFaceOverlay'
+import type { MateEntityRef } from '../../features/assembly-mates/model'
+import type { MateEntityHighlights } from '../../features/assembly-mates/matePlaneFaceOverlay'
 import type { MatesPickMode, MatesPickSlot } from '../../features/assembly-mates/matesPickMode'
 import {
   ElementInstanceLayer,
@@ -59,9 +59,9 @@ interface SceneContentProps {
     movedTransform: PhantomTransform,
   ) => readonly PreAssemblyProgramPart[]
   matesPickMode?: MatesPickMode
-  matePlaneHighlights?: MatePlaneHighlights | null
+  mateEntityHighlights?: MateEntityHighlights | null
   matesPickSlotRef?: RefObject<MatesPickSlot | null>
-  onMatePlanePicked?: (slot: NonNullable<MatesPickMode['slot']>, plane: MatePlaneRef) => void
+  onMateEntityPicked?: (slot: NonNullable<MatesPickMode['slot']>, entity: MateEntityRef) => void
 }
 
 export function SceneContent({
@@ -89,9 +89,9 @@ export function SceneContent({
   onProgramPartTransformChange,
   resolveMateFollowers,
   matesPickMode = { active: false, slot: null },
-  matePlaneHighlights = null,
+  mateEntityHighlights = null,
   matesPickSlotRef,
-  onMatePlanePicked,
+  onMateEntityPicked,
 }: SceneContentProps) {
   return (
     <>
@@ -116,9 +116,9 @@ export function SceneContent({
           onPartTransformChange={onProgramPartTransformChange}
           resolveMateFollowers={resolveMateFollowers}
           matesPickMode={matesPickMode}
-          matePlaneHighlights={matePlaneHighlights}
+          mateEntityHighlights={mateEntityHighlights}
           matesPickSlotRef={matesPickSlotRef}
-          onMatePlanePicked={onMatePlanePicked}
+          onMateEntityPicked={onMateEntityPicked}
         />
       )}
       {phantom && (

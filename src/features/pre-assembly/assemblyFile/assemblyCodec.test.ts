@@ -145,6 +145,15 @@ describe('assemblyCodec', () => {
     const parsed = parseAssemblyFile(serializeAssemblyFile(file))
     expect(parsed.ok).toBe(true)
     if (!parsed.ok) return
-    expect(parsed.file.mates).toEqual([mate])
+    expect(parsed.file.mates).toEqual([
+      {
+        id: 'mate-1',
+        kind: 'parallel',
+        entityA: { partId: 'p1', faceIndex: 0, faceIndices: [0, 1] },
+        entityB: { partId: 'p2', faceIndex: 2, faceIndices: [2, 3] },
+        alignment: 'faceToFace',
+        offsetMm: 0,
+      },
+    ])
   })
 })

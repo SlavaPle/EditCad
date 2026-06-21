@@ -44,8 +44,8 @@ function makeMate(overrides: Partial<ParallelMate> = {}): ParallelMate {
   return {
     id: 'mate-1',
     kind: 'parallel',
-    planeA: { partId: 'a', faceIndex: 0, faceIndices: [0, 1] },
-    planeB: { partId: 'b', faceIndex: 0, faceIndices: [0, 1] },
+    entityA: { partId: 'a', faceIndex: 0, faceIndices: [0, 1] },
+    entityB: { partId: 'b', faceIndex: 0, faceIndices: [0, 1] },
     alignment: 'faceToFace',
     offsetMm: 0,
     ...overrides,
@@ -263,8 +263,8 @@ describe('reapplyAllAssemblyMates', () => {
     const mateAb = makeMate({ id: 'mate-ab' })
     const mateCd = makeMate({
       id: 'mate-cd',
-      planeA: { partId: 'c', faceIndex: 0, faceIndices: [0, 1] },
-      planeB: { partId: 'd', faceIndex: 0, faceIndices: [0, 1] },
+      entityA: { partId: 'c', faceIndex: 0, faceIndices: [0, 1] },
+      entityB: { partId: 'd', faceIndex: 0, faceIndices: [0, 1] },
     })
     const result = reapplyAllAssemblyMates({
       parts: [

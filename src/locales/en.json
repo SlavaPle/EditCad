@@ -79,23 +79,42 @@
     "types": {
       "parallel": "Parallel"
     },
-    "plane": {
-      "first": "First plane",
-      "second": "Second plane",
-      "pick": "Pick plane",
+    "entityMode": {
+      "label": "Constraint geometry",
+      "plane": "Planes",
+      "line": "Lines"
+    },
+    "entity": {
+      "first": "First element",
+      "second": "Second element",
+      "pick": "Pick",
       "redefine": "Redefine",
-      "notSelected": "Not selected",
+      "notSelected": "Not selected"
+    },
+    "face": {
       "summary": "{{name}} · {{count}} faces"
+    },
+    "edge": {
+      "summary": "{{name}} · edge"
+    },
+    "vertex": {
+      "summary": "{{name}} · vertex"
     },
     "alignment": {
       "label": "Plane alignment",
+      "lineLabel": "Line alignment",
       "faceToFace": "Face to face",
-      "sameDirection": "Same direction"
+      "sameDirection": "Same direction",
+      "oppositeDirection": "Opposite direction",
+      "sameDirectionLine": "Same direction"
     },
     "distance": {
-      "label": "Distance between planes"
+      "label": "Distance",
+      "planeplane": "Distance between planes",
+      "lineline": "Distance between lines",
+      "vertexvertex": "Distance between vertices"
     },
-    "pickHint": "Click a planar face on a program part in the viewport.",
+    "pickHint": "Click a vertex, edge, or face on a program part in the viewport.",
     "actions": {
       "apply": "Apply",
       "revert": "Revert",
@@ -104,10 +123,14 @@
     },
     "errors": {
       "notParallel": "The two planes are not parallel enough.",
-      "samePart": "Pick planes on two different parts.",
+      "samePart": "Pick elements on two different parts.",
+      "missingEntity": "Select both elements before applying.",
       "missingPlane": "Select both planes before applying.",
+      "missingLine": "Select both lines before applying.",
       "invalidOffset": "Enter a valid distance in millimetres.",
-      "conflictsWithExisting": "This constraint reuses a plane already constrained for this part pair.",
+      "conflictsWithExisting": "This constraint reuses an element already constrained for this part pair.",
+      "conflictsWithExistingLine": "This constraint reuses a line already constrained for this part pair.",
+      "unsupportedPair": "This element pair is not supported yet.",
       "missingGeometry": "Part geometry is not loaded."
     }
   },

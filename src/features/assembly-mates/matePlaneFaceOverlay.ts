@@ -3,11 +3,17 @@ import {
   BufferGeometry,
   type InterleavedBufferAttribute,
 } from 'three'
-import type { MatePlaneRef } from './model'
+import type { MateEntityRef, MateLineRef, MatePlaneRef, MateVertexRef } from './model'
+import { asMateLineRef, asMatePlaneRef, asMateVertexRef } from './mateEntityRef'
 
 export type MatePlaneHighlights = {
   planeA: MatePlaneRef | null
   planeB: MatePlaneRef | null
+}
+
+export type MateEntityHighlights = {
+  entityA: MateEntityRef | null
+  entityB: MateEntityRef | null
 }
 
 export const MATE_PLANE_OVERLAY = {
@@ -82,7 +88,6 @@ function pushOverlayTriangle(
   return w
 }
 
-/** Siatka półprzezroczystego overlaya dla łaty trójkątów płaszczyzny mate. */
 export function buildMatePlaneFaceOverlayGeometry(
   geometry: BufferGeometry,
   faceIndices: readonly number[],
@@ -114,9 +119,17 @@ export function buildMatePlaneFaceOverlayGeometry(
 
 export function matePlaneHighlightsForPart(
   partId: string,
-  highlights: MatePlaneHighlights | null | undefined,
+  highlights: MatePlaneHighlights | MateEntityHighlights | null | undefined,
 ): { planeA: readonly number[] | null; planeB: readonly number[] | null } {
   if (!highlights) return { planeA: null, planeB: null }
+  if ('entityA' in highlights) {
+    const planeA = highlights.entityA ? asMatePlaneRef(highlights.entityA) : null
+    const planeB = highlights.entityB ? asMatePlaneRef(highlights.entityB) : null
+    return {
+      planeA: planeA?.partId === partId ? planeA.faceIndices : null,
+      planeB: planeB?.partId === partId ? planeB.faceIndices : null,
+    }
+  }
   return {
     planeA:
       highlights.planeA?.partId === partId ? highlights.planeA.faceIndices : null,
@@ -125,7 +138,36 @@ export function matePlaneHighlightsForPart(
   }
 }
 
-/** Podświetlenie aktywne, dopóki otwarte okno przywiązania (nawet po Apply). */
+export function mateLineHighlightsForPart(
+  partId: string,
+  highlights: MateEntityHighlights | null | undefined,
+): { lineA: MateLineRef | null; lineB: MateLineRef | null } {
+  if (!highlights) {
+    return { lineA: null, lineB: null }
+  }
+  const lineA = highlights.entityA ? asMateLineRef(highlights.entityA) : null
+  const lineB = highlights.entityB ? asMateLineRef(highlights.entityB) : null
+  return {
+    lineA: lineA?.partId === partId ? lineA : null,
+    lineB: lineB?.partId === partId ? lineB : null,
+  }
+}
+
+export function mateVertexHighlightsForPart(
+  partId: string,
+  highlights: MateEntityHighlights | null | undefined,
+): { vertexA: MateVertexRef | null; vertexB: MateVertexRef | null } {
+  if (!highlights) {
+    return { vertexA: null, vertexB: null }
+  }
+  const vertexA = highlights.entityA ? asMateVertexRef(highlights.entityA) : null
+  const vertexB = highlights.entityB ? asMateVertexRef(highlights.entityB) : null
+  return {
+    vertexA: vertexA?.partId === partId ? vertexA : null,
+    vertexB: vertexB?.partId === partId ? vertexB : null,
+  }
+}
+
 export function buildMatePlaneHighlightsForPopup(
   popupOpen: boolean,
   planeA: MatePlaneRef | null,
@@ -135,8 +177,21 @@ export function buildMatePlaneHighlightsForPopup(
   return { planeA, planeB }
 }
 
+export function buildMateEntityHighlightsForPopup(
+  popupOpen: boolean,
+  entityA: MateEntityRef | null,
+  entityB: MateEntityRef | null,
+): MateEntityHighlights | null {
+  if (!popupOpen) return null
+  return { entityA, entityB }
+}
+
 export function hasMatePlaneHighlights(
-  highlights: MatePlaneHighlights | null | undefined,
+  highlights: MatePlaneHighlights | MateEntityHighlights | null | undefined,
 ): boolean {
-  return !!(highlights?.planeA || highlights?.planeB)
+  if (!highlights) return false
+  if ('entityA' in highlights) {
+    return !!(highlights.entityA || highlights.entityB)
+  }
+  return !!(highlights.planeA || highlights.planeB)
 }

@@ -91,7 +91,7 @@ import {
   mateDraftHasUnsavedApply,
   mateDraftRevert,
   mateDraftSave,
-  mateDraftSetPlane,
+  mateDraftSetEntity,
   mateDraftUpdateDraft,
   executeMateApply,
   validateParallelMateDraft,
@@ -100,7 +100,7 @@ import {
   reapplyAllAssemblyMates,
   initialMatesPickSlot,
   nextMatesPickFlowStep,
-  buildMatePlaneHighlightsForPopup,
+  buildMateEntityHighlightsForPopup,
   type AssemblyMate,
   type MateDraftSession,
   type MatesPickMode,
@@ -223,14 +223,18 @@ function App() {
     ? { active: true, slot: matesPickSlot }
     : { active: false, slot: null }
 
-  const matePlaneHighlights = useMemo(
+  const mateEntityHighlights = useMemo(
     () =>
-      buildMatePlaneHighlightsForPopup(
+      buildMateEntityHighlightsForPopup(
         matesPopupOpen,
-        mateDraftSession.draft.planeA,
-        mateDraftSession.draft.planeB,
+        mateDraftSession.draft.entityA,
+        mateDraftSession.draft.entityB,
       ),
-    [matesPopupOpen, mateDraftSession.draft.planeA, mateDraftSession.draft.planeB],
+    [
+      matesPopupOpen,
+      mateDraftSession.draft.entityA,
+      mateDraftSession.draft.entityB,
+    ],
   )
 
   const programPartNameById = useMemo(
@@ -1040,9 +1044,9 @@ function App() {
     setMatesPopupOpen(true)
   }, [applyMatesPickSlot, closeMatesPopup, commitMateDraftSession, matesPopupOpen])
 
-  const handleMatePlanePicked = useCallback(
-    (slot: MatesPickSlot, plane: MateDraftSession['draft']['planeA']) => {
-      patchMateDraftSession((session) => mateDraftSetPlane(session, slot, plane))
+  const handleMateEntityPicked = useCallback(
+    (slot: MatesPickSlot, entity: NonNullable<MateDraftSession['draft']['entityA']>) => {
+      patchMateDraftSession((session) => mateDraftSetEntity(session, slot, entity))
       setMateSolverErrorKey(null)
       const next = nextMatesPickFlowStep(slot)
       applyMatesPickSlot(next === 'apply' ? null : next)
@@ -1068,17 +1072,23 @@ function App() {
   )
 
   const mateValidationErrorKey = useMemo(() => {
-    if (!mateDraftSession.draft.planeA || !mateDraftSession.draft.planeB) return null
+    if (!mateDraftSession.draft.entityA || !mateDraftSession.draft.entityB) return null
     if (!Number.isFinite(parsedMateOffsetMm)) {
       return 'mates.errors.invalidOffset'
     }
     if (!mateValidation.ok) {
+      if (mateValidation.reason === 'missingEntity') {
+        return 'mates.errors.missingEntity'
+      }
+      if (mateValidation.reason === 'conflictsWithExisting') {
+        return 'mates.errors.conflictsWithExisting'
+      }
       return `mates.errors.${mateValidation.reason}`
     }
     return null
   }, [
-    mateDraftSession.draft.planeA,
-    mateDraftSession.draft.planeB,
+    mateDraftSession.draft.entityA,
+    mateDraftSession.draft.entityB,
     mateValidation,
     parsedMateOffsetMm,
   ])
@@ -1090,7 +1100,7 @@ function App() {
 
   const syncMateLivePreview = useCallback(() => {
     const session = mateDraftSessionRef.current
-    if (!session.draft.planeA || !session.draft.planeB) return
+    if (!session.draft.entityA || !session.draft.entityB) return
     if (!mateValidation.ok || !Number.isFinite(parsedMateOffsetMm)) return
 
     const draft = {
@@ -1124,8 +1134,8 @@ function App() {
     syncMateLivePreview()
   }, [
     matesPopupOpen,
-    mateDraftSession.draft.planeA,
-    mateDraftSession.draft.planeB,
+    mateDraftSession.draft.entityA,
+    mateDraftSession.draft.entityB,
     mateDraftSession.draft.alignment,
     parsedMateOffsetMm,
     mateValidation.ok,
@@ -1269,9 +1279,9 @@ function App() {
               assemblyMates.length > 0 ? applyTransformWithMates : undefined
             }
             matesPickMode={matesPickMode}
-            matePlaneHighlights={matePlaneHighlights}
+            mateEntityHighlights={mateEntityHighlights}
             matesPickSlotRef={matesPickSlotRef}
-            onMatePlanePicked={handleMatePlanePicked}
+            onMateEntityPicked={handleMateEntityPicked}
           />
         </div>
         {matesPopupOpen && (

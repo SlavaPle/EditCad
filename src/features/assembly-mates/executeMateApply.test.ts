@@ -5,7 +5,7 @@ import type { PreAssemblyProgramPart } from '../pre-assembly/preAssemblyProgram'
 import {
   createMateDraftSession,
   mateDraftApply,
-  mateDraftSetPlane,
+  mateDraftSetEntity,
 } from './mateDraft'
 import { executeMateApply } from './executeMateApply'
 import { createEmptyParallelMateDraft } from './store'
@@ -36,16 +36,16 @@ function part(id: string, positionMm: [number, number, number]): PreAssemblyProg
 }
 
 describe('executeMateApply', () => {
-  it('sets applyState to applied and movingPartId to plane B part', () => {
+  it('sets applyState to applied and movingPartId to entity B part', () => {
     const geometryA = quadInPlaneZ(0, true)
     const geometryB = quadInPlaneZ(10, false)
-    const planeA = { partId: 'a', faceIndex: 0, faceIndices: [0, 1] }
-    const planeB = { partId: 'b', faceIndex: 0, faceIndices: [0, 1] }
+    const entityA = { partId: 'a', faceIndex: 0, faceIndices: [0, 1] }
+    const entityB = { partId: 'b', faceIndex: 0, faceIndices: [0, 1] }
 
     let session = createMateDraftSession()
-    session = mateDraftSetPlane(session, 'planeA', planeA)
-    session = mateDraftSetPlane(session, 'planeB', planeB)
-    const draft = { ...createEmptyParallelMateDraft(), planeA, planeB, offsetMm: 0 }
+    session = mateDraftSetEntity(session, 'entityA', entityA)
+    session = mateDraftSetEntity(session, 'entityB', entityB)
+    const draft = { ...createEmptyParallelMateDraft(), entityA, entityB, offsetMm: 0 }
 
     const result = executeMateApply({
       session,
@@ -63,15 +63,15 @@ describe('executeMateApply', () => {
 
   it('updates preview when already applied', () => {
     let session = createMateDraftSession()
-    const planeA = { partId: 'a', faceIndex: 0, faceIndices: [0, 1] }
-    const planeB = { partId: 'b', faceIndex: 0, faceIndices: [0, 1] }
-    session = mateDraftSetPlane(session, 'planeA', planeA)
-    session = mateDraftSetPlane(session, 'planeB', planeB)
+    const entityA = { partId: 'a', faceIndex: 0, faceIndices: [0, 1] }
+    const entityB = { partId: 'b', faceIndex: 0, faceIndices: [0, 1] }
+    session = mateDraftSetEntity(session, 'entityA', entityA)
+    session = mateDraftSetEntity(session, 'entityB', entityB)
     const applied = mateDraftApply(session, defaultProgramPartTransform())
     expect(applied.ok).toBe(true)
     if (!applied.ok) return
 
-    const draft = { ...createEmptyParallelMateDraft(), planeA, planeB, offsetMm: 5, alignment: 'sameDirection' as const }
+    const draft = { ...createEmptyParallelMateDraft(), entityA, entityB, offsetMm: 5, alignment: 'sameDirection' as const }
     const result = executeMateApply({
       session: applied.session,
       draft,

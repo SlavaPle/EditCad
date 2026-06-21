@@ -1,4 +1,4 @@
-import { validateAssemblyMate } from '../../assembly-mates/model'
+import { validateAssemblyMate, normalizeParallelMate } from '../../assembly-mates/model'
 import { isMvpSupportedEnvelope, parsePhantomAssembly, parsePhantomTransform } from '../codec'
 import { normalizeAssemblyRelativeRef } from './assemblyRelativePath'
 import { defaultProgramPartTransform } from '../programParts/programPartTransform'
@@ -59,7 +59,7 @@ function parseAssemblyMates(value: unknown): AssemblyFile['mates'] | 'invalid' {
     if (!validateAssemblyMate(entry)) return 'invalid'
     if (seenIds.has(entry.id)) return 'invalid'
     seenIds.add(entry.id)
-    mates.push(entry)
+    mates.push(normalizeParallelMate(entry))
   }
   return mates
 }

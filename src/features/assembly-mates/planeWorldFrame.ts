@@ -11,7 +11,7 @@ export function getGeometryCenterOffset(geometry: BufferGeometry): Vector3 {
   return center.negate()
 }
 
-function rotationMatrixFromTransform(transform: PhantomTransform): Matrix4 {
+export function rotationMatrixFromTransform(transform: PhantomTransform): Matrix4 {
   const euler = new Euler(
     degToRad(transform.rotationDeg[0]),
     degToRad(transform.rotationDeg[1]),

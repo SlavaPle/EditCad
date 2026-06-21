@@ -1,22 +1,22 @@
 import { describe, expect, it } from 'vitest'
 import {
   createMateDraftSession,
-  mateDraftSetPlane,
+  mateDraftSetEntity,
 } from './mateDraft'
 import { initialMatesPickSlot, nextMatesPickFlowStep } from './matesPickFlow'
 
 describe('matesPickFlow', () => {
-  it('starts with planeA on empty draft', () => {
-    expect(initialMatesPickSlot(createMateDraftSession())).toBe('planeA')
+  it('starts with entityA on empty draft', () => {
+    expect(initialMatesPickSlot(createMateDraftSession())).toBe('entityA')
   })
 
-  it('advances to planeB after planeA is set', () => {
-    let session = mateDraftSetPlane(createMateDraftSession(), 'planeA', {
+  it('advances to entityB after entityA is set', () => {
+    let session = mateDraftSetEntity(createMateDraftSession(), 'entityA', {
       partId: 'a',
       faceIndex: 0,
       faceIndices: [0],
     })
-    expect(initialMatesPickSlot(session)).toBe('planeB')
+    expect(initialMatesPickSlot(session)).toBe('entityB')
   })
 
   it('does not auto-pick when apply is locked', () => {
@@ -28,14 +28,14 @@ describe('matesPickFlow', () => {
     ).toBeNull()
   })
 
-  it('does not auto-pick when both planes are already chosen', () => {
+  it('does not auto-pick when both entities are already chosen', () => {
     let session = createMateDraftSession()
-    session = mateDraftSetPlane(session, 'planeA', {
+    session = mateDraftSetEntity(session, 'entityA', {
       partId: 'a',
       faceIndex: 0,
       faceIndices: [0],
     })
-    session = mateDraftSetPlane(session, 'planeB', {
+    session = mateDraftSetEntity(session, 'entityB', {
       partId: 'b',
       faceIndex: 0,
       faceIndices: [0],
@@ -43,11 +43,11 @@ describe('matesPickFlow', () => {
     expect(initialMatesPickSlot(session)).toBeNull()
   })
 
-  it('next step after planeA pick is planeB', () => {
-    expect(nextMatesPickFlowStep('planeA')).toBe('planeB')
+  it('next step after entityA pick is entityB', () => {
+    expect(nextMatesPickFlowStep('entityA')).toBe('entityB')
   })
 
-  it('next step after planeB pick is apply focus', () => {
-    expect(nextMatesPickFlowStep('planeB')).toBe('apply')
+  it('next step after entityB pick is apply focus', () => {
+    expect(nextMatesPickFlowStep('entityB')).toBe('apply')
   })
 })
