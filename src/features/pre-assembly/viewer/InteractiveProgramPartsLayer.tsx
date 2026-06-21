@@ -22,6 +22,9 @@ import {
   programPartGroupRotation,
 } from '../programParts/programPartTransform'
 import type { MatePlaneRef } from '../../assembly-mates/model'
+import type { MatePlaneHighlights } from '../../assembly-mates/matePlaneFaceOverlay'
+import { MatePlaneFaceOverlay } from '../../assembly-mates/matePlaneFaceOverlayView'
+import { matePlaneHighlightsForPart } from '../../assembly-mates/matePlaneFaceOverlay'
 import type { MatesPickMode, MatesPickSlot } from '../../assembly-mates/matesPickMode'
 import {
   meshBuiltinFacePickOnPointerDown,
@@ -55,6 +58,7 @@ interface InteractiveProgramPartsLayerProps {
     movedTransform: PhantomTransform,
   ) => readonly PreAssemblyProgramPart[]
   matesPickMode?: MatesPickMode
+  matePlaneHighlights?: MatePlaneHighlights | null
   matesPickSlotRef?: RefObject<MatesPickSlot | null>
   onMatePlanePicked?: (slot: NonNullable<MatesPickMode['slot']>, plane: MatePlaneRef) => void
 }
@@ -75,13 +79,14 @@ export function InteractiveProgramPartsLayer({
   onPartTransformChange,
   resolveMateFollowers,
   matesPickMode = { active: false, slot: null },
+  matePlaneHighlights = null,
   matesPickSlotRef,
   onMatePlanePicked,
 }: InteractiveProgramPartsLayerProps) {
   const { invalidate } = useThree()
   useEffect(() => {
     invalidate()
-  }, [invalidate, matesPickMode.active, matesPickMode.slot])
+  }, [invalidate, matesPickMode.active, matesPickMode.slot, matePlaneHighlights])
 
   const [probableFaces, setProbableFaces] = useState<readonly number[]>([])
   const [transformPreviewTick, setTransformPreviewTick] = useState(0)
@@ -208,6 +213,7 @@ export function InteractiveProgramPartsLayer({
             onPartPointerDown={onPartPointerDown}
             matesPickSlotRef={matesPickSlotRef}
             onMatePartPointerDown={handleMatePartPointerDown}
+            matePlaneHighlights={matePlaneHighlights}
           />
         ))}
       </group>
@@ -232,6 +238,7 @@ function InteractiveProgramPart({
   onPartPointerDown,
   matesPickSlotRef,
   onMatePartPointerDown,
+  matePlaneHighlights,
 }: {
   part: PreAssemblyProgramPart
   displayTransform: PhantomTransform
@@ -246,18 +253,19 @@ function InteractiveProgramPart({
   onSelectionChange: Dispatch<SetStateAction<SelectionState>>
   selectionProximityFilter: ModelSelectionProximityFilter
   onProbableFacesChange?: (faces: readonly number[]) => void
-  matesPickSlotRef?: RefObject<MatesPickSlot | null>
   onPartPointerDown: (
     partId: string,
     fallbackTransform: PhantomTransform,
     geometry: BufferGeometry | null,
     event: ThreeEvent<PointerEvent>,
   ) => void
+  matesPickSlotRef?: RefObject<MatesPickSlot | null>
   onMatePartPointerDown: (
     partId: string,
     geometry: BufferGeometry,
     event: ThreeEvent<PointerEvent>,
   ) => void
+  matePlaneHighlights?: MatePlaneHighlights | null
 }) {
   const geometryCenterOffset = useMemo(() => {
     if (!geometry) return [0, 0, 0] as [number, number, number]
@@ -272,6 +280,7 @@ function InteractiveProgramPart({
   const allowFacePick =
     (preAssemblyActive && isActive && !matesPickActive) || matesPickActive
   const meshPickOnPointerDown = meshBuiltinFacePickOnPointerDown(allowFacePick, matesPickContextActive)
+  const mateFaces = matePlaneHighlightsForPart(part.id, matePlaneHighlights)
 
   const handlePointerDown = (event: ThreeEvent<PointerEvent>) => {
     if (geometry && shouldBeginMatePlanePick(matesPickSlotRef?.current, true)) {
@@ -301,6 +310,20 @@ function InteractiveProgramPart({
               preAssemblyActive || matesPickContextActive ? handlePointerDown : undefined
             }
           />
+          {mateFaces.planeA && (
+            <MatePlaneFaceOverlay
+              geometry={geometry}
+              faceIndices={mateFaces.planeA}
+              variant="planeA"
+            />
+          )}
+          {mateFaces.planeB && (
+            <MatePlaneFaceOverlay
+              geometry={geometry}
+              faceIndices={mateFaces.planeB}
+              variant="planeB"
+            />
+          )}
         </group>
       </group>
     )

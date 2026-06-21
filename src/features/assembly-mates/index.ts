@@ -75,3 +75,10 @@ export {
   type PickMatePlaneAtPointerReason,
   type PickMatePlaneAtPointerResult,
 } from './pickMatePlaneAtPointer'
+export {
+  buildMatePlaneFaceOverlayGeometry,
+  matePlaneHighlightsForPart,
+  MATE_PLANE_OVERLAY,
+  type MatePlaneHighlights,
+} from './matePlaneFaceOverlay'
+export { MatePlaneFaceOverlay } from './matePlaneFaceOverlayView'

@@ -221,6 +221,17 @@ function App() {
     ? { active: true, slot: matesPickSlot }
     : { active: false, slot: null }
 
+  const matePlaneHighlights = useMemo(
+    () =>
+      matesPopupOpen
+        ? {
+            planeA: mateDraftSession.draft.planeA,
+            planeB: mateDraftSession.draft.planeB,
+          }
+        : null,
+    [matesPopupOpen, mateDraftSession.draft.planeA, mateDraftSession.draft.planeB],
+  )
+
   const programPartNameById = useMemo(
     () => buildProgramPartDisplayNameById(programParts),
     [programParts],
@@ -1161,6 +1172,7 @@ function App() {
               assemblyMates.length > 0 ? applyTransformWithMates : undefined
             }
             matesPickMode={matesPickMode}
+            matePlaneHighlights={matePlaneHighlights}
             matesPickSlotRef={matesPickSlotRef}
             onMatePlanePicked={handleMatePlanePicked}
           />

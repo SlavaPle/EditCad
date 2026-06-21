@@ -24,6 +24,7 @@ import type {
   PreAssemblyProgramPart,
 } from '../features/pre-assembly'
 import type { MatePlaneRef } from '../features/assembly-mates/model'
+import type { MatePlaneHighlights } from '../features/assembly-mates/matePlaneFaceOverlay'
 import type { MatesPickMode, MatesPickSlot } from '../features/assembly-mates/matesPickMode'
 
 const VIEWER_BACKGROUND = '#2d3b52'
@@ -59,6 +60,7 @@ export interface Viewer3DProps {
     movedTransform: PhantomTransform,
   ) => readonly PreAssemblyProgramPart[]
   matesPickMode?: MatesPickMode
+  matePlaneHighlights?: MatePlaneHighlights | null
   matesPickSlotRef?: RefObject<MatesPickSlot | null>
   onMatePlanePicked?: (slot: NonNullable<MatesPickMode['slot']>, plane: MatePlaneRef) => void
 }
@@ -89,6 +91,7 @@ export function Viewer3D({
   onProgramPartTransformChange,
   resolveMateFollowers,
   matesPickMode = { active: false, slot: null },
+  matePlaneHighlights = null,
   matesPickSlotRef,
   onMatePlanePicked,
 }: Viewer3DProps) {
@@ -145,6 +148,7 @@ export function Viewer3D({
             onProgramPartTransformChange={onProgramPartTransformChange}
             resolveMateFollowers={resolveMateFollowers}
             matesPickMode={matesPickMode}
+            matePlaneHighlights={matePlaneHighlights}
             matesPickSlotRef={matesPickSlotRef}
             onMatePlanePicked={onMatePlanePicked}
           />
