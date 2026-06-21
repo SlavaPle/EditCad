@@ -15,6 +15,7 @@ export { captureMatePlane, type CaptureMatePlaneResult } from './captureMatePlan
 export {
   addAssemblyMate,
   createEmptyParallelMateDraft,
+  parallelMateConflictsWithExisting,
   parallelMateFromDraft,
   removeAssemblyMate,
   validateParallelMateDraft,

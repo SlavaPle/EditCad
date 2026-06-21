@@ -22,7 +22,11 @@ export type ParallelMate = {
 
 export type AssemblyMate = ParallelMate
 
-export type MateDraftValidationReason = 'missingPlane' | 'samePart' | 'invalidOffset'
+export type MateDraftValidationReason =
+  | 'missingPlane'
+  | 'samePart'
+  | 'invalidOffset'
+  | 'conflictsWithExisting'
 
 export function validateMatePlaneRef(value: unknown): value is MatePlaneRef {
   if (typeof value !== 'object' || value === null) return false

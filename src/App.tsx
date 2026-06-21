@@ -1063,11 +1063,30 @@ function App() {
   }, [mateDraftSession.draft, parsedMateOffsetMm])
 
   const mateValidation = useMemo(
-    () => validateParallelMateDraft(mateDraftForApply),
-    [mateDraftForApply],
+    () => validateParallelMateDraft(mateDraftForApply, assemblyMates),
+    [mateDraftForApply, assemblyMates],
   )
 
-  const canSaveMate = mateDraftSession.applyState === 'applied'
+  const mateValidationErrorKey = useMemo(() => {
+    if (!mateDraftSession.draft.planeA || !mateDraftSession.draft.planeB) return null
+    if (!Number.isFinite(parsedMateOffsetMm)) {
+      return 'mates.errors.invalidOffset'
+    }
+    if (!mateValidation.ok) {
+      return `mates.errors.${mateValidation.reason}`
+    }
+    return null
+  }, [
+    mateDraftSession.draft.planeA,
+    mateDraftSession.draft.planeB,
+    mateValidation,
+    parsedMateOffsetMm,
+  ])
+
+  const mateDisplayErrorKey = mateSolverErrorKey ?? mateValidationErrorKey
+
+  const canSaveMate =
+    mateDraftSession.applyState === 'applied' && mateValidation.ok && Number.isFinite(parsedMateOffsetMm)
 
   const syncMateLivePreview = useCallback(() => {
     const session = mateDraftSessionRef.current
@@ -1081,11 +1100,14 @@ function App() {
     const result = executeMateApply({
       session,
       draft,
+      existingMates: assemblyMatesRef.current,
       programParts: programPartsRef.current,
       programPartGeometries: programPartGeometriesRef.current,
     })
     if (!result.ok) {
-      if (result.reason === 'solverFailed') {
+      if (result.reason === 'invalidDraft' && result.validationReason) {
+        setMateSolverErrorKey(`mates.errors.${result.validationReason}`)
+      } else if (result.reason === 'solverFailed') {
         setMateSolverErrorKey('mates.errors.missingGeometry')
       } else if (result.reason === 'missingGeometry' || result.reason === 'missingPart') {
         setMateSolverErrorKey('mates.errors.missingGeometry')
@@ -1258,7 +1280,7 @@ function App() {
             activePickSlot={matesPickSlot}
             offsetInput={mateOffsetInput}
             partNameById={programPartNameById}
-            solverErrorKey={mateSolverErrorKey}
+            solverErrorKey={mateDisplayErrorKey}
             canSave={canSaveMate}
             onAlignmentChange={(alignment) => {
               patchMateDraftSession((session) => mateDraftUpdateDraft(session, { alignment }))

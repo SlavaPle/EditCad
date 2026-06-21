@@ -78,7 +78,7 @@ export function mateDraftSave(
   if (session.applyState !== 'applied') {
     return { ok: false, reason: 'notApplied' }
   }
-  const mate = parallelMateFromDraft(session.draft)
+  const mate = parallelMateFromDraft(session.draft, existingMates)
   if (!mate) {
     return { ok: false, reason: 'invalidDraft' }
   }

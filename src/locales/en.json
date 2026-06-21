@@ -107,6 +107,7 @@
       "samePart": "Pick planes on two different parts.",
       "missingPlane": "Select both planes before applying.",
       "invalidOffset": "Enter a valid distance in millimetres.",
+      "conflictsWithExisting": "This constraint conflicts with an existing one.",
       "missingGeometry": "Part geometry is not loaded."
     }
   },

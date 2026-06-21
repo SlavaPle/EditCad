@@ -1,12 +1,15 @@
 import type { BufferGeometry } from 'three'
 import type { PreAssemblyProgramPart } from '../pre-assembly/preAssemblyProgram'
 import { mateDraftApply, type MateDraftSession } from './mateDraft'
+import type { MateDraftValidationReason } from './model'
 import { solveParallelMate, type ParallelMateSolverReason } from './parallelMateSolver'
+import type { AssemblyMate } from './model'
 import { validateParallelMateDraft, type ParallelMateDraft } from './store'
 
 export type ExecuteMateApplyInput = {
   session: MateDraftSession
   draft: ParallelMateDraft
+  existingMates?: readonly AssemblyMate[]
   programParts: readonly PreAssemblyProgramPart[]
   programPartGeometries: Readonly<Record<string, BufferGeometry>>
 }
@@ -26,14 +29,19 @@ export type ExecuteMateApplyResult =
       movingPartId: string
       transform: PreAssemblyProgramPart['transform']
     }
-  | { ok: false; reason: ExecuteMateApplyReason; solverReason?: ParallelMateSolverReason }
+  | {
+      ok: false
+      reason: ExecuteMateApplyReason
+      validationReason?: MateDraftValidationReason
+      solverReason?: ParallelMateSolverReason
+    }
 
 export function executeMateApply(input: ExecuteMateApplyInput): ExecuteMateApplyResult {
   const { session, draft, programParts, programPartGeometries } = input
 
-  const validation = validateParallelMateDraft(draft)
+  const validation = validateParallelMateDraft(draft, input.existingMates ?? [])
   if (!validation.ok) {
-    return { ok: false, reason: 'invalidDraft' }
+    return { ok: false, reason: 'invalidDraft', validationReason: validation.reason }
   }
 
   const { planeA, planeB } = draft
