@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { MateAlignment, MatePlaneRef } from '../../features/assembly-mates/model'
 import type { MatesPickSlot } from '../../features/assembly-mates/matesPickMode'
@@ -22,6 +23,7 @@ export type ParallelMateControlsProps = {
   onRevert: () => void
   onSave: () => void
   onSaveAndClose: () => void
+  applyFocusToken?: number
 }
 
 function planeSummary(
@@ -53,9 +55,17 @@ export function ParallelMateControls({
   onRevert,
   onSave,
   onSaveAndClose,
+  applyFocusToken = 0,
 }: ParallelMateControlsProps) {
   const { t } = useTranslation()
+  const applyBtnRef = useRef<HTMLButtonElement>(null)
   const pickLocked = applyState === 'applied'
+
+  useEffect(() => {
+    if (applyFocusToken === 0 || !canApply || pickLocked) return
+    applyBtnRef.current?.focus({ preventScroll: false })
+    applyBtnRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }, [applyFocusToken, canApply, pickLocked])
 
   return (
     <div className={styles.controls}>
@@ -140,6 +150,7 @@ export function ParallelMateControls({
           </button>
         ) : (
           <button
+            ref={applyBtnRef}
             type="button"
             className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
             disabled={!canApply}

@@ -1,5 +1,7 @@
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { PreAssemblyProgramPart } from '../preAssemblyProgram'
+import { buildProgramPartDisplayNameById } from '../programParts/programPartDisplayName'
 import styles from './PreAssemblyPanels.module.css'
 
 export type PreAssemblyProgramPanelProps = {
@@ -20,6 +22,10 @@ export function PreAssemblyProgramPanel({
   onRemovePart,
 }: PreAssemblyProgramPanelProps) {
   const { t } = useTranslation()
+  const displayNameById = useMemo(
+    () => buildProgramPartDisplayNameById(programParts),
+    [programParts],
+  )
 
   return (
     <div className={styles.section}>
@@ -58,7 +64,7 @@ export function PreAssemblyProgramPanel({
             <li key={part.id}>
               <div className={styles.programPartRow}>
                 <button type="button" className={styles.treeItemButton}>
-                  <span>{part.name}</span>
+                  <span>{displayNameById[part.id] ?? part.name}</span>
                   <span className={styles.treeItemSecondary}>{part.ref}</span>
                 </button>
                 {onRemovePart ? (

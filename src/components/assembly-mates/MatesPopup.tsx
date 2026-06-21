@@ -21,6 +21,8 @@ export type MatesPopupProps = {
   onRevert: () => void
   onSave: () => void
   onSaveAndClose: () => void
+  onClose: () => void
+  applyFocusToken?: number
 }
 
 export function MatesPopup({
@@ -38,6 +40,8 @@ export function MatesPopup({
   onRevert,
   onSave,
   onSaveAndClose,
+  onClose,
+  applyFocusToken = 0,
 }: MatesPopupProps) {
   const { t } = useTranslation()
   const { draft, applyState } = session
@@ -57,6 +61,15 @@ export function MatesPopup({
           onPointerDown={onHeaderPointerDown}
         >
           <h2 className={styles.title}>{t('mates.popup.title')}</h2>
+          <button
+            type="button"
+            className={styles.closeBtn}
+            aria-label={t('mates.popup.close')}
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={onClose}
+          >
+            ×
+          </button>
         </div>
         <div className={styles.body}>
           <div className={styles.typeList}>
@@ -87,6 +100,7 @@ export function MatesPopup({
             onRevert={onRevert}
             onSave={onSave}
             onSaveAndClose={onSaveAndClose}
+            applyFocusToken={applyFocusToken}
           />
         </div>
       </div>

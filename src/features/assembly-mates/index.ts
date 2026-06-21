@@ -48,6 +48,11 @@ export {
   type MatesPickSlot,
 } from './matesPickMode'
 export {
+  initialMatesPickSlot,
+  nextMatesPickFlowStep,
+  type MatesPickFlowStep,
+} from './matesPickFlow'
+export {
   executeMateApply,
   type ExecuteMateApplyReason,
   type ExecuteMateApplyResult,

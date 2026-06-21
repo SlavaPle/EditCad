@@ -96,6 +96,8 @@ import {
   applyAssemblyMateConstraints,
   filterAssemblyMatesForPartIds,
   reapplyAllAssemblyMates,
+  initialMatesPickSlot,
+  nextMatesPickFlowStep,
   type AssemblyMate,
   type MateDraftSession,
   type MatesPickMode,
@@ -188,6 +190,7 @@ function App() {
   }, [])
   const [mateOffsetInput, setMateOffsetInput] = useState('0')
   const [mateSolverErrorKey, setMateSolverErrorKey] = useState<string | null>(null)
+  const [matesApplyFocusToken, setMatesApplyFocusToken] = useState(0)
   const [assemblyMates, setAssemblyMates] = useState<AssemblyMate[]>([])
   const mateDraftSessionRef = useRef(mateDraftSession)
   mateDraftSessionRef.current = mateDraftSession
@@ -940,18 +943,26 @@ function App() {
     setLimitsInstallActive(false)
     setAppearanceEditActive(false)
     setPreAssemblyWizard(null)
-    commitMateDraftSession(createMateDraftSession())
-    applyMatesPickSlot(null)
+    const freshSession = createMateDraftSession()
+    commitMateDraftSession(freshSession)
+    applyMatesPickSlot(initialMatesPickSlot(freshSession))
     setMateOffsetInput('0')
     setMateSolverErrorKey(null)
+    setMatesApplyFocusToken(0)
     setMatesPopupOpen(true)
   }, [applyMatesPickSlot, closeMatesPopup, commitMateDraftSession, matesPopupOpen])
 
   const handleMatePlanePicked = useCallback(
     (slot: MatesPickSlot, plane: MateDraftSession['draft']['planeA']) => {
       patchMateDraftSession((session) => mateDraftSetPlane(session, slot, plane))
-      applyMatesPickSlot(null)
       setMateSolverErrorKey(null)
+      const next = nextMatesPickFlowStep(slot)
+      if (next === 'apply') {
+        applyMatesPickSlot(null)
+        setMatesApplyFocusToken((token) => token + 1)
+      } else {
+        applyMatesPickSlot(next)
+      }
     },
     [applyMatesPickSlot, patchMateDraftSession],
   )
@@ -1175,6 +1186,8 @@ function App() {
             onRevert={handleMateRevert}
             onSave={handleMateSave}
             onSaveAndClose={handleMateSaveAndClose}
+            onClose={closeMatesPopup}
+            applyFocusToken={matesApplyFocusToken}
           />
         )}
         <RightPanel

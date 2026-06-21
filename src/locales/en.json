@@ -73,7 +73,8 @@
   },
   "mates": {
     "popup": {
-      "title": "Constraints"
+      "title": "Constraints",
+      "close": "Close"
     },
     "types": {
       "parallel": "Parallel"

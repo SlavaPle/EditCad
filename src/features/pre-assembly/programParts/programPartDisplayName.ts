@@ -1,20 +1,18 @@
 import type { PreAssemblyProgramPart } from '../preAssemblyProgram'
 
-/** Etykieta detali w UI — przy powtarzających się name dodaje ref (jak w panelu programu). */
+/** Etykieta detali w UI — ref pliku; przy powtórzeniu ref numer w nawiasie. */
 export function buildProgramPartDisplayNameById(
   parts: readonly PreAssemblyProgramPart[],
 ): Record<string, string> {
-  const nameCounts = new Map<string, number>()
+  const refOccurrence = new Map<string, number>()
+  const map: Record<string, string> = {}
+
   for (const part of parts) {
-    const label = part.name.trim() || part.ref
-    nameCounts.set(label, (nameCounts.get(label) ?? 0) + 1)
+    const ref = part.ref.trim() || part.id
+    const index = (refOccurrence.get(ref) ?? 0) + 1
+    refOccurrence.set(ref, index)
+    map[part.id] = index > 1 ? `${ref} (${index})` : ref
   }
 
-  const map: Record<string, string> = {}
-  for (const part of parts) {
-    const name = part.name.trim() || part.ref
-    map[part.id] =
-      (nameCounts.get(name) ?? 0) > 1 ? `${name} · ${part.ref}` : name
-  }
   return map
 }
