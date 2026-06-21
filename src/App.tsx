@@ -191,7 +191,6 @@ function App() {
   }, [])
   const [mateOffsetInput, setMateOffsetInput] = useState('0')
   const [mateSolverErrorKey, setMateSolverErrorKey] = useState<string | null>(null)
-  const [matesApplyFocusToken, setMatesApplyFocusToken] = useState(0)
   const [assemblyMates, setAssemblyMates] = useState<AssemblyMate[]>([])
   const mateDraftSessionRef = useRef(mateDraftSession)
   mateDraftSessionRef.current = mateDraftSession
@@ -959,7 +958,6 @@ function App() {
     applyMatesPickSlot(initialMatesPickSlot(freshSession))
     setMateOffsetInput('0')
     setMateSolverErrorKey(null)
-    setMatesApplyFocusToken(0)
     setMatesPopupOpen(true)
   }, [applyMatesPickSlot, closeMatesPopup, commitMateDraftSession, matesPopupOpen])
 
@@ -968,12 +966,7 @@ function App() {
       patchMateDraftSession((session) => mateDraftSetPlane(session, slot, plane))
       setMateSolverErrorKey(null)
       const next = nextMatesPickFlowStep(slot)
-      if (next === 'apply') {
-        applyMatesPickSlot(null)
-        setMatesApplyFocusToken((token) => token + 1)
-      } else {
-        applyMatesPickSlot(next)
-      }
+      applyMatesPickSlot(next === 'apply' ? null : next)
     },
     [applyMatesPickSlot, patchMateDraftSession],
   )
@@ -995,21 +988,22 @@ function App() {
     [mateDraftForApply],
   )
 
-  const canApplyMate =
-    mateDraftSession.applyState === 'idle' && mateValidation.ok && Number.isFinite(parsedMateOffsetMm)
-
   const canSaveMate = mateDraftSession.applyState === 'applied'
 
-  const handleMateApply = useCallback(() => {
+  const syncMateLivePreview = useCallback(() => {
+    const session = mateDraftSessionRef.current
+    if (!session.draft.planeA || !session.draft.planeB) return
+    if (!mateValidation.ok || !Number.isFinite(parsedMateOffsetMm)) return
+
     const draft = {
-      ...mateDraftSessionRef.current.draft,
+      ...session.draft,
       offsetMm: parsedMateOffsetMm,
     }
     const result = executeMateApply({
-      session: mateDraftSessionRef.current,
+      session,
       draft,
       programParts: programPartsRef.current,
-      programPartGeometries,
+      programPartGeometries: programPartGeometriesRef.current,
     })
     if (!result.ok) {
       if (result.reason === 'solverFailed') {
@@ -1022,18 +1016,20 @@ function App() {
     handleProgramPartTransformChange(result.movingPartId, result.transform)
     commitMateDraftSession(result.nextSession)
     setMateSolverErrorKey(null)
-  }, [commitMateDraftSession, handleProgramPartTransformChange, parsedMateOffsetMm, programPartGeometries])
+  }, [commitMateDraftSession, handleProgramPartTransformChange, mateValidation.ok, parsedMateOffsetMm])
 
-  const handleMateRevert = useCallback(() => {
-    const partId = mateDraftSessionRef.current.movingPartId
-    const revert = mateDraftRevert(mateDraftSessionRef.current)
-    if (!revert.ok) return
-    if (partId) {
-      handleProgramPartTransformChange(partId, revert.transform)
-    }
-    commitMateDraftSession(revert.session)
-    setMateSolverErrorKey(null)
-  }, [commitMateDraftSession, handleProgramPartTransformChange])
+  useEffect(() => {
+    if (!matesPopupOpen) return
+    syncMateLivePreview()
+  }, [
+    matesPopupOpen,
+    mateDraftSession.draft.planeA,
+    mateDraftSession.draft.planeB,
+    mateDraftSession.draft.alignment,
+    parsedMateOffsetMm,
+    mateValidation.ok,
+    syncMateLivePreview,
+  ])
 
   const handleMateSave = useCallback(() => {
     const saved = mateDraftSave(mateDraftSession, assemblyMates)
@@ -1184,7 +1180,6 @@ function App() {
             offsetInput={mateOffsetInput}
             partNameById={programPartNameById}
             solverErrorKey={mateSolverErrorKey}
-            canApply={canApplyMate}
             canSave={canSaveMate}
             onAlignmentChange={(alignment) => {
               patchMateDraftSession((session) => mateDraftUpdateDraft(session, { alignment }))
@@ -1194,12 +1189,9 @@ function App() {
               applyMatesPickSlot(toggleMatesPickSlot(matesPickSlotRef.current, slot))
               setMateSolverErrorKey(null)
             }}
-            onApply={handleMateApply}
-            onRevert={handleMateRevert}
             onSave={handleMateSave}
             onSaveAndClose={handleMateSaveAndClose}
             onClose={closeMatesPopup}
-            applyFocusToken={matesApplyFocusToken}
           />
         )}
         <RightPanel

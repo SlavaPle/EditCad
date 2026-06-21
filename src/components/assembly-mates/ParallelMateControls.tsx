@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { MateAlignment, MatePlaneRef } from '../../features/assembly-mates/model'
 import type { MatesPickSlot } from '../../features/assembly-mates/matesPickMode'
@@ -14,16 +13,12 @@ export type ParallelMateControlsProps = {
   activePickSlot: MatesPickSlot | null
   partNameById: Readonly<Record<string, string>>
   solverErrorKey: string | null
-  canApply: boolean
   canSave: boolean
   onAlignmentChange: (alignment: MateAlignment) => void
   onOffsetChange: (value: string) => void
   onStartPick: (slot: MatesPickSlot) => void
-  onApply: () => void
-  onRevert: () => void
   onSave: () => void
   onSaveAndClose: () => void
-  applyFocusToken?: number
 }
 
 function planeSummary(
@@ -46,26 +41,16 @@ export function ParallelMateControls({
   activePickSlot,
   partNameById,
   solverErrorKey,
-  canApply,
   canSave,
   onAlignmentChange,
   onOffsetChange,
   onStartPick,
-  onApply,
-  onRevert,
   onSave,
   onSaveAndClose,
-  applyFocusToken = 0,
 }: ParallelMateControlsProps) {
   const { t } = useTranslation()
-  const applyBtnRef = useRef<HTMLButtonElement>(null)
-  const pickLocked = applyState === 'applied'
-
-  useEffect(() => {
-    if (applyFocusToken === 0 || !canApply || pickLocked) return
-    applyBtnRef.current?.focus({ preventScroll: false })
-    applyBtnRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
-  }, [applyFocusToken, canApply, pickLocked])
+  const planesLocked = applyState === 'applied'
+  const canEditMateParams = planeA !== null && planeB !== null
 
   return (
     <div className={styles.controls}>
@@ -79,7 +64,7 @@ export function ParallelMateControls({
         <button
           type="button"
           className={`${styles.pickBtn} ${activePickSlot === 'planeA' ? styles.pickBtnActive : ''}`}
-          disabled={pickLocked}
+          disabled={planesLocked}
           onClick={() => onStartPick('planeA')}
         >
           {planeA ? t('mates.plane.redefine') : t('mates.plane.pick')}
@@ -96,7 +81,7 @@ export function ParallelMateControls({
         <button
           type="button"
           className={`${styles.pickBtn} ${activePickSlot === 'planeB' ? styles.pickBtnActive : ''}`}
-          disabled={pickLocked}
+          disabled={planesLocked}
           onClick={() => onStartPick('planeB')}
         >
           {planeB ? t('mates.plane.redefine') : t('mates.plane.pick')}
@@ -111,7 +96,7 @@ export function ParallelMateControls({
           id="mate-alignment"
           className={styles.select}
           value={alignment}
-          disabled={pickLocked}
+          disabled={!canEditMateParams}
           onChange={(e) => onAlignmentChange(e.target.value as MateAlignment)}
         >
           <option value="faceToFace">{t('mates.alignment.faceToFace')}</option>
@@ -130,7 +115,7 @@ export function ParallelMateControls({
             type="text"
             inputMode="decimal"
             value={offsetMm}
-            disabled={pickLocked}
+            disabled={!canEditMateParams}
             onChange={(e) => onOffsetChange(e.target.value)}
           />
           <span className={styles.unit}>mm</span>
@@ -144,21 +129,6 @@ export function ParallelMateControls({
       {solverErrorKey && <p className={styles.error}>{t(solverErrorKey)}</p>}
 
       <div className={styles.actions}>
-        {applyState === 'applied' ? (
-          <button type="button" className={styles.actionBtn} onClick={onRevert}>
-            {t('mates.actions.revert')}
-          </button>
-        ) : (
-          <button
-            ref={applyBtnRef}
-            type="button"
-            className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
-            disabled={!canApply}
-            onClick={onApply}
-          >
-            {t('mates.actions.apply')}
-          </button>
-        )}
         <button type="button" className={styles.actionBtn} disabled={!canSave} onClick={onSave}>
           {t('mates.actions.save')}
         </button>

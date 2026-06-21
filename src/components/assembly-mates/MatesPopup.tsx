@@ -12,17 +12,13 @@ export type MatesPopupProps = {
   offsetInput: string
   partNameById: Readonly<Record<string, string>>
   solverErrorKey: string | null
-  canApply: boolean
   canSave: boolean
   onAlignmentChange: (alignment: MateDraftSession['draft']['alignment']) => void
   onOffsetChange: (value: string) => void
   onStartPick: (slot: MatesPickSlot) => void
-  onApply: () => void
-  onRevert: () => void
   onSave: () => void
   onSaveAndClose: () => void
   onClose: () => void
-  applyFocusToken?: number
 }
 
 export function MatesPopup({
@@ -31,17 +27,13 @@ export function MatesPopup({
   offsetInput,
   partNameById,
   solverErrorKey,
-  canApply,
   canSave,
   onAlignmentChange,
   onOffsetChange,
   onStartPick,
-  onApply,
-  onRevert,
   onSave,
   onSaveAndClose,
   onClose,
-  applyFocusToken = 0,
 }: MatesPopupProps) {
   const { t } = useTranslation()
   const { draft, applyState } = session
@@ -91,16 +83,12 @@ export function MatesPopup({
             activePickSlot={activePickSlot}
             partNameById={partNameById}
             solverErrorKey={solverErrorKey}
-            canApply={canApply}
             canSave={canSave}
             onAlignmentChange={onAlignmentChange}
             onOffsetChange={onOffsetChange}
             onStartPick={onStartPick}
-            onApply={onApply}
-            onRevert={onRevert}
             onSave={onSave}
             onSaveAndClose={onSaveAndClose}
-            applyFocusToken={applyFocusToken}
           />
         </div>
       </div>

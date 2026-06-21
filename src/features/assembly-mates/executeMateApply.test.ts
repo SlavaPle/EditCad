@@ -61,7 +61,7 @@ describe('executeMateApply', () => {
     expect(result.movingPartId).toBe('b')
   })
 
-  it('rejects second apply while already applied', () => {
+  it('updates preview when already applied', () => {
     let session = createMateDraftSession()
     const planeA = { partId: 'a', faceIndex: 0, faceIndices: [0, 1] }
     const planeB = { partId: 'b', faceIndex: 0, faceIndices: [0, 1] }
@@ -71,7 +71,7 @@ describe('executeMateApply', () => {
     expect(applied.ok).toBe(true)
     if (!applied.ok) return
 
-    const draft = { ...createEmptyParallelMateDraft(), planeA, planeB, offsetMm: 0 }
+    const draft = { ...createEmptyParallelMateDraft(), planeA, planeB, offsetMm: 5, alignment: 'sameDirection' as const }
     const result = executeMateApply({
       session: applied.session,
       draft,
@@ -82,6 +82,11 @@ describe('executeMateApply', () => {
       },
     })
 
-    expect(result).toEqual({ ok: false, reason: 'notIdle' })
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.nextSession.applyState).toBe('applied')
+    expect(result.nextSession.draft.offsetMm).toBe(5)
+    expect(result.nextSession.draft.alignment).toBe('sameDirection')
+    expect(result.nextSession.revertTransform).toEqual(applied.session.revertTransform)
   })
 })

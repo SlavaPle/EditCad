@@ -95,7 +95,17 @@ export function mateDraftUpdateDraft(
   patch: Partial<ParallelMateDraft>,
 ): MateDraftSession {
   if (session.applyState === 'applied') {
-    return session
+    const livePatch: Partial<ParallelMateDraft> = {}
+    if (patch.alignment !== undefined) livePatch.alignment = patch.alignment
+    if (patch.offsetMm !== undefined) livePatch.offsetMm = patch.offsetMm
+    if (Object.keys(livePatch).length === 0) return session
+    return {
+      ...session,
+      draft: {
+        ...session.draft,
+        ...livePatch,
+      },
+    }
   }
   return {
     ...session,

@@ -31,10 +31,6 @@ export type ExecuteMateApplyResult =
 export function executeMateApply(input: ExecuteMateApplyInput): ExecuteMateApplyResult {
   const { session, draft, programParts, programPartGeometries } = input
 
-  if (session.applyState !== 'idle') {
-    return { ok: false, reason: 'notIdle' }
-  }
-
   const validation = validateParallelMateDraft(draft)
   if (!validation.ok) {
     return { ok: false, reason: 'invalidDraft' }
@@ -72,14 +68,22 @@ export function executeMateApply(input: ExecuteMateApplyInput): ExecuteMateApply
     return { ok: false, reason: 'solverFailed', solverReason: solved.reason }
   }
 
-  const applied = mateDraftApply({ ...session, draft }, partB.transform)
-  if (!applied.ok) {
-    return { ok: false, reason: 'applyFailed' }
+  if (session.applyState === 'idle') {
+    const applied = mateDraftApply({ ...session, draft }, partB.transform)
+    if (!applied.ok) {
+      return { ok: false, reason: 'applyFailed' }
+    }
+    return {
+      ok: true,
+      nextSession: applied.session,
+      movingPartId: planeB.partId,
+      transform: solved.transform,
+    }
   }
 
   return {
     ok: true,
-    nextSession: applied.session,
+    nextSession: { ...session, draft },
     movingPartId: planeB.partId,
     transform: solved.transform,
   }
