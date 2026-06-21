@@ -1,3 +1,5 @@
+import { ensureFileSystemHandleReadPermission } from './fileSystemHandlePermission'
+
 const DB_NAME = 'editcad-assembly-part-handles'
 const STORE_NAME = 'handles'
 const DB_VERSION = 1
@@ -50,7 +52,9 @@ export async function restorePartFileHandle(
     req.onerror = () => reject(req.error ?? new Error('IndexedDB read failed'))
   })
   db.close()
-  return handle
+  if (!handle || !('getFile' in handle)) return null
+  const allowed = await ensureFileSystemHandleReadPermission(handle)
+  return allowed ? (handle as FileSystemFileHandle) : null
 }
 
 export async function removePartFileHandle(assemblyId: string, ref: string): Promise<void> {

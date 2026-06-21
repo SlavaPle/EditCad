@@ -61,8 +61,10 @@ import {
   programPartsFromAssemblyProgram,
   ProgramPartFilePicker,
   removeProgramPart,
-  persistAssemblyRootHandle,
-  restoreAssemblyRootHandle,
+  persistPartFileHandle,
+  removePartFileHandle,
+  resolveAssemblyProjectDirectory,
+  resolveAssemblyRootFromFileHandle,
   saveAssemblyFileAs,
   saveAssemblyToHandle,
   savePhantomAssemblyFileAs,
@@ -689,7 +691,28 @@ function App() {
     setProgramPartsFitToken((token) => token + 1)
     setProgramLoadError(null)
     setActiveToolbarTab('preAssembly')
-  }, [programPartGeometries])
+
+    const assemblyId = assemblyDocMeta.id
+    void (async () => {
+      for (const entry of entries) {
+        if (entry.sourceHandle) {
+          await persistPartFileHandle(assemblyId, entry.part.ref, entry.sourceHandle)
+        }
+      }
+      if (!assemblyRootDirectoryHandle) {
+        const firstHandle = entries.find((entry) => entry.sourceHandle)?.sourceHandle
+        const root = await resolveAssemblyRootFromFileHandle(firstHandle)
+        if (root) {
+          setAssemblyRootDirectoryHandle(root)
+          await resolveAssemblyProjectDirectory({
+            assemblyId,
+            currentRoot: root,
+            assemblySourceHandle: null,
+          })
+        }
+      }
+    })()
+  }, [assemblyDocMeta.id, assemblyRootDirectoryHandle, programPartGeometries])
 
   const applyTransformWithMates = useCallback(
     (partId: string, transform: PhantomTransform): PreAssemblyProgramPart[] => {
@@ -724,6 +747,7 @@ function App() {
   }, [])
 
   const handleRemoveProgramPart = useCallback((partId: string) => {
+    const removedPart = programPartsRef.current.find((part) => part.id === partId)
     setProgramParts((current) => {
       const next = removeProgramPart(current, partId)
       const partIds = new Set(next.map((part) => part.id))
@@ -746,7 +770,10 @@ function App() {
     })
     setActiveProgramPartId((current) => (current === partId ? null : current))
     setProgramPartsFitToken((token) => token + 1)
-  }, [])
+    if (removedPart) {
+      void removePartFileHandle(assemblyDocMeta.id, removedPart.ref)
+    }
+  }, [assemblyDocMeta.id])
 
   const applyAssemblyGeometries = useCallback(
     async (
@@ -754,7 +781,15 @@ function App() {
       loadedParts: PreAssemblyProgramPart[],
       directory: FileSystemDirectoryHandle | null,
     ) => {
-      if (loadedParts.length === 0) return
+      if (loadedParts.length === 0) {
+        return {
+          geometries: {},
+          appearances: {},
+          loadedCount: 0,
+          missingRefs: [],
+          errors: [],
+        }
+      }
       const result = await loadGeometriesFromAssembly(assemblyId, loadedParts, directory)
       if (Object.keys(result.geometries).length > 0) {
         setProgramPartGeometries(result.geometries)
@@ -780,6 +815,7 @@ function App() {
         messages.push(...result.errors)
       }
       setProgramLoadError(messages.length > 0 ? messages.join('\n') : null)
+      return result
     },
     [],
   )
@@ -813,13 +849,38 @@ function App() {
       setActiveToolbarTab('preAssembly')
 
       void (async () => {
-        const root =
-          assemblyRootDirectoryHandle ?? (await restoreAssemblyRootHandle(file.id))
+        let root = await resolveAssemblyProjectDirectory({
+          assemblyId: file.id,
+          currentRoot: assemblyRootDirectoryHandle,
+          assemblySourceHandle: sourceHandle ?? null,
+        })
         if (root) {
           setAssemblyRootDirectoryHandle(root)
-          await persistAssemblyRootHandle(file.id, root)
         }
-        await applyAssemblyGeometries(file.id, loadedParts, root)
+
+        let result = await applyAssemblyGeometries(file.id, loadedParts, root)
+
+        if (result.missingRefs.length > 0 && result.loadedCount < loadedParts.length) {
+          if (result.loadedCount === 0) {
+            const picked = await resolveAssemblyProjectDirectory({
+              assemblyId: file.id,
+              currentRoot: null,
+              assemblySourceHandle: sourceHandle ?? null,
+              promptIfMissing: true,
+              startInForPrompt: sourceHandle ?? null,
+            })
+            if (picked) {
+              root = picked
+              setAssemblyRootDirectoryHandle(picked)
+              await applyAssemblyGeometries(file.id, loadedParts, picked)
+            } else {
+              setProgramLoadError((current) => {
+                const needFolder = i18n.t('preAssembly.loadAssembly.needProjectFolder')
+                return current ? `${needFolder}\n${current}` : needFolder
+              })
+            }
+          }
+        }
       })()
     },
     [
@@ -858,6 +919,15 @@ function App() {
         )
         setAssemblySourceFileHandle(handle)
         setAssemblySourceFileName(fileName)
+        const root = await resolveAssemblyRootFromFileHandle(handle)
+        if (root) {
+          setAssemblyRootDirectoryHandle(root)
+          await resolveAssemblyProjectDirectory({
+            assemblyId: assemblyFile.id,
+            currentRoot: root,
+            assemblySourceHandle: handle,
+          })
+        }
         setProgramLoadError(null)
         setProgramSaveMessage(
           i18n.t('preAssembly.saveAssemblyAs.saved', { fileName }),
@@ -894,6 +964,15 @@ function App() {
         const savedName = await saveAssemblyToHandle(assemblyFile, assemblySourceFileHandle)
         const fileName = savedName ?? assemblySourceFileName ?? 'assembly.ecdasm'
         if (savedName) setAssemblySourceFileName(savedName)
+        const root = await resolveAssemblyRootFromFileHandle(assemblySourceFileHandle)
+        if (root) {
+          setAssemblyRootDirectoryHandle(root)
+          await resolveAssemblyProjectDirectory({
+            assemblyId: assemblyFile.id,
+            currentRoot: root,
+            assemblySourceHandle: assemblySourceFileHandle,
+          })
+        }
         setProgramLoadError(null)
         setProgramSaveMessage(i18n.t('preAssembly.saveAssembly.saved', { fileName }))
       } catch (err: unknown) {

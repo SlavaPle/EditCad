@@ -1,3 +1,5 @@
+import { ensureFileSystemHandleReadPermission } from './fileSystemHandlePermission'
+
 const DB_NAME = 'editcad-assembly-fs'
 const STORE_NAME = 'directory-handles'
 const DB_VERSION = 1
@@ -50,17 +52,6 @@ export async function restoreAssemblyRootHandle(
   })
   db.close()
   if (!handle) return null
-  try {
-    const withPermission = handle as FileSystemDirectoryHandle & {
-      queryPermission?: (descriptor: { mode: 'read' }) => Promise<PermissionState>
-      requestPermission?: (descriptor: { mode: 'read' }) => Promise<PermissionState>
-    }
-    if (!withPermission.queryPermission) return handle
-    const permission = await withPermission.queryPermission({ mode: 'read' })
-    if (permission === 'granted') return handle
-    const requested = await withPermission.requestPermission?.({ mode: 'read' })
-    return requested === 'granted' ? handle : null
-  } catch {
-    return null
-  }
+  const allowed = await ensureFileSystemHandleReadPermission(handle)
+  return allowed ? handle : null
 }

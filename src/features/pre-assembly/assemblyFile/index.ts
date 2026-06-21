@@ -30,6 +30,11 @@ export {
   computeRelativeRefFromRoot,
 } from './assemblyRelativePath'
 export { persistAssemblyRootHandle, restoreAssemblyRootHandle } from './assemblyRootStore'
+export { persistPartFileHandle, removePartFileHandle } from './assemblyPartHandleStore'
+export {
+  resolveAssemblyProjectDirectory,
+  resolveAssemblyRootFromFileHandle,
+} from './assemblyProjectDirectory'
 export {
   pickAssemblyProjectDirectory,
   openAssemblyFileFromRoot,
