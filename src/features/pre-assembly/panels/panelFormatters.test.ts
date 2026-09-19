@@ -22,7 +22,7 @@ describe('panelFormatters', () => {
   })
 
   it('formatEnvelopeSummary includes phantom kind and dimensions', () => {
-    const file = createEmptyPhantomFile()
+    const file = createEmptyPhantomFile({ name: 'Phantom' })
     const summary = formatEnvelopeSummary(file.phantom.envelope, t)
     expect(summary).toContain('phantomKind.panel')
     expect(summary).toContain('600')
@@ -41,7 +41,7 @@ describe('panelFormatters', () => {
   })
 
   it('formatConnectionSummary joins endpoints and rule', () => {
-    const file = createEmptyPhantomFile()
+    const file = createEmptyPhantomFile({ name: 'Phantom' })
     const phantom = {
       ...file.phantom,
       attachments: [

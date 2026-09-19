@@ -42,7 +42,7 @@ describe('assemblyCodec', () => {
   })
 
   it('rejects multiple phantoms', () => {
-    const phantomDoc = createEmptyPhantomFile()
+    const phantomDoc = createEmptyPhantomFile({ name: 'Phantom' })
     const raw = JSON.parse(serializeAssemblyFile(createAssemblyFileFromProgram([], { phantomDoc })))
     raw.phantom = [raw.phantom, raw.phantom]
     const parsed = parseAssemblyFile(JSON.stringify(raw))

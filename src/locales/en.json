@@ -136,7 +136,8 @@
   },
   "preAssembly": {
     "createPhantom": {
-      "button": "Create phantom"
+      "button": "Create phantom",
+      "defaultName": "Phantom"
     },
     "addPart": {
       "button": "Add part"

@@ -23,7 +23,7 @@ describe('pre-assembly toolbarActions', () => {
 
   it('phantom save disabled when bindings incomplete', () => {
     const ui = getPreAssemblyToolbarUi({
-      phantomDoc: createEmptyPhantomFile(),
+      phantomDoc: createEmptyPhantomFile({ name: 'Phantom' }),
       programPartCount: 0,
     })
     expect(ui.hasPhantom).toBe(true)
@@ -34,7 +34,7 @@ describe('pre-assembly toolbarActions', () => {
 
   it('allows saving assembly with phantom only', () => {
     const ui = getPreAssemblyToolbarUi({
-      phantomDoc: createEmptyPhantomFile(),
+      phantomDoc: createEmptyPhantomFile({ name: 'Phantom' }),
       programPartCount: 0,
     })
     expect(ui.canSaveAssembly).toBe(true)

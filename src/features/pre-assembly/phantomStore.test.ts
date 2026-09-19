@@ -20,7 +20,7 @@ describe('phantomStore', () => {
   })
 
   it('addAttachment appends anchor to phantom', () => {
-    const file = createEmptyPhantomFile()
+    const file = createEmptyPhantomFile({ name: 'Phantom' })
     const result = addAttachment(file.phantom, {
       id: 'floor',
       role: 'floor',
@@ -34,7 +34,7 @@ describe('phantomStore', () => {
   })
 
   it('addElementSlot rejects missing anchorId', () => {
-    const file = createEmptyPhantomFile()
+    const file = createEmptyPhantomFile({ name: 'Phantom' })
     const result = addElementSlot(file.phantom, {
       ref: 'parts/panel.ecdprt',
       anchorId: '',
@@ -43,7 +43,7 @@ describe('phantomStore', () => {
   })
 
   it('addElementSlot rejects unknown anchor', () => {
-    const file = createEmptyPhantomFile()
+    const file = createEmptyPhantomFile({ name: 'Phantom' })
     const result = addElementSlot(file.phantom, {
       ref: 'parts/panel.ecdprt',
       anchorId: 'missing',
@@ -55,7 +55,7 @@ describe('phantomStore', () => {
   })
 
   it('addElementSlot succeeds when anchor exists', () => {
-    const file = createEmptyPhantomFile()
+    const file = createEmptyPhantomFile({ name: 'Phantom' })
     const withAnchor = addAttachment(file.phantom, {
       id: 'floor',
       role: 'floor',
@@ -81,7 +81,7 @@ describe('phantomStore', () => {
   })
 
   it('validateElementAnchorRequired mirrors addElementSlot guard', () => {
-    const file = createEmptyPhantomFile()
+    const file = createEmptyPhantomFile({ name: 'Phantom' })
     expect(validateElementAnchorRequired(file.phantom, '')).toEqual({
       ok: false,
       error: 'Element slot requires anchorId.',

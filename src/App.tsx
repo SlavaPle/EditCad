@@ -759,7 +759,9 @@ function App() {
   }, [phantomDoc, phantomSourceFileHandle, phantomSourceFileName, preAssemblyToolbarUi.saveDisabled])
 
   const handleCreatePhantom = useCallback(() => {
-    setPhantomDoc(createEmptyPhantomFile())
+    setPhantomDoc(
+      createEmptyPhantomFile({ name: i18n.t('preAssembly.createPhantom.defaultName') }),
+    )
     setPhantomSourceFileHandle(null)
     setPhantomSourceFileName(null)
     setPhantomLoadError(null)

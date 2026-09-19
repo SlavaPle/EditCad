@@ -136,7 +136,8 @@
   },
   "preAssembly": {
     "createPhantom": {
-      "button": "Создать фантом"
+      "button": "Создать фантом",
+      "defaultName": "Фантом"
     },
     "addPart": {
       "button": "Добавить деталь"

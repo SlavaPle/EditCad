@@ -4,7 +4,7 @@ import { addProgramPartToPhantom } from './addProgramPartToPhantom'
 
 describe('addProgramPartToPhantom', () => {
   it('returns noAnchors when phantom has no attachments', () => {
-    const file = createEmptyPhantomFile()
+    const file = createEmptyPhantomFile({ name: 'Phantom' })
     const result = addProgramPartToPhantom(file, {
       ref: 'panel.ecdprt',
       name: 'Panel',
@@ -13,7 +13,7 @@ describe('addProgramPartToPhantom', () => {
   })
 
   it('adds program part to phantom program tree', () => {
-    const file = createEmptyPhantomFile()
+    const file = createEmptyPhantomFile({ name: 'Phantom' })
     const anchored = addAttachment(file.phantom, {
       id: 'floor',
       role: 'floor',

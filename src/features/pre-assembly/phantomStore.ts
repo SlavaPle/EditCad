@@ -20,9 +20,9 @@ function createUniqueId(prefix: string): string {
   return `${prefix}-${stamp}-${rand}`
 }
 
-export function createEmptyPhantomFile(options?: { name?: string; id?: string }): PhantomAssemblyFile {
-  const rootId = options?.id ?? 'phantom-root'
-  const name = options?.name ?? 'Phantom'
+export function createEmptyPhantomFile(options: { name: string; id?: string }): PhantomAssemblyFile {
+  const rootId = options.id ?? 'phantom-root'
+  const name = options.name
   return {
     format: PRE_ASSEMBLY_FORMAT,
     version: PRE_ASSEMBLY_VERSION,

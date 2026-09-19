@@ -29,7 +29,7 @@ describe('pre-assembly fileIo', () => {
   })
 
   it('validatePhantomForSave accepts empty phantom', () => {
-    expect(validatePhantomForSave(createEmptyPhantomFile()).ok).toBe(true)
+    expect(validatePhantomForSave(createEmptyPhantomFile({ name: 'Phantom' })).ok).toBe(true)
   })
 
   it('savePhantomAssemblyToHandle writes JSON to handle', async () => {
