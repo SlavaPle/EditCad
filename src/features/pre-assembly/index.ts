@@ -40,6 +40,9 @@ export {
   type ProgramPartPickEntry,
   type ProgramPartFilePickerHandle,
   type ProgramPartFilePickerProps,
+  resolveViewportPreparedBinding,
+  emptyProgramPartPreparedConstraints,
+  type ViewportPreparedBinding,
 } from './programParts'
 export {
   PRE_ASSEMBLY_FORMAT,

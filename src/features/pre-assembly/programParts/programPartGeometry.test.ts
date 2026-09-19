@@ -25,6 +25,11 @@ describe('loadProgramPartGeometryFromFile', () => {
     if (!result.ok) return
     expect(result.geometry).toBe(geometry)
     expect(result.appearance).toEqual(DEFAULT_MODEL_APPEARANCE)
+    expect(result.constraints).toEqual({
+      mode: 'fixed',
+      faceConstraints: [],
+      modelElements: [],
+    })
     geometry.dispose()
   })
 
@@ -51,6 +56,7 @@ describe('loadProgramPartGeometryFromFile', () => {
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(result.appearance).toEqual(appearance)
+    expect(result.constraints).toEqual({ mode: 'fixed' })
     geometry.dispose()
   })
 

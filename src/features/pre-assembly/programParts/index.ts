@@ -16,6 +16,11 @@ export {
   type ProgramPartPickEntry,
 } from './programPartPickBatch'
 export { loadGeometriesFromAssembly, type LoadAssemblyGeometriesResult } from './loadAssemblyProgramPartGeometries'
+export {
+  emptyProgramPartPreparedConstraints,
+  resolveViewportPreparedBinding,
+  type ViewportPreparedBinding,
+} from './resolveViewportPreparedBinding'
 export { readProgramPartFromFileWithRoot } from './programPartFile'
 export {
   defaultProgramPartTransform,

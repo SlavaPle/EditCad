@@ -39,7 +39,16 @@ describe('pickProgramPartsFromFiles', () => {
       ok: true,
       part: { ref: 'panel.ecdprt', name: 'Panel' },
     })
-    mockedLoadGeometry.mockResolvedValue({ ok: true, geometry, appearance })
+    mockedLoadGeometry.mockResolvedValue({
+      ok: true,
+      geometry,
+      appearance,
+      constraints: {
+        mode: 'fixed',
+        faceConstraints: [],
+        modelElements: [{ id: 'e1', faceIndices: [0] }],
+      },
+    })
 
     const result = await pickProgramPartsFromFiles([file], null)
 
@@ -47,6 +56,7 @@ describe('pickProgramPartsFromFiles', () => {
     expect(result.picked).toHaveLength(1)
     expect(result.picked[0]?.appearance).toEqual(appearance)
     expect(result.picked[0]?.geometry).toBe(geometry)
+    expect(result.picked[0]?.constraints.modelElements).toEqual([{ id: 'e1', faceIndices: [0] }])
     geometry.dispose()
   })
 
@@ -78,6 +88,7 @@ describe('pickProgramPartsFromFiles', () => {
         texture: { kind: 'default' },
         opacity: 1,
       },
+      constraints: { mode: 'fixed', faceConstraints: [], modelElements: [] },
     })
 
     const result = await pickProgramPartsFromFiles([good, bad], null)

@@ -1,4 +1,5 @@
 import type { BufferGeometry } from 'three'
+import type { PreparedElementConstraints } from '../../../lib/preparedElementFormat'
 import type { ModelAppearance } from '../../viewer-display/modelAppearance'
 import { readProgramPartFromFileWithRoot, type ProgramPartDescriptor } from './programPartFile'
 import { loadProgramPartGeometryFromFile } from './programPartGeometry'
@@ -7,6 +8,7 @@ export type ProgramPartPickEntry = {
   part: ProgramPartDescriptor
   geometry: BufferGeometry
   appearance: ModelAppearance
+  constraints: PreparedElementConstraints
   sourceHandle?: FileSystemHandle | null
 }
 
@@ -41,6 +43,7 @@ export async function pickProgramPartsFromFiles(
       part: meta.part,
       geometry: geometry.geometry,
       appearance: geometry.appearance,
+      constraints: geometry.constraints,
       sourceHandle: handle,
     })
   }

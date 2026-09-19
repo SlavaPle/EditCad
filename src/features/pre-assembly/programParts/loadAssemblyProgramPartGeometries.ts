@@ -1,4 +1,5 @@
 import type { BufferGeometry } from 'three'
+import type { PreparedElementConstraints } from '../../../lib/preparedElementFormat'
 import type { ModelAppearance } from '../../viewer-display/modelAppearance'
 import { getFileFromAssemblyRoot } from '../assemblyFile/assemblyRelativePath'
 import { restorePartFileHandle } from '../assemblyFile/assemblyPartHandleStore'
@@ -8,6 +9,7 @@ import { loadProgramPartGeometryFromFile } from './programPartGeometry'
 export type LoadAssemblyGeometriesResult = {
   geometries: Record<string, BufferGeometry>
   appearances: Record<string, ModelAppearance>
+  constraints: Record<string, PreparedElementConstraints>
   loadedCount: number
   missingRefs: string[]
   errors: string[]
@@ -18,7 +20,12 @@ async function loadPartGeometry(
   part: PreAssemblyProgramPart,
   directory: FileSystemDirectoryHandle | null,
 ): Promise<
-  | { ok: true; geometry: BufferGeometry; appearance: ModelAppearance }
+  | {
+      ok: true
+      geometry: BufferGeometry
+      appearance: ModelAppearance
+      constraints: PreparedElementConstraints
+    }
   | { ok: false; error: string }
 > {
   const storedHandle = await restorePartFileHandle(assemblyId, part.ref)
@@ -55,6 +62,7 @@ export async function loadGeometriesFromAssembly(
 ): Promise<LoadAssemblyGeometriesResult> {
   const geometries: Record<string, BufferGeometry> = {}
   const appearances: Record<string, ModelAppearance> = {}
+  const constraints: Record<string, PreparedElementConstraints> = {}
   const errors: string[] = []
   const missingRefs: string[] = []
   let loadedCount = 0
@@ -64,6 +72,7 @@ export async function loadGeometriesFromAssembly(
     if (result.ok) {
       geometries[part.id] = result.geometry
       appearances[part.id] = result.appearance
+      constraints[part.id] = result.constraints
       loadedCount += 1
     } else {
       errors.push(`${part.ref}: ${result.error}`)
@@ -71,5 +80,5 @@ export async function loadGeometriesFromAssembly(
     }
   }
 
-  return { geometries, appearances, loadedCount, missingRefs, errors }
+  return { geometries, appearances, constraints, loadedCount, missingRefs, errors }
 }

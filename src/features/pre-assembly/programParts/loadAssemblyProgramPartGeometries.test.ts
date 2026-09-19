@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { BoxGeometry } from 'three'
+import type { PreparedElementConstraints } from '../../../lib/preparedElementFormat'
 import type { ModelAppearance } from '../../viewer-display/modelAppearance'
 import { DEFAULT_MODEL_APPEARANCE } from '../../viewer-display/modelAppearance'
 import type { PreAssemblyProgramPart } from '../preAssemblyProgram'
@@ -45,6 +46,7 @@ describe('loadGeometriesFromAssembly', () => {
     expect(result).toEqual({
       geometries: {},
       appearances: {},
+      constraints: {},
       loadedCount: 0,
       missingRefs: [],
       errors: [],
@@ -62,7 +64,12 @@ describe('loadGeometriesFromAssembly', () => {
     const file = new File(['{}'], 'panel.ecdprt')
     const handle = { getFile: vi.fn().mockResolvedValue(file) }
     mockedRestoreHandle.mockResolvedValue(handle as unknown as FileSystemFileHandle)
-    mockedLoadPart.mockResolvedValue({ ok: true, geometry, appearance })
+    const constraints: PreparedElementConstraints = {
+      mode: 'fixed',
+      faceConstraints: [],
+      modelElements: [{ id: 'e1', faceIndices: [0] }],
+    }
+    mockedLoadPart.mockResolvedValue({ ok: true, geometry, appearance, constraints })
 
     const part = makePart('p1', 'parts/panel.ecdprt')
     const result = await loadGeometriesFromAssembly('asm-1', [part], null)
@@ -70,6 +77,7 @@ describe('loadGeometriesFromAssembly', () => {
     expect(result.loadedCount).toBe(1)
     expect(result.geometries.p1).toBe(geometry)
     expect(result.appearances.p1).toEqual(appearance)
+    expect(result.constraints.p1).toEqual(constraints)
     expect(result.missingRefs).toEqual([])
     expect(result.errors).toEqual([])
     expect(mockedGetFileFromRoot).not.toHaveBeenCalled()
@@ -85,6 +93,7 @@ describe('loadGeometriesFromAssembly', () => {
       ok: true,
       geometry,
       appearance: DEFAULT_MODEL_APPEARANCE,
+      constraints: { mode: 'fixed', faceConstraints: [], modelElements: [] },
     })
 
     const part = makePart('p2', 'bracket.ecdprt')
@@ -92,6 +101,11 @@ describe('loadGeometriesFromAssembly', () => {
 
     expect(result.loadedCount).toBe(1)
     expect(result.appearances.p2).toEqual(DEFAULT_MODEL_APPEARANCE)
+    expect(result.constraints.p2).toEqual({
+      mode: 'fixed',
+      faceConstraints: [],
+      modelElements: [],
+    })
     expect(mockedGetFileFromRoot).toHaveBeenCalledWith(directory, 'bracket.ecdprt')
     geometry.dispose()
   })
@@ -103,6 +117,7 @@ describe('loadGeometriesFromAssembly', () => {
     expect(result.loadedCount).toBe(0)
     expect(result.geometries).toEqual({})
     expect(result.appearances).toEqual({})
+    expect(result.constraints).toEqual({})
     expect(result.missingRefs).toEqual(['missing.ecdprt'])
     expect(result.errors[0]).toContain('No file access')
   })
@@ -116,7 +131,12 @@ describe('loadGeometriesFromAssembly', () => {
       opacity: 0.5,
     }
     mockedLoadPart
-      .mockResolvedValueOnce({ ok: true, geometry: okGeometry, appearance: textured })
+      .mockResolvedValueOnce({
+        ok: true,
+        geometry: okGeometry,
+        appearance: textured,
+        constraints: { mode: 'fixed', faceConstraints: [], modelElements: [] },
+      })
       .mockResolvedValueOnce({ ok: false, error: 'Corrupt ECDPRT' })
 
     const directory = {} as FileSystemDirectoryHandle
@@ -128,7 +148,13 @@ describe('loadGeometriesFromAssembly', () => {
     expect(result.loadedCount).toBe(1)
     expect(result.geometries.ok).toBe(okGeometry)
     expect(result.appearances.ok).toEqual(textured)
+    expect(result.constraints.ok).toEqual({
+      mode: 'fixed',
+      faceConstraints: [],
+      modelElements: [],
+    })
     expect(result.appearances.bad).toBeUndefined()
+    expect(result.constraints.bad).toBeUndefined()
     expect(result.missingRefs).toEqual(['bad.ecdprt'])
     expect(result.errors[0]).toContain('Corrupt ECDPRT')
     okGeometry.dispose()

@@ -1,15 +1,22 @@
 import type { BufferGeometry } from 'three'
 import { loadModel } from '../../../lib/loadModel'
+import type { PreparedElementConstraints } from '../../../lib/preparedElementFormat'
 import {
   DEFAULT_MODEL_APPEARANCE,
   type ModelAppearance,
 } from '../../viewer-display/modelAppearance'
+import { emptyProgramPartPreparedConstraints } from './resolveViewportPreparedBinding'
 
 export type ProgramPartGeometryLoadResult =
-  | { ok: true; geometry: BufferGeometry; appearance: ModelAppearance }
+  | {
+      ok: true
+      geometry: BufferGeometry
+      appearance: ModelAppearance
+      constraints: PreparedElementConstraints
+    }
   | { ok: false; error: string }
 
-/** Ładuje geometrię mesh i wygląd z pliku programu .ecdprt. */
+/** Ładuje geometrię mesh, wygląd i constraints z pliku programu .ecdprt. */
 export async function loadProgramPartGeometryFromFile(
   file: File,
 ): Promise<ProgramPartGeometryLoadResult> {
@@ -24,5 +31,6 @@ export async function loadProgramPartGeometryFromFile(
     ok: true,
     geometry: result.geometry,
     appearance: result.prepared?.appearance ?? DEFAULT_MODEL_APPEARANCE,
+    constraints: result.prepared?.constraints ?? emptyProgramPartPreparedConstraints(),
   }
 }

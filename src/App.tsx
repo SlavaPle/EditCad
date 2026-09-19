@@ -80,6 +80,7 @@ import {
   type PreAssemblyWizard,
   type ProgramPartFilePickerHandle,
   type ProgramPartPickEntry,
+  resolveViewportPreparedBinding,
 } from './features/pre-assembly'
 import { layoutProgramPartPositionsMm } from './features/pre-assembly/viewer'
 import { loadGeometriesFromAssembly } from './features/pre-assembly/programParts/loadAssemblyProgramPartGeometries'
@@ -165,6 +166,9 @@ function App() {
   const [programPartAppearances, setProgramPartAppearances] = useState<
     Record<string, ModelAppearance>
   >({})
+  const [programPartConstraints, setProgramPartConstraints] = useState<
+    Record<string, PreparedElementConstraints>
+  >({})
   const [programPartsFitToken, setProgramPartsFitToken] = useState(0)
   const [assemblyRootDirectoryHandle, setAssemblyRootDirectoryHandle] =
     useState<FileSystemDirectoryHandle | null>(null)
@@ -214,6 +218,8 @@ function App() {
   assemblyMatesRef.current = assemblyMates
   const programPartGeometriesRef = useRef(programPartGeometries)
   programPartGeometriesRef.current = programPartGeometries
+  const programPartConstraintsRef = useRef(programPartConstraints)
+  programPartConstraintsRef.current = programPartConstraints
   const modelLoaderRef = useRef<ModelLoaderHandle>(null)
   const assemblyLoaderRef = useRef<AssemblyLoaderHandle>(null)
   const programPartPickerRef = useRef<ProgramPartFilePickerHandle>(null)
@@ -244,13 +250,30 @@ function App() {
 
   const matesToolbarDisabled = programParts.length < 2
 
-  const activeProgramPartGeometry =
-    activeProgramPartId && preAssemblyActive
-      ? (programPartGeometries[activeProgramPartId] ?? null)
-      : null
+  const viewportPrepared = useMemo(
+    () =>
+      resolveViewportPreparedBinding({
+        preAssemblyActive,
+        activeProgramPartId,
+        programPartGeometries,
+        programPartConstraints,
+        mainModel: model,
+        mainPrepared: preparedConstraints,
+      }),
+    [
+      preAssemblyActive,
+      activeProgramPartId,
+      programPartGeometries,
+      programPartConstraints,
+      model,
+      preparedConstraints,
+    ],
+  )
 
-  const viewportSelectionModel =
-    preAssemblyActive && activeProgramPartGeometry ? activeProgramPartGeometry : model
+  const viewportSelectionModel = viewportPrepared.model
+  const viewportPreparedModelElements = viewportPrepared.modelElements
+  const viewportFaceConstraints = viewportPrepared.faceConstraints
+  const editingProgramPartId = viewportPrepared.activeProgramPartId
 
   const selectedPhantomAnchorId = preAssemblySelectionAnchorId(preAssemblySelection)
   const selectedPhantomElementId = preAssemblySelectionElementId(preAssemblySelection)
@@ -326,6 +349,7 @@ function App() {
       return {}
     })
     setProgramPartAppearances({})
+    setProgramPartConstraints({})
     setProgramParts([])
     setActiveProgramPartId(null)
     setAssemblySourceFileHandle(null)
@@ -363,18 +387,34 @@ function App() {
     }
   }, [])
 
-  const handleMergeModelElements = useCallback((newElements: readonly PreparedModelElement[]) => {
-    setPreparedConstraints((prev) => {
-      const existing = [...(prev.modelElements ?? [])]
-      const ids = new Set(existing.map((e) => e.id))
-      for (const el of newElements) {
-        if (ids.has(el.id)) continue
-        ids.add(el.id)
-        existing.push({ ...el, faceIndices: [...el.faceIndices] })
+  const handleMergeModelElements = useCallback(
+    (newElements: readonly PreparedModelElement[]) => {
+      const mergeInto = (
+        prev: PreparedElementConstraints,
+      ): PreparedElementConstraints => {
+        const existing = [...(prev.modelElements ?? [])]
+        const ids = new Set(existing.map((e) => e.id))
+        for (const el of newElements) {
+          if (ids.has(el.id)) continue
+          ids.add(el.id)
+          existing.push({ ...el, faceIndices: [...el.faceIndices] })
+        }
+        return { ...prev, modelElements: existing } as PreparedElementConstraints
       }
-      return { ...prev, modelElements: existing } as PreparedElementConstraints
-    })
-  }, [])
+
+      if (editingProgramPartId) {
+        setProgramPartConstraints((current) => {
+          const prev =
+            current[editingProgramPartId] ??
+            ({ mode: 'fixed', faceConstraints: [], modelElements: [] } as PreparedElementConstraints)
+          return { ...current, [editingProgramPartId]: mergeInto(prev) }
+        })
+        return
+      }
+      setPreparedConstraints((prev) => mergeInto(prev))
+    },
+    [editingProgramPartId],
+  )
 
   const preparedFaceConstraints = preparedConstraints.faceConstraints ?? []
 
@@ -410,8 +450,29 @@ function App() {
   }, [preparedFaceConstraints, focusedLimitConstraintId])
 
   const handleFaceConstraintsChange = useCallback((next: FaceConstraint[]) => {
-    setPreparedConstraints((prev) => ({ ...prev, faceConstraints: next }) as PreparedElementConstraints)
+    setPreparedConstraints(
+      (prev) => ({ ...prev, faceConstraints: next }) as PreparedElementConstraints,
+    )
   }, [])
+
+  const handleViewportFaceConstraintsChange = useCallback(
+    (next: FaceConstraint[]) => {
+      if (editingProgramPartId) {
+        setProgramPartConstraints((current) => {
+          const prev =
+            current[editingProgramPartId] ??
+            ({ mode: 'fixed', faceConstraints: [], modelElements: [] } as PreparedElementConstraints)
+          return {
+            ...current,
+            [editingProgramPartId]: { ...prev, faceConstraints: next } as PreparedElementConstraints,
+          }
+        })
+        return
+      }
+      handleFaceConstraintsChange(next)
+    },
+    [editingProgramPartId, handleFaceConstraintsChange],
+  )
 
   const handleReplaceLimitConstraint = useCallback(
     (next: FaceConstraint) => {
@@ -476,12 +537,13 @@ function App() {
 
   const handleApplyModelRotation = useCallback(
     (rotationDeg: RotationDegrees) => {
-      if (!model) return
-      rotateGeometryAroundCenter(model, rotationDeg)
-      clearMeshTopologyCaches(model)
+      const target = viewportSelectionModel
+      if (!target) return
+      rotateGeometryAroundCenter(target, rotationDeg)
+      clearMeshTopologyCaches(target)
       setGeometryRevision((n) => n + 1)
     },
-    [model],
+    [viewportSelectionModel],
   )
 
   const handleApplyTwoFaceStretch = useCallback(
@@ -528,6 +590,72 @@ function App() {
       return result
     },
     [model, selection, probableFaces, preparedConstraints, constraintsLocked],
+  )
+
+  const handleViewportApplyTwoFaceStretch = useCallback(
+    (
+      targetMm: number,
+      overlay?: ApplyTwoFaceStretchOverlay,
+    ):
+      | { ok: true; geometry: BufferGeometry; effectiveTargetMm: number }
+      | { ok: false; error: TwoFaceStretchError | PreparedStretchPrecheckError } => {
+      if (editingProgramPartId) {
+        const targetGeometry = viewportSelectionModel
+        if (!targetGeometry) {
+          return { ok: false, error: 'invalidGeometry' }
+        }
+        const faces = selection.faces
+        let mergedFaces: number[]
+        if (overlay?.mergedFaces?.length) {
+          mergedFaces = [...overlay.mergedFaces]
+        } else {
+          mergedFaces = [...faces]
+          const seen = new Set(faces)
+          for (const fi of probableFaces) {
+            if (seen.has(fi)) continue
+            mergedFaces.push(fi)
+            seen.add(fi)
+          }
+        }
+        if (mergedFaces.length === 0) {
+          return { ok: false, error: 'invalidGeometry' }
+        }
+
+        const preparedForStretch = programPartConstraintsRef.current[editingProgramPartId] ?? {
+          mode: 'fixed' as const,
+          faceConstraints: [],
+          modelElements: [],
+        }
+
+        const result = applyTwoFaceStretchWithConstraints({
+          geometry: targetGeometry,
+          targetMm,
+          mergedFaces,
+          prepared: preparedForStretch,
+          constraintsLocked,
+          overlay,
+        })
+        if (result.ok) {
+          if (result.geometry !== targetGeometry) {
+            setProgramPartGeometries((current) => ({
+              ...current,
+              [editingProgramPartId]: result.geometry,
+            }))
+          }
+          setGeometryRevision((n) => n + 1)
+        }
+        return result
+      }
+      return handleApplyTwoFaceStretch(targetMm, overlay)
+    },
+    [
+      editingProgramPartId,
+      viewportSelectionModel,
+      selection,
+      probableFaces,
+      constraintsLocked,
+      handleApplyTwoFaceStretch,
+    ],
   )
 
   const handleLoadModelClick = () => {
@@ -676,6 +804,14 @@ function App() {
       return nextAppearances
     })
 
+    setProgramPartConstraints((constraints) => {
+      const nextConstraints = { ...constraints }
+      for (let i = 0; i < newParts.length; i++) {
+        nextConstraints[newParts[i].id] = entries[i].constraints
+      }
+      return nextConstraints
+    })
+
     setProgramParts((current) => {
       const merged = mergeProgramPartsBatch(current, newParts)
 
@@ -772,6 +908,11 @@ function App() {
       delete next[partId]
       return next
     })
+    setProgramPartConstraints((constraints) => {
+      const next = { ...constraints }
+      delete next[partId]
+      return next
+    })
     setActiveProgramPartId((current) => (current === partId ? null : current))
     setProgramPartsFitToken((token) => token + 1)
     if (removedPart) {
@@ -789,6 +930,7 @@ function App() {
         return {
           geometries: {},
           appearances: {},
+          constraints: {},
           loadedCount: 0,
           missingRefs: [],
           errors: [],
@@ -798,6 +940,7 @@ function App() {
       if (Object.keys(result.geometries).length > 0) {
         setProgramPartGeometries(result.geometries)
         setProgramPartAppearances(result.appearances)
+        setProgramPartConstraints(result.constraints)
         setProgramParts((current) =>
           reapplyAllAssemblyMates({
             parts: current,
@@ -837,6 +980,7 @@ function App() {
         return {}
       })
       setProgramPartAppearances({})
+      setProgramPartConstraints({})
       setProgramParts(loadedParts)
       setProgramPartsFitToken((token) => token + 1)
       const embeddedPhantom = phantomDocFromAssemblyFile(file)
@@ -1317,10 +1461,10 @@ function App() {
           onAppearanceChange={handleAppearanceChange}
           limitsInstallConstraintType={limitsInstallConstraintType}
           onLimitsInstallConstraintTypeChange={setLimitsInstallConstraintType}
-          preparedModelElements={preparedConstraints.modelElements ?? []}
-          onApplyTwoFaceStretch={handleApplyTwoFaceStretch}
-          faceConstraints={preparedFaceConstraints}
-          onFaceConstraintsChange={handleFaceConstraintsChange}
+          preparedModelElements={viewportPreparedModelElements}
+          onApplyTwoFaceStretch={handleViewportApplyTwoFaceStretch}
+          faceConstraints={viewportFaceConstraints}
+          onFaceConstraintsChange={handleViewportFaceConstraintsChange}
           onMergeModelElements={handleMergeModelElements}
           onRestoreFaceSelection={handleRestoreFaceSelection}
           onLimitsInstallDone={() => setLimitsInstallActive(false)}

@@ -44,6 +44,11 @@ describe('loadProgramPartGeometryFromFile (integration)', () => {
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(result.appearance).toEqual(appearance)
+    expect(result.constraints).toEqual({
+      mode: 'fixed',
+      faceConstraints: [],
+      modelElements: [],
+    })
     expect(result.geometry.attributes.position).toBeDefined()
     result.geometry.dispose()
   })
