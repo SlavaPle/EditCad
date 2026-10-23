@@ -105,10 +105,18 @@ import {
   buildMateEntityHighlightsForPopup,
   type AssemblyMate,
   type MateDraftSession,
+  type MateEntityHighlights,
   type MatesPickMode,
   type MatesPickSlot,
   toggleMatesPickSlot,
 } from './features/assembly-mates'
+import {
+  DocumentTreeOverlay,
+  filterPartLocksForPartIds,
+  isPartLocked,
+  mergeMateEntityHighlights,
+  togglePartLock,
+} from './features/document-tree'
 import i18n from './i18n'
 
 function getFileExtensionLower(name: string | null): string | null {
@@ -199,6 +207,8 @@ function App() {
   const [mateOffsetInput, setMateOffsetInput] = useState('0')
   const [mateSolverErrorKey, setMateSolverErrorKey] = useState<string | null>(null)
   const [assemblyMates, setAssemblyMates] = useState<AssemblyMate[]>([])
+  const [partLockedById, setPartLockedById] = useState<Record<string, boolean>>({})
+  const [treeMateHighlights, setTreeMateHighlights] = useState<MateEntityHighlights | null>(null)
   const mateDraftSessionRef = useRef(mateDraftSession)
   mateDraftSessionRef.current = mateDraftSession
   const commitMateDraftSession = useCallback((next: MateDraftSession) => {
@@ -220,6 +230,8 @@ function App() {
     commitMateDraftSession(createMateDraftSession())
     setMateOffsetInput('0')
     setMateSolverErrorKey(null)
+    setTreeMateHighlights(null)
+    setPartLockedById({})
   }, [applyMatesPickSlot, commitMateDraftSession])
   const programPartsRef = useRef(programParts)
   programPartsRef.current = programParts
@@ -239,19 +251,19 @@ function App() {
     ? { active: true, slot: matesPickSlot }
     : { active: false, slot: null }
 
-  const mateEntityHighlights = useMemo(
-    () =>
-      buildMateEntityHighlightsForPopup(
-        matesPopupOpen,
-        mateDraftSession.draft.entityA,
-        mateDraftSession.draft.entityB,
-      ),
-    [
+  const mateEntityHighlights = useMemo(() => {
+    const popupHighlights = buildMateEntityHighlightsForPopup(
       matesPopupOpen,
       mateDraftSession.draft.entityA,
       mateDraftSession.draft.entityB,
-    ],
-  )
+    )
+    return mergeMateEntityHighlights(popupHighlights, treeMateHighlights)
+  }, [
+    matesPopupOpen,
+    mateDraftSession.draft.entityA,
+    mateDraftSession.draft.entityB,
+    treeMateHighlights,
+  ])
 
   const programPartNameById = useMemo(
     () => buildProgramPartDisplayNameById(programParts),
@@ -902,9 +914,35 @@ function App() {
 
   const handleProgramPartTransformChange = useCallback(
     (partId: string, transform: PhantomTransform) => {
+      if (isPartLocked(partLockedById, partId)) return
       setProgramParts(applyTransformWithMates(partId, transform))
     },
-    [applyTransformWithMates],
+    [applyTransformWithMates, partLockedById],
+  )
+
+  const handleTogglePartLock = useCallback((partId: string) => {
+    setPartLockedById((current) => togglePartLock(current, partId))
+  }, [])
+
+  const handleDocumentTreeEditAppearance = useCallback(
+    (partId: string | null) => {
+      if (partId) {
+        setActiveProgramPartId(partId)
+        setSelection(createEmptySelection())
+        setProbableFaces([])
+      }
+      setLimitsInstallActive(false)
+      setAppearanceEditActive(true)
+    },
+    [],
+  )
+
+  const handleDocumentTreeHighlightElementFaces = useCallback(
+    (_partId: string | null, faceIndices: number[]) => {
+      setSelection(selectFaces(createEmptySelection(), faceIndices, 'replace'))
+      setProbableFaces([])
+    },
+    [],
   )
 
   /** Ustaw transform bez re-snap zapisanych mates (preview / revert draft). */
@@ -937,6 +975,7 @@ function App() {
       const next = removeProgramPart(current, partId)
       const partIds = new Set(next.map((part) => part.id))
       setAssemblyMates((mates) => filterAssemblyMatesForPartIds(mates, partIds))
+      setPartLockedById((locks) => filterPartLocksForPartIds(locks, partIds))
       return next
     })
     setProgramPartGeometries((geometries) => {
@@ -1491,6 +1530,23 @@ function App() {
             mateEntityHighlights={mateEntityHighlights}
             matesPickSlotRef={matesPickSlotRef}
             onMateEntityPicked={handleMateEntityPicked}
+          />
+          <DocumentTreeOverlay
+            mainModel={model}
+            mainFileName={sourceFileName}
+            assemblyName={assemblyDocMeta.name}
+            programParts={programParts}
+            programPartGeometries={programPartGeometries}
+            programPartConstraints={programPartConstraints}
+            assemblyMates={assemblyMates}
+            activeProgramPartId={activeProgramPartId}
+            partLocks={partLockedById}
+            onActivePartChange={handleActiveProgramPartChange}
+            onTogglePartLock={handleTogglePartLock}
+            onRemovePart={handleRemoveProgramPart}
+            onEditAppearance={handleDocumentTreeEditAppearance}
+            onTreeMateHighlightsChange={setTreeMateHighlights}
+            onHighlightElementFaces={handleDocumentTreeHighlightElementFaces}
           />
         </div>
         {matesPopupOpen && (

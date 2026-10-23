@@ -134,6 +134,33 @@
       "missingGeometry": "Геометрия детали не загружена."
     }
   },
+  "documentTree": {
+    "title": "Дерево документа",
+    "untitledPart": "Деталь",
+    "untitledAssembly": "Сборка",
+    "expand": "Развернуть",
+    "collapse": "Свернуть",
+    "locked": "Заблокировано",
+    "nodes": {
+      "model": "Модель",
+      "appearance": "Внешний вид",
+      "elements": "Элементы",
+      "mates": "Привязки"
+    },
+    "menu": {
+      "select": "Выбрать",
+      "lock": "Заблокировать",
+      "unlock": "Разблокировать",
+      "removePart": "Удалить деталь",
+      "editAppearance": "Редактировать внешний вид",
+      "copySize": "Копировать размер",
+      "highlightElement": "Подсветить грани",
+      "highlightMate": "Подсветить привязку",
+      "clearMateHighlight": "Снять подсветку",
+      "expandAll": "Развернуть всё",
+      "collapseAll": "Свернуть всё"
+    }
+  },
   "preAssembly": {
     "createPhantom": {
       "button": "Создать фантом",

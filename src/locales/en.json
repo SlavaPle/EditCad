@@ -134,6 +134,33 @@
       "missingGeometry": "Part geometry is not loaded."
     }
   },
+  "documentTree": {
+    "title": "Document tree",
+    "untitledPart": "Part",
+    "untitledAssembly": "Assembly",
+    "expand": "Expand",
+    "collapse": "Collapse",
+    "locked": "Locked",
+    "nodes": {
+      "model": "Model",
+      "appearance": "Appearance",
+      "elements": "Elements",
+      "mates": "Mates"
+    },
+    "menu": {
+      "select": "Select",
+      "lock": "Lock",
+      "unlock": "Unlock",
+      "removePart": "Remove part",
+      "editAppearance": "Edit appearance",
+      "copySize": "Copy size",
+      "highlightElement": "Highlight faces",
+      "highlightMate": "Highlight mates",
+      "clearMateHighlight": "Clear highlight",
+      "expandAll": "Expand all",
+      "collapseAll": "Collapse all"
+    }
+  },
   "preAssembly": {
     "createPhantom": {
       "button": "Create phantom",
