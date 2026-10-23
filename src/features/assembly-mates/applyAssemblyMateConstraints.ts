@@ -103,21 +103,29 @@ export type ReapplyAllAssemblyMatesInput = {
   geometries: Readonly<Record<string, BufferGeometry | null | undefined>>
 }
 
-/** Po wczytaniu .ecdasm — odtwarza pozycje detali B z zapisanych mates[]. */
+/**
+ * Po mutacji mates (load / unsuppress / delete) — wymusza projekcję każdego
+ * aktywnego mate na detal B, nawet gdy A się nie ruszył.
+ * (applyAssemblyMateConstraints przy „ruchu” A na tę samą pose zostawia złe seed B.)
+ */
 export function reapplyAllAssemblyMates(input: ReapplyAllAssemblyMatesInput): PreAssemblyProgramPart[] {
   let parts = [...input.parts]
   for (const mate of input.mates) {
     if (mate.kind !== 'parallel') continue
     if (isMateSuppressed(mate)) continue
-    const anchor = parts.find((part) => part.id === mate.entityA.partId)
-    if (!anchor) continue
-    parts = applyAssemblyMateConstraints({
-      parts,
-      mates: [mate],
-      geometries: input.geometries,
-      movedPartId: anchor.id,
-      movedTransform: anchor.transform,
-    })
+
+    const partsById = new Map(parts.map((part) => [part.id, part]))
+    const driven = partsById.get(mate.entityB.partId)
+    if (!driven) continue
+
+    const nextTransformB = projectMateForAssembly(
+      mate,
+      partsById,
+      input.geometries,
+      driven.transform,
+    )
+    if (!nextTransformB) continue
+    parts = updateProgramPartTransform(parts, mate.entityB.partId, nextTransformB)
   }
   return parts
 }

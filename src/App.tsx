@@ -114,6 +114,7 @@ import {
   openMateFromFacePair,
   buildMateEntityHighlightsForPopup,
   removeAssemblyMate,
+  syncProgramPartsAfterMatesChange,
   toggleAssemblyMateSuppressed,
   type AssemblyMate,
   type MateDraftSession,
@@ -972,22 +973,38 @@ function App() {
     setPartLockedById((current) => togglePartLock(current, partId))
   }, [])
 
-  const handleDeleteAssemblyMate = useCallback((mateId: string) => {
-    setAssemblyMates((current) => {
-      const next = removeAssemblyMate(current, mateId)
-      assemblyMatesRef.current = next
-      return next
+  /**
+   * Globalna reguła: każda mutacja mates[] → natychmiast sync pozycji detali.
+   * @see syncProgramPartsAfterMatesChange / .cursor/rules/mates-sync-program-parts.mdc
+   */
+  const commitAssemblyMates = useCallback((nextMates: AssemblyMate[]) => {
+    assemblyMatesRef.current = nextMates
+    setAssemblyMates(nextMates)
+    setProgramParts((current) => {
+      const synced = syncProgramPartsAfterMatesChange({
+        parts: current,
+        mates: nextMates,
+        geometries: programPartGeometriesRef.current,
+      })
+      programPartsRef.current = synced
+      return synced
     })
-    setTreeMateHighlights(null)
   }, [])
 
-  const handleToggleMateSuppressed = useCallback((mateId: string) => {
-    setAssemblyMates((current) => {
-      const next = toggleAssemblyMateSuppressed(current, mateId)
-      assemblyMatesRef.current = next
-      return next
-    })
-  }, [])
+  const handleDeleteAssemblyMate = useCallback(
+    (mateId: string) => {
+      commitAssemblyMates(removeAssemblyMate(assemblyMatesRef.current, mateId))
+      setTreeMateHighlights(null)
+    },
+    [commitAssemblyMates],
+  )
+
+  const handleToggleMateSuppressed = useCallback(
+    (mateId: string) => {
+      commitAssemblyMates(toggleAssemblyMateSuppressed(assemblyMatesRef.current, mateId))
+    },
+    [commitAssemblyMates],
+  )
 
   const handleDocumentTreeEditAppearance = useCallback(
     (partId: string | null) => {
@@ -1075,9 +1092,17 @@ function App() {
     setProgramParts((current) => {
       const next = removeProgramPart(current, partId)
       const partIds = new Set(next.map((part) => part.id))
-      setAssemblyMates((mates) => filterAssemblyMatesForPartIds(mates, partIds))
+      const nextMates = filterAssemblyMatesForPartIds(assemblyMatesRef.current, partIds)
+      assemblyMatesRef.current = nextMates
+      setAssemblyMates(nextMates)
       setPartLockedById((locks) => filterPartLocksForPartIds(locks, partIds))
-      return next
+      const synced = syncProgramPartsAfterMatesChange({
+        parts: next,
+        mates: nextMates,
+        geometries: programPartGeometriesRef.current,
+      })
+      programPartsRef.current = synced
+      return synced
     })
     setProgramPartGeometries((geometries) => {
       const next = { ...geometries }
@@ -1523,23 +1548,35 @@ function App() {
   const handleMateSave = useCallback(() => {
     const saved = mateDraftSave(mateDraftSession, assemblyMates)
     if (!saved.ok) return
-    setAssemblyMates(saved.mates)
+    commitAssemblyMates(saved.mates)
     commitMateDraftSession(saved.session)
     setMateOffsetInput('0')
     applyMatesPickSlot(null)
     setMateSolverErrorKey(null)
-  }, [applyMatesPickSlot, assemblyMates, commitMateDraftSession, mateDraftSession])
+  }, [
+    applyMatesPickSlot,
+    assemblyMates,
+    commitAssemblyMates,
+    commitMateDraftSession,
+    mateDraftSession,
+  ])
 
   const handleMateSaveAndClose = useCallback(() => {
     const saved = mateDraftSave(mateDraftSession, assemblyMates)
     if (!saved.ok) return
-    setAssemblyMates(saved.mates)
+    commitAssemblyMates(saved.mates)
     commitMateDraftSession(saved.session)
     setMateOffsetInput('0')
     applyMatesPickSlot(null)
     setMateSolverErrorKey(null)
     setMatesPopupOpen(false)
-  }, [applyMatesPickSlot, assemblyMates, commitMateDraftSession, mateDraftSession])
+  }, [
+    applyMatesPickSlot,
+    assemblyMates,
+    commitAssemblyMates,
+    commitMateDraftSession,
+    mateDraftSession,
+  ])
 
   return (
     <div className={styles.app}>

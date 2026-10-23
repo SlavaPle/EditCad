@@ -118,6 +118,11 @@ export {
   type ApplyAssemblyMateConstraintsInput,
   type ReapplyAllAssemblyMatesInput,
 } from './applyAssemblyMateConstraints'
+export {
+  MATES_CHANGE_MUST_SYNC_PROGRAM_PARTS,
+  syncProgramPartsAfterMatesChange,
+  type SyncProgramPartsAfterMatesChangeInput,
+} from './syncProgramPartsAfterMatesChange'
 export { pickMateLineEdge } from './pickMateLineEdge'
 export {
   MATE_ENTITY_PICK_FILTER,

@@ -10,6 +10,7 @@ import {
   filterAssemblyMatesForPartIds,
   reapplyAllAssemblyMates,
 } from './applyAssemblyMateConstraints'
+import { syncProgramPartsAfterMatesChange } from './syncProgramPartsAfterMatesChange'
 
 function quadInPlaneZ(z: number, facingUp: boolean): BufferGeometry {
   const geo = new BufferGeometry()
@@ -135,6 +136,44 @@ describe('applyAssemblyMateConstraints', () => {
     })
     expect(result.find((p) => p.id === 'a')?.transform.positionMm[0]).toBe(50)
     expect(result.find((p) => p.id === 'b')?.transform.positionMm[0]).toBe(200)
+  })
+
+  it('reapplyAllAssemblyMates projects B without requiring A to move', () => {
+    const parts = [part('a', [0, 0, 0]), part('b', [200, 0, 0])]
+    const result = reapplyAllAssemblyMates({ parts, mates: [mate], geometries })
+    const partA = result.find((p) => p.id === 'a')!
+    const partB = result.find((p) => p.id === 'b')!
+    expect(mateGapMm(geometryA, partA.transform, geometryB, partB.transform)).toBeCloseTo(0, 2)
+  })
+
+  it('unsuppress via syncProgramPartsAfterMatesChange restores mate gap', () => {
+    const established = applyAssemblyMateConstraints({
+      parts: [part('a', [0, 0, 0]), part('b', [200, 0, 0])],
+      mates: [mate],
+      geometries,
+      movedPartId: 'a',
+      movedTransform: { positionMm: [40, 0, 0], rotationDeg: [0, 0, 0] },
+    })
+    const drifted = established.map((p) =>
+      p.id === 'b'
+        ? { ...p, transform: { positionMm: [200, 30, 0] as [number, number, number], rotationDeg: [0, 0, 0] as [number, number, number] } }
+        : p,
+    )
+    const whileOff = syncProgramPartsAfterMatesChange({
+      parts: drifted,
+      mates: [{ ...mate, suppressed: true }],
+      geometries,
+    })
+    expect(whileOff.find((p) => p.id === 'b')?.transform.positionMm[0]).toBe(200)
+
+    const afterOn = syncProgramPartsAfterMatesChange({
+      parts: whileOff,
+      mates: [mate],
+      geometries,
+    })
+    const partA = afterOn.find((p) => p.id === 'a')!
+    const partB = afterOn.find((p) => p.id === 'b')!
+    expect(mateGapMm(geometryA, partA.transform, geometryB, partB.transform)).toBeCloseTo(0, 2)
   })
 
   it('preserves saved offset when anchor A moves', () => {
