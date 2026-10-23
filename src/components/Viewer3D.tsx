@@ -6,6 +6,7 @@ import { MouseOrbitViewControls } from '../features/viewer-camera/MouseOrbitView
 import { OrbitViewRotationProvider } from '../features/viewer-camera/OrbitViewRotationProvider'
 import { ViewCubeGizmo } from '../features/view-navigation/ViewCubeGizmo'
 import { SceneContent } from './Viewer3D/SceneContent'
+import { shouldClearSelectionOnPointerMiss } from '../features/viewer-selection'
 import styles from './Viewer3D.module.css'
 import { createEmptySelection, type SelectionState } from '../lib/selection'
 import type { ModelSelectionProximityFilter } from '../features/model-selection/types'
@@ -119,8 +120,8 @@ export function Viewer3D({
           scene.background = new Color(VIEWER_BACKGROUND)
         }}
         onPointerMissed={(ev) => {
-          // Tylko LKM czyści zaznaczenie; obrót widoku (śPM) nie dotyka selekcji
-          if (ev.shiftKey || ev.button !== 0) return
+          // Globalna reguła: LKM w puste miejsce zawsze czyści wszystkie zaznaczenia.
+          if (!shouldClearSelectionOnPointerMiss(ev)) return
           clearAllSelection('pointerMissed')
         }}
       >
@@ -181,11 +182,16 @@ export function Viewer3D({
           fadeStrength={1}
           infiniteGrid
           onPointerDown={(e) => {
-            const shiftHeld = e.shiftKey || e.nativeEvent.shiftKey
-            // Tylko LKM na siatce czyści zaznaczenie
-            if (!shiftHeld && e.nativeEvent.button === 0) {
-              clearAllSelection('grid')
+            // Globalna reguła: LKM w puste miejsce (siatka) zawsze czyści zaznaczenia.
+            if (
+              !shouldClearSelectionOnPointerMiss({
+                button: e.nativeEvent.button,
+                shiftKey: e.shiftKey || e.nativeEvent.shiftKey,
+              })
+            ) {
+              return
             }
+            clearAllSelection('grid')
           }}
           />
         </OrbitViewRotationProvider>

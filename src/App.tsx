@@ -118,6 +118,7 @@ import {
   mergeMateEntityHighlights,
   togglePartLock,
 } from './features/document-tree'
+import { createClearedViewportSelectionState } from './features/viewer-selection'
 import i18n from './i18n'
 
 function getFileExtensionLower(name: string | null): string | null {
@@ -210,6 +211,8 @@ function App() {
   const [assemblyMates, setAssemblyMates] = useState<AssemblyMate[]>([])
   const [partLockedById, setPartLockedById] = useState<Record<string, boolean>>({})
   const [treeMateHighlights, setTreeMateHighlights] = useState<MateEntityHighlights | null>(null)
+  /** Inkrement przy clear pustego kliknięcia — drzewo dokumentu resetuje zaznaczenie węzła. */
+  const [viewportSelectionClearEpoch, setViewportSelectionClearEpoch] = useState(0)
   const mateDraftSessionRef = useRef(mateDraftSession)
   mateDraftSessionRef.current = mateDraftSession
   const commitMateDraftSession = useCallback((next: MateDraftSession) => {
@@ -303,11 +306,18 @@ function App() {
   const selectedPhantomAnchorId = preAssemblySelectionAnchorId(preAssemblySelection)
   const selectedPhantomElementId = preAssemblySelectionElementId(preAssemblySelection)
 
+  /** Globalna reguła: LKM w puste miejsce zawsze czyści wszystkie zaznaczenia. */
   const clearAllSelection = useCallback(() => {
-    setSelection(createEmptySelection())
-    setProbableFaces([])
-    setLimitsInstallActive(false)
-    setAppearanceEditActive(false)
+    const cleared = createClearedViewportSelectionState()
+    setSelection(cleared.selection)
+    setProbableFaces(cleared.probableFaces)
+    setActiveProgramPartId(cleared.activeProgramPartId)
+    setTreeMateHighlights(cleared.treeMateHighlights)
+    setPreAssemblySelection(cleared.preAssemblySelection)
+    setFocusedLimitConstraintId(cleared.focusedLimitConstraintId)
+    setLimitsInstallActive(cleared.limitsInstallActive)
+    setAppearanceEditActive(cleared.appearanceEditActive)
+    setViewportSelectionClearEpoch((n) => n + 1)
   }, [])
 
   const handleRestoreFaceSelection = useCallback((faceTriangleIndices: readonly number[]) => {
@@ -1557,6 +1567,7 @@ function App() {
             onEditAppearance={handleDocumentTreeEditAppearance}
             onTreeMateHighlightsChange={setTreeMateHighlights}
             onHighlightElementFaces={handleDocumentTreeHighlightElementFaces}
+            selectionClearEpoch={viewportSelectionClearEpoch}
           />
         </div>
         {matesPopupOpen && (

@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from 'react'
+import { useMemo, useState, useCallback, useEffect } from 'react'
 import type { BufferGeometry } from 'three'
 import { useTranslation } from 'react-i18next'
 import type { AssemblyMate } from '../assembly-mates/model'
@@ -32,6 +32,8 @@ export type DocumentTreeOverlayProps = {
   onEditAppearance: (partId: string | null) => void
   onTreeMateHighlightsChange: (highlights: MateEntityHighlights | null) => void
   onHighlightElementFaces?: (partId: string | null, faceIndices: number[]) => void
+  /** Epoch z App po clear pustego kliknięcia — zeruje zaznaczenie węzła w drzewie. */
+  selectionClearEpoch?: number
 }
 
 export function DocumentTreeOverlay({
@@ -50,9 +52,15 @@ export function DocumentTreeOverlay({
   onEditAppearance,
   onTreeMateHighlightsChange,
   onHighlightElementFaces,
+  selectionClearEpoch = 0,
 }: DocumentTreeOverlayProps) {
   const { t } = useTranslation()
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (selectionClearEpoch === 0) return
+    setSelectedNodeId(null)
+  }, [selectionClearEpoch])
 
   const partDisplayNameById = useMemo(
     () => buildProgramPartDisplayNameById(programParts),
