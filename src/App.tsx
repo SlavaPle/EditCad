@@ -769,7 +769,7 @@ function App() {
     setPreAssemblySelection({ kind: 'envelope' })
     setLimitsInstallActive(false)
     setAppearanceEditActive(false)
-  }, [])
+  }, [i18n])
 
   const handleAddPart = useCallback(() => {
     setProgramLoadError(null)
@@ -966,7 +966,7 @@ function App() {
       setProgramLoadError(messages.length > 0 ? messages.join('\n') : null)
       return result
     },
-    [],
+    [i18n],
   )
 
   const handleAssemblyLoad = useCallback(
@@ -1141,19 +1141,6 @@ function App() {
     programParts.length,
   ])
 
-  const handleCreateAttachment = useCallback(() => {
-    if (preAssemblyToolbarUi.createAttachmentDisabled) return
-    setPreAssemblyWizard((current) => {
-      const next = current === 'attachment' ? null : 'attachment'
-      if (next !== null) {
-        setLimitsInstallActive(false)
-        setAppearanceEditActive(false)
-        closeMatesPopup()
-      }
-      return next
-    })
-  }, [preAssemblyToolbarUi.createAttachmentDisabled])
-
   const revertMatePreviewIfNeeded = useCallback(
     (session: MateDraftSession): MateDraftSession => {
       if (!mateDraftHasUnsavedApply(session)) return session
@@ -1173,6 +1160,19 @@ function App() {
     applyMatesPickSlot(null)
     setMateSolverErrorKey(null)
   }, [applyMatesPickSlot, patchMateDraftSession, revertMatePreviewIfNeeded])
+
+  const handleCreateAttachment = useCallback(() => {
+    if (preAssemblyToolbarUi.createAttachmentDisabled) return
+    setPreAssemblyWizard((current) => {
+      const next = current === 'attachment' ? null : 'attachment'
+      if (next !== null) {
+        setLimitsInstallActive(false)
+        setAppearanceEditActive(false)
+        closeMatesPopup()
+      }
+      return next
+    })
+  }, [closeMatesPopup, preAssemblyToolbarUi.createAttachmentDisabled])
 
   const handleToggleMatesPopup = useCallback(() => {
     if (matesPopupOpen) {
