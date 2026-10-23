@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { DocumentTreeContextMenuIcon } from './DocumentTreeContextMenuIcons'
 import type { DocumentTreeContextActionId, DocumentTreeNode } from './model'
 import styles from './DocumentTree.module.css'
 
@@ -110,7 +111,10 @@ export function DocumentTreeContextMenu({
               onClose()
             }}
           >
-            {t(item.labelKey)}
+            <span className={styles.contextItemIcon}>
+              <DocumentTreeContextMenuIcon actionId={item.id} />
+            </span>
+            <span className={styles.contextItemLabel}>{t(item.labelKey)}</span>
           </button>
         </li>
       ))}

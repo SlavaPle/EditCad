@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ViewerContextMenuIcon } from './ViewerContextMenuIcons'
 import styles from './ViewerContextMenu.module.css'
 
 export type ViewerContextMenuActionId = 'addMate'
@@ -89,7 +90,10 @@ export function ViewerContextMenu({
               onClose()
             }}
           >
-            {t(item.labelKey)}
+            <span className={styles.contextItemIcon}>
+              <ViewerContextMenuIcon actionId={item.id} />
+            </span>
+            <span className={styles.contextItemLabel}>{t(item.labelKey)}</span>
           </button>
         </li>
       ))}
