@@ -9,6 +9,7 @@ import { buildProgramPartDisplayNameById } from '../pre-assembly/programParts/pr
 import type { PreparedElementConstraints } from '../../lib/preparedElementFormat'
 import { buildDocumentTree } from './buildDocumentTree'
 import { DocumentTree } from './DocumentTree'
+import { resolveDocumentTreeSelectEffect } from './documentTreeSelectActions'
 import { highlightsFromAssemblyMate } from './mateHighlightsFromTree'
 import type { DocumentTreeContextActionId, DocumentTreeNode } from './model'
 import type { PartLockMap } from './partLock'
@@ -108,32 +109,40 @@ export function DocumentTreeOverlay({
     [assemblyMates],
   )
 
+  const matesById = useMemo(() => {
+    const map: Record<string, AssemblyMate> = {}
+    for (const mate of assemblyMates) {
+      map[mate.id] = mate
+    }
+    return map
+  }, [assemblyMates])
+
   const handleSelectNode = useCallback(
     (node: DocumentTreeNode) => {
       setSelectedNodeId(node.id)
-      if (node.kind === 'part' && node.partId) {
-        onActivePartChange(node.partId)
+      const effect = resolveDocumentTreeSelectEffect(node, {
+        matesById,
+        modelElementsByPartId,
+      })
+      if (effect.kind === 'activatePart') {
+        onActivePartChange(effect.partId)
         return
       }
-      if (node.kind === 'mate' && node.mateId) {
-        onTreeMateHighlightsChange(highlightsFromAssemblyMate(findMate(node.mateId)) ?? null)
+      if (effect.kind === 'highlightMate') {
+        onTreeMateHighlightsChange(effect.highlights)
         return
       }
-      if (node.kind === 'element' && node.partId && node.elementId) {
-        const elements = programPartConstraints[node.partId]?.modelElements ?? []
-        const el = elements.find((e) => e.id === node.elementId)
-        if (el && onHighlightElementFaces) {
-          onActivePartChange(node.partId)
-          onHighlightElementFaces(node.partId, [...el.faceIndices])
-        }
+      if (effect.kind === 'highlightElement') {
+        onActivePartChange(effect.partId)
+        onHighlightElementFaces?.(effect.partId, effect.faceIndices)
       }
     },
     [
-      findMate,
+      matesById,
+      modelElementsByPartId,
       onActivePartChange,
       onHighlightElementFaces,
       onTreeMateHighlightsChange,
-      programPartConstraints,
     ],
   )
 

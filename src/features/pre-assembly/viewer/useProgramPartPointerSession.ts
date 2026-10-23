@@ -49,6 +49,8 @@ export type ProgramPartPointerSessionHandlers = {
   /** Tryb wyboru płaszczyzny przywiązania — bez drag detalu. */
   matesPickActive?: boolean
   matesPickSlotRef?: RefObject<MatesPickSlot | null>
+  /** Zablokowany detal: klik/select OK, bez translate/rotate. */
+  isPartLocked?: (partId: string) => boolean
 }
 
 export function useProgramPartPointerSession(handlers: ProgramPartPointerSessionHandlers) {
@@ -90,6 +92,10 @@ export function useProgramPartPointerSession(handlers: ProgramPartPointerSession
       const session = sessionRef.current
       if (!session || session.pointerId !== ev.pointerId) return
 
+      const h = handlersRef.current
+      // Zablokowany detal: sesja tylko pod klik/select — bez drag.
+      if (h.isPartLocked?.(session.partId)) return
+
       if (!session.dragged && pointerSessionShouldDrag(session, ev.clientX, ev.clientY)) {
         sessionRef.current = { ...markProgramPartSessionDragged(session), downEvent: session.downEvent }
         setBodyCursor(session.mode === 'rotate' ? 'ew-resize' : 'grabbing')
@@ -98,7 +104,6 @@ export function useProgramPartPointerSession(handlers: ProgramPartPointerSession
       const active = sessionRef.current
       if (!active?.dragged) return
 
-      const h = handlersRef.current
       if (active.mode === 'rotate') {
         const transform = computeRotateTransform(active, ev.clientX, ev.clientY)
         liveTransformRef.current = transform

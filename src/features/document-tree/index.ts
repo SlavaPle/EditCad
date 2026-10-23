@@ -15,8 +15,14 @@ export {
 } from './buildDocumentTree'
 
 export {
+  resolveDocumentTreeSelectEffect,
+  type DocumentTreeSelectEffect,
+} from './documentTreeSelectActions'
+
+export {
   filterPartLocksForPartIds,
   isPartLocked,
+  lockedPartIdSet,
   setPartLock,
   togglePartLock,
   type PartLockMap,

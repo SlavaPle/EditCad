@@ -114,6 +114,7 @@ import {
   DocumentTreeOverlay,
   filterPartLocksForPartIds,
   isPartLocked,
+  lockedPartIdSet,
   mergeMateEntityHighlights,
   togglePartLock,
 } from './features/document-tree'
@@ -241,6 +242,8 @@ function App() {
   programPartGeometriesRef.current = programPartGeometries
   const programPartConstraintsRef = useRef(programPartConstraints)
   programPartConstraintsRef.current = programPartConstraints
+  const partLockedByIdRef = useRef(partLockedById)
+  partLockedByIdRef.current = partLockedById
   const assemblyLoadGenerationRef = useRef(0)
   const modelLoaderRef = useRef<ModelLoaderHandle>(null)
   const assemblyLoaderRef = useRef<AssemblyLoaderHandle>(null)
@@ -907,17 +910,23 @@ function App() {
         geometries: programPartGeometriesRef.current,
         movedPartId: partId,
         movedTransform: transform,
+        lockedPartIds: lockedPartIdSet(partLockedByIdRef.current),
       })
     },
     [],
   )
 
+  const isProgramPartLocked = useCallback(
+    (partId: string) => isPartLocked(partLockedByIdRef.current, partId),
+    [],
+  )
+
   const handleProgramPartTransformChange = useCallback(
     (partId: string, transform: PhantomTransform) => {
-      if (isPartLocked(partLockedById, partId)) return
+      if (isProgramPartLocked(partId)) return
       setProgramParts(applyTransformWithMates(partId, transform))
     },
-    [applyTransformWithMates, partLockedById],
+    [applyTransformWithMates, isProgramPartLocked],
   )
 
   const handleTogglePartLock = useCallback((partId: string) => {
@@ -1526,6 +1535,7 @@ function App() {
             resolveMateFollowers={
               assemblyMates.length > 0 ? applyTransformWithMates : undefined
             }
+            isProgramPartLocked={isProgramPartLocked}
             matesPickMode={matesPickMode}
             mateEntityHighlights={mateEntityHighlights}
             matesPickSlotRef={matesPickSlotRef}

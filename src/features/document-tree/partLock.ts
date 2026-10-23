@@ -43,3 +43,12 @@ export function filterPartLocksForPartIds(
   }
   return next
 }
+
+/** Zbiór id zablokowanych detali (do solvera mates / drag). */
+export function lockedPartIdSet(locks: PartLockMap): ReadonlySet<string> {
+  const ids = new Set<string>()
+  for (const [id, locked] of Object.entries(locks)) {
+    if (locked) ids.add(id)
+  }
+  return ids
+}

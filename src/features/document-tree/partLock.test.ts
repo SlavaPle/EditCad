@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   filterPartLocksForPartIds,
   isPartLocked,
+  lockedPartIdSet,
   setPartLock,
   togglePartLock,
 } from './partLock'
@@ -30,5 +31,9 @@ describe('partLock', () => {
       new Set(['a', 'c']),
     )
     expect(filtered).toEqual({ a: true, c: true })
+  })
+
+  it('lockedPartIdSet collects locked ids', () => {
+    expect([...lockedPartIdSet({ a: true, b: false, c: true })].sort()).toEqual(['a', 'c'])
   })
 })

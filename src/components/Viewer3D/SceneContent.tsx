@@ -58,6 +58,7 @@ interface SceneContentProps {
     movedPartId: string,
     movedTransform: PhantomTransform,
   ) => readonly PreAssemblyProgramPart[]
+  isProgramPartLocked?: (partId: string) => boolean
   matesPickMode?: MatesPickMode
   mateEntityHighlights?: MateEntityHighlights | null
   matesPickSlotRef?: RefObject<MatesPickSlot | null>
@@ -88,6 +89,7 @@ export function SceneContent({
   onActiveProgramPartChange,
   onProgramPartTransformChange,
   resolveMateFollowers,
+  isProgramPartLocked,
   matesPickMode = { active: false, slot: null },
   mateEntityHighlights = null,
   matesPickSlotRef,
@@ -115,6 +117,7 @@ export function SceneContent({
           onProbableFacesChange={onProbableFacesChange}
           onPartTransformChange={onProgramPartTransformChange}
           resolveMateFollowers={resolveMateFollowers}
+          isPartLocked={isProgramPartLocked}
           matesPickMode={matesPickMode}
           mateEntityHighlights={mateEntityHighlights}
           matesPickSlotRef={matesPickSlotRef}

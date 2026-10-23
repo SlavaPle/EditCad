@@ -12,6 +12,8 @@ export type ApplyAssemblyMateConstraintsInput = {
   geometries: Readonly<Record<string, BufferGeometry | null | undefined>>
   movedPartId: string
   movedTransform: PhantomTransform
+  /** Zablokowane detale nie zmieniają pozycji (ani jako moved, ani jako driven). */
+  lockedPartIds?: ReadonlySet<string>
 }
 
 function projectMateForAssembly(
@@ -45,6 +47,11 @@ function projectMateForAssembly(
 export function applyAssemblyMateConstraints(
   input: ApplyAssemblyMateConstraintsInput,
 ): PreAssemblyProgramPart[] {
+  const locked = input.lockedPartIds
+  if (locked?.has(input.movedPartId)) {
+    return [...input.parts]
+  }
+
   if (input.mates.length === 0) {
     return updateProgramPartTransform(input.parts, input.movedPartId, input.movedTransform)
   }
@@ -61,6 +68,7 @@ export function applyAssemblyMateConstraints(
     const anchorId = mate.entityA.partId
     const drivenId = mate.entityB.partId
     if (input.movedPartId !== anchorId && input.movedPartId !== drivenId) continue
+    if (locked?.has(drivenId)) continue
 
     const driven = partsById.get(drivenId)
     if (!driven) continue
