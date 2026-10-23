@@ -118,7 +118,10 @@ import {
   mergeMateEntityHighlights,
   togglePartLock,
 } from './features/document-tree'
-import { createClearedViewportSelectionState } from './features/viewer-selection'
+import {
+  createClearedViewportSelectionState,
+  nextViewportSelectionClearEpoch,
+} from './features/viewer-selection'
 import i18n from './i18n'
 
 function getFileExtensionLower(name: string | null): string | null {
@@ -317,7 +320,7 @@ function App() {
     setFocusedLimitConstraintId(cleared.focusedLimitConstraintId)
     setLimitsInstallActive(cleared.limitsInstallActive)
     setAppearanceEditActive(cleared.appearanceEditActive)
-    setViewportSelectionClearEpoch((n) => n + 1)
+    setViewportSelectionClearEpoch((n) => nextViewportSelectionClearEpoch(n))
   }, [])
 
   const handleRestoreFaceSelection = useCallback((faceTriangleIndices: readonly number[]) => {

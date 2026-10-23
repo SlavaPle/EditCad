@@ -38,3 +38,28 @@ export function shouldClearSelectionOnPointerMiss(ev: {
 }): boolean {
   return ev.button === 0 && !ev.shiftKey
 }
+
+/** Po clear — nowy epoch; drzewo dokumentu zeruje zaznaczony węzeł. */
+export function nextViewportSelectionClearEpoch(currentEpoch: number): number {
+  return currentEpoch + 1
+}
+
+/**
+ * Epoch > 0 oznacza, że był co najmniej jeden clear pustego kliknięcia.
+ * Overlay drzewa wtedy czyści zaznaczenie węzła.
+ */
+export function shouldClearDocumentTreeNodeSelection(selectionClearEpoch: number): boolean {
+  return selectionClearEpoch > 0
+}
+
+/** Pola, które globalna reguła zawsze zeruje (do asercji / dokumentacji). */
+export const VIEWPORT_SELECTION_CLEAR_FIELDS = [
+  'selection',
+  'probableFaces',
+  'activeProgramPartId',
+  'treeMateHighlights',
+  'preAssemblySelection',
+  'focusedLimitConstraintId',
+  'limitsInstallActive',
+  'appearanceEditActive',
+] as const satisfies ReadonlyArray<keyof ClearedViewportSelectionState>

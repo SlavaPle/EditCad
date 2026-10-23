@@ -13,6 +13,7 @@ import { resolveDocumentTreeSelectEffect } from './documentTreeSelectActions'
 import { highlightsFromAssemblyMate } from './mateHighlightsFromTree'
 import type { DocumentTreeContextActionId, DocumentTreeNode } from './model'
 import type { PartLockMap } from './partLock'
+import { shouldClearDocumentTreeNodeSelection } from '../viewer-selection'
 import styles from './DocumentTree.module.css'
 
 export type DocumentTreeOverlayProps = {
@@ -58,7 +59,7 @@ export function DocumentTreeOverlay({
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
 
   useEffect(() => {
-    if (selectionClearEpoch === 0) return
+    if (!shouldClearDocumentTreeNodeSelection(selectionClearEpoch)) return
     setSelectedNodeId(null)
   }, [selectionClearEpoch])
 
