@@ -33,6 +33,8 @@ export type DocumentTreeOverlayProps = {
   onEditAppearance: (partId: string | null) => void
   onTreeMateHighlightsChange: (highlights: MateEntityHighlights | null) => void
   onHighlightElementFaces?: (partId: string | null, faceIndices: number[]) => void
+  onDeleteMate?: (mateId: string) => void
+  onToggleMateSuppressed?: (mateId: string) => void
   /** Epoch z App po clear pustego kliknięcia — zeruje zaznaczenie węzła w drzewie. */
   selectionClearEpoch?: number
 }
@@ -53,6 +55,8 @@ export function DocumentTreeOverlay({
   onEditAppearance,
   onTreeMateHighlightsChange,
   onHighlightElementFaces,
+  onDeleteMate,
+  onToggleMateSuppressed,
   selectionClearEpoch = 0,
 }: DocumentTreeOverlayProps) {
   const { t } = useTranslation()
@@ -195,6 +199,13 @@ export function DocumentTreeOverlay({
         case 'clearMateHighlight':
           onTreeMateHighlightsChange(null)
           break
+        case 'suppressMate':
+        case 'unsuppressMate':
+          if (node.mateId) onToggleMateSuppressed?.(node.mateId)
+          break
+        case 'deleteMate':
+          if (node.mateId) onDeleteMate?.(node.mateId)
+          break
         default:
           break
       }
@@ -202,9 +213,11 @@ export function DocumentTreeOverlay({
     [
       findMate,
       onActivePartChange,
+      onDeleteMate,
       onEditAppearance,
       onHighlightElementFaces,
       onRemovePart,
+      onToggleMateSuppressed,
       onTogglePartLock,
       onTreeMateHighlightsChange,
       programPartConstraints,

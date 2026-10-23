@@ -160,6 +160,9 @@
       "highlightElement": "Highlight faces",
       "highlightMate": "Highlight mates",
       "clearMateHighlight": "Clear highlight",
+      "suppressMate": "Suppress",
+      "unsuppressMate": "Unsuppress",
+      "deleteMate": "Delete",
       "expandAll": "Expand all",
       "collapseAll": "Collapse all"
     }

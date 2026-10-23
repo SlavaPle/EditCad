@@ -25,6 +25,8 @@ export type DocumentTreeNode = {
   /** Wartość mm dla węzła size (do wyświetlenia). */
   sizeMm?: number
   locked?: boolean
+  /** Przywiązka wyłączona (nadal w drzewie, bez wpływu na solver). */
+  suppressed?: boolean
   children?: DocumentTreeNode[]
 }
 
@@ -44,5 +46,8 @@ export type DocumentTreeContextActionId =
   | 'highlightElement'
   | 'highlightMate'
   | 'clearMateHighlight'
+  | 'suppressMate'
+  | 'unsuppressMate'
+  | 'deleteMate'
   | 'expandAll'
   | 'collapseAll'

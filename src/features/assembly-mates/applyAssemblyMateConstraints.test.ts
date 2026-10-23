@@ -125,6 +125,18 @@ describe('applyAssemblyMateConstraints', () => {
     expect(mateGapMm(geometryA, partA.transform, geometryB, partB.transform)).toBeCloseTo(0, 2)
   })
 
+  it('does not move driven part when mate is suppressed', () => {
+    const result = applyAssemblyMateConstraints({
+      parts: [part('a', [0, 0, 0]), part('b', [200, 0, 0])],
+      mates: [{ ...mate, suppressed: true }],
+      geometries,
+      movedPartId: 'a',
+      movedTransform: { positionMm: [50, 0, 0], rotationDeg: [0, 0, 0] },
+    })
+    expect(result.find((p) => p.id === 'a')?.transform.positionMm[0]).toBe(50)
+    expect(result.find((p) => p.id === 'b')?.transform.positionMm[0]).toBe(200)
+  })
+
   it('preserves saved offset when anchor A moves', () => {
     const offsetMate = makeMate({ offsetMm: 4 })
     const anchored = applyAssemblyMateConstraints({

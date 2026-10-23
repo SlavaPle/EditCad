@@ -10,6 +10,7 @@ export {
   buildDocumentTree,
   collectExpandableNodeIds,
   findDocumentTreeNode,
+  mateParticipantPartIds,
   type BuildDocumentTreeInput,
   type SizeMm,
 } from './buildDocumentTree'

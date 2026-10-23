@@ -160,6 +160,9 @@
       "highlightElement": "Подсветить грани",
       "highlightMate": "Подсветить привязку",
       "clearMateHighlight": "Снять подсветку",
+      "suppressMate": "Погасить",
+      "unsuppressMate": "Включить",
+      "deleteMate": "Удалить",
       "expandAll": "Развернуть всё",
       "collapseAll": "Свернуть всё"
     }

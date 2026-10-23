@@ -28,9 +28,10 @@ describe('resolveDocumentTreeSelectEffect', () => {
 
   it('highlights mate entities on mate node click', () => {
     const node: DocumentTreeNode = {
-      id: 'mate:m1',
+      id: 'part:pa:mate:m1',
       kind: 'mate',
       label: 'Parallel 1',
+      partId: 'pa',
       mateId: 'm1',
     }
     const effect = resolveDocumentTreeSelectEffect(node, {

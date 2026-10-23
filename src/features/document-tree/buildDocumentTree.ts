@@ -43,12 +43,61 @@ function sizeChildren(prefix: string, size: SizeMm | null, partId?: string): Doc
   }))
 }
 
+/** Id detali biorących udział w przywiązaniu (A i B — bez duplikatów). */
+export function mateParticipantPartIds(mate: AssemblyMate): string[] {
+  const ids = [mate.entityA.partId, mate.entityB.partId]
+  return [...new Set(ids.filter((id) => id.trim().length > 0))]
+}
+
+function mateLabel(mate: AssemblyMate, index: number): string {
+  const offset =
+    Number.isFinite(mate.offsetMm) && mate.offsetMm !== 0
+      ? ` · ${formatSizeMm(mate.offsetMm)} mm`
+      : ''
+  return `Parallel ${index + 1}${offset}`
+}
+
+function mateNodesForPart(
+  partId: string,
+  mates: readonly AssemblyMate[],
+  mateIndexById: ReadonlyMap<string, number>,
+): DocumentTreeNode[] {
+  const prefix = `part:${partId}`
+  const forPart = mates.filter((mate) => mateParticipantPartIds(mate).includes(partId))
+  if (forPart.length === 0) return []
+
+  const mateNodes: DocumentTreeNode[] = forPart.map((mate) => {
+    const index = mateIndexById.get(mate.id) ?? 0
+    const suppressed = mate.suppressed === true
+    return {
+      id: `${prefix}:mate:${mate.id}`,
+      kind: 'mate' as const,
+      label: mateLabel(mate, index),
+      partId,
+      mateId: mate.id,
+      suppressed,
+    }
+  })
+
+  return [
+    {
+      id: `${prefix}:mates`,
+      kind: 'matesGroup',
+      label: 'Mates',
+      partId,
+      children: mateNodes,
+    },
+  ]
+}
+
 function partSubtree(
   part: PreAssemblyProgramPart,
   displayName: string,
   size: SizeMm | undefined,
   elements: readonly PreparedModelElement[] | undefined,
   locked: boolean,
+  mates: readonly AssemblyMate[],
+  mateIndexById: ReadonlyMap<string, number>,
 ): DocumentTreeNode {
   const prefix = `part:${part.id}`
   const elementNodes: DocumentTreeNode[] = (elements ?? []).map((el) => ({
@@ -85,6 +134,8 @@ function partSubtree(
     })
   }
 
+  children.push(...mateNodesForPart(part.id, mates, mateIndexById))
+
   return {
     id: prefix,
     kind: 'part',
@@ -93,14 +144,6 @@ function partSubtree(
     locked,
     children,
   }
-}
-
-function mateLabel(mate: AssemblyMate, index: number): string {
-  const offset =
-    Number.isFinite(mate.offsetMm) && mate.offsetMm !== 0
-      ? ` · ${formatSizeMm(mate.offsetMm)} mm`
-      : ''
-  return `Parallel ${index + 1}${offset}`
 }
 
 /**
@@ -123,6 +166,7 @@ export function buildDocumentTree(input: BuildDocumentTreeInput): DocumentTreeNo
   } = input
 
   if (programParts.length > 0) {
+    const mateIndexById = new Map(mates.map((mate, index) => [mate.id, index]))
     const partNodes = programParts.map((part) =>
       partSubtree(
         part,
@@ -130,31 +174,16 @@ export function buildDocumentTree(input: BuildDocumentTreeInput): DocumentTreeNo
         partSizeMmById[part.id],
         modelElementsByPartId[part.id],
         isPartLocked(partLocks, part.id),
+        mates,
+        mateIndexById,
       ),
     )
-
-    const mateNodes: DocumentTreeNode[] = mates.map((mate, index) => ({
-      id: `mate:${mate.id}`,
-      kind: 'mate',
-      label: mateLabel(mate, index),
-      mateId: mate.id,
-    }))
-
-    const children: DocumentTreeNode[] = [...partNodes]
-    if (mateNodes.length > 0) {
-      children.push({
-        id: 'mates',
-        kind: 'matesGroup',
-        label: 'Mates',
-        children: mateNodes,
-      })
-    }
 
     return {
       id: 'root:assembly',
       kind: 'root',
       label: assemblyName || 'Assembly',
-      children,
+      children: partNodes,
     }
   }
 

@@ -13,6 +13,7 @@ export type {
 } from './model'
 export {
   createParallelMateId,
+  isMateSuppressed,
   mateEntityKindFromRef,
   matePairKind,
   matePairSupportsAlignment,
@@ -33,6 +34,8 @@ export {
   parallelMateConflictsWithExisting,
   parallelMateFromDraft,
   removeAssemblyMate,
+  setAssemblyMateSuppressed,
+  toggleAssemblyMateSuppressed,
   validateParallelMateDraft,
   type ParallelMateDraft,
 } from './store'
@@ -167,4 +170,4 @@ export {
 export { MatePlaneFaceOverlay } from './matePlaneFaceOverlayView'
 export { MateLineOverlay } from './mateLineOverlayView'
 export { MateVertexOverlay } from './mateVertexOverlayView'
-
+

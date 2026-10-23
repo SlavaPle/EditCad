@@ -113,6 +113,8 @@ import {
   nextMatesPickFlowStep,
   openMateFromFacePair,
   buildMateEntityHighlightsForPopup,
+  removeAssemblyMate,
+  toggleAssemblyMateSuppressed,
   type AssemblyMate,
   type MateDraftSession,
   type MateEntityHighlights,
@@ -970,6 +972,23 @@ function App() {
     setPartLockedById((current) => togglePartLock(current, partId))
   }, [])
 
+  const handleDeleteAssemblyMate = useCallback((mateId: string) => {
+    setAssemblyMates((current) => {
+      const next = removeAssemblyMate(current, mateId)
+      assemblyMatesRef.current = next
+      return next
+    })
+    setTreeMateHighlights(null)
+  }, [])
+
+  const handleToggleMateSuppressed = useCallback((mateId: string) => {
+    setAssemblyMates((current) => {
+      const next = toggleAssemblyMateSuppressed(current, mateId)
+      assemblyMatesRef.current = next
+      return next
+    })
+  }, [])
+
   const handleDocumentTreeEditAppearance = useCallback(
     (partId: string | null) => {
       if (partId) {
@@ -1678,6 +1697,8 @@ function App() {
             onEditAppearance={handleDocumentTreeEditAppearance}
             onTreeMateHighlightsChange={setTreeMateHighlights}
             onHighlightElementFaces={handleDocumentTreeHighlightElementFaces}
+            onDeleteMate={handleDeleteAssemblyMate}
+            onToggleMateSuppressed={handleToggleMateSuppressed}
             selectionClearEpoch={viewportSelectionClearEpoch}
           />
         </div>

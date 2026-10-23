@@ -68,7 +68,13 @@ function TreeNodeRow({
   return (
     <li>
       <div
-        className={isSelected ? `${styles.row} ${styles.rowSelected}` : styles.row}
+        className={[
+          styles.row,
+          isSelected ? styles.rowSelected : '',
+          node.suppressed ? styles.rowSuppressed : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
         style={{ paddingLeft: 4 + depth * 2 }}
         onContextMenu={(e) => onContextMenu(e, node)}
       >

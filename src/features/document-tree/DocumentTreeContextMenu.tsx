@@ -34,6 +34,10 @@ export function buildContextMenuItems(node: DocumentTreeNode): DocumentTreeConte
       return [
         { id: 'highlightMate', labelKey: 'documentTree.menu.highlightMate' },
         { id: 'clearMateHighlight', labelKey: 'documentTree.menu.clearMateHighlight' },
+        node.suppressed
+          ? { id: 'unsuppressMate', labelKey: 'documentTree.menu.unsuppressMate' }
+          : { id: 'suppressMate', labelKey: 'documentTree.menu.suppressMate' },
+        { id: 'deleteMate', labelKey: 'documentTree.menu.deleteMate' },
       ]
     case 'model':
     case 'elementsGroup':

@@ -3,6 +3,7 @@ import type { PreAssemblyProgramPart } from '../pre-assembly/preAssemblyProgram'
 import { updateProgramPartTransform } from '../pre-assembly/preAssemblyProgram'
 import type { PhantomTransform } from '../pre-assembly/model'
 import type { AssemblyMate } from './model'
+import { isMateSuppressed } from './model'
 import { applyRigidDeltaToTransform } from './constraint/transformMath'
 import { projectMateConstraint } from './constraint/projectMateConstraint'
 
@@ -65,6 +66,7 @@ export function applyAssemblyMateConstraints(
   )
 
   for (const mate of input.mates) {
+    if (isMateSuppressed(mate)) continue
     const anchorId = mate.entityA.partId
     const drivenId = mate.entityB.partId
     if (input.movedPartId !== anchorId && input.movedPartId !== drivenId) continue
@@ -106,6 +108,7 @@ export function reapplyAllAssemblyMates(input: ReapplyAllAssemblyMatesInput): Pr
   let parts = [...input.parts]
   for (const mate of input.mates) {
     if (mate.kind !== 'parallel') continue
+    if (isMateSuppressed(mate)) continue
     const anchor = parts.find((part) => part.id === mate.entityA.partId)
     if (!anchor) continue
     parts = applyAssemblyMateConstraints({

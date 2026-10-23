@@ -5,6 +5,7 @@ import {
   buildDocumentTree,
   collectExpandableNodeIds,
   findDocumentTreeNode,
+  mateParticipantPartIds,
 } from './buildDocumentTree'
 
 const partA: PreAssemblyProgramPart = {
@@ -70,7 +71,7 @@ describe('buildDocumentTree', () => {
     expect(sizeX?.label).toContain('X:')
   })
 
-  it('builds assembly with parts, elements, lock flag, and mates', () => {
+  it('builds assembly with parts, elements, lock flag, and mates under each part', () => {
     const root = buildDocumentTree({
       partRootLabel: '',
       partSizeMm: null,
@@ -91,10 +92,50 @@ describe('buildDocumentTree', () => {
 
     expect(root?.id).toBe('root:assembly')
     expect(root?.label).toBe('DemoAsm')
+    expect(root?.children?.map((c) => c.kind)).toEqual(['part', 'part'])
+    expect(findDocumentTreeNode(root, 'mates')).toBeNull()
+
     const partNode = findDocumentTreeNode(root, 'part:pa')
     expect(partNode?.locked).toBe(true)
     expect(findDocumentTreeNode(root, 'part:pa:element:face-group-1')?.kind).toBe('element')
-    expect(findDocumentTreeNode(root, 'mate:m1')?.kind).toBe('mate')
+
+    const mateUnderA = findDocumentTreeNode(root, 'part:pa:mate:m1')
+    const mateUnderB = findDocumentTreeNode(root, 'part:pb:mate:m1')
+    expect(mateUnderA?.kind).toBe('mate')
+    expect(mateUnderA?.mateId).toBe('m1')
+    expect(mateUnderA?.partId).toBe('pa')
+    expect(mateUnderB?.kind).toBe('mate')
+    expect(mateUnderB?.mateId).toBe('m1')
+    expect(mateUnderB?.partId).toBe('pb')
+    expect(findDocumentTreeNode(root, 'part:pa:mates')?.kind).toBe('matesGroup')
+    expect(findDocumentTreeNode(root, 'part:pb:mates')?.kind).toBe('matesGroup')
     expect(collectExpandableNodeIds(root).length).toBeGreaterThan(0)
+  })
+
+  it('mateParticipantPartIds returns unique part ids', () => {
+    expect(mateParticipantPartIds(mate).sort()).toEqual(['pa', 'pb'])
+    expect(
+      mateParticipantPartIds({
+        ...mate,
+        entityB: { ...mate.entityB, partId: 'pa' },
+      }),
+    ).toEqual(['pa'])
+  })
+
+  it('marks suppressed mates under each part', () => {
+    const root = buildDocumentTree({
+      partRootLabel: '',
+      partSizeMm: null,
+      hasPartModel: false,
+      assemblyName: 'DemoAsm',
+      programParts: [partA, partB],
+      partDisplayNameById: { pa: 'Bracket', pb: 'Plate' },
+      partSizeMmById: {},
+      modelElementsByPartId: {},
+      mates: [{ ...mate, suppressed: true }],
+      partLocks: {},
+    })
+    expect(findDocumentTreeNode(root, 'part:pa:mate:m1')?.suppressed).toBe(true)
+    expect(findDocumentTreeNode(root, 'part:pb:mate:m1')?.suppressed).toBe(true)
   })
 })
