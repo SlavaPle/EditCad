@@ -145,6 +145,8 @@ interface SelectableModelProps {
   /** Gdy false — LKM nie wybiera elementów (np. drag detalu w montażu). */
   pickOnPointerDown?: boolean
   onMeshPointerDown?: (event: ThreeEvent<PointerEvent>) => void
+  /** PPM — menu kontekstowe (np. Add mate w montażu). */
+  onMeshContextMenu?: (event: ThreeEvent<MouseEvent>) => void
 }
 
 export function SelectableModel({
@@ -158,6 +160,7 @@ export function SelectableModel({
   onProbableFacesChange,
   pickOnPointerDown = true,
   onMeshPointerDown,
+  onMeshContextMenu,
 }: SelectableModelProps) {
   const meshRef = useRef<Mesh>(null)
   const vertexPointsRef = useRef<Points>(null)
@@ -489,6 +492,13 @@ export function SelectableModel({
     })
   }
 
+  const handleContextMenu = (event: ThreeEvent<MouseEvent>) => {
+    if (!onMeshContextMenu) return
+    event.stopPropagation()
+    event.nativeEvent.preventDefault()
+    onMeshContextMenu(event)
+  }
+
   return (
     <group>
       <mesh
@@ -497,6 +507,7 @@ export function SelectableModel({
         onPointerMove={handlePointerMove}
         onPointerOut={handlePointerOut}
         onPointerDown={handlePointerDown}
+        onContextMenu={onMeshContextMenu ? handleContextMenu : undefined}
       >
         {showSolidBody ? (
           showTextured ? (

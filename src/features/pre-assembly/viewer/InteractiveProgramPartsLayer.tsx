@@ -69,6 +69,12 @@ interface InteractiveProgramPartsLayerProps {
   mateEntityHighlights?: MateEntityHighlights | null
   matesPickSlotRef?: RefObject<MatesPickSlot | null>
   onMateEntityPicked?: (slot: NonNullable<MatesPickMode['slot']>, entity: MateEntityRef) => void
+  onMateFaceClick?: (payload: {
+    partId: string
+    seedFaceIndex: number
+    faceIndices: readonly number[]
+    modifiers: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }
+  }) => void
 }
 
 export function InteractiveProgramPartsLayer({
@@ -91,6 +97,7 @@ export function InteractiveProgramPartsLayer({
   mateEntityHighlights = null,
   matesPickSlotRef,
   onMateEntityPicked,
+  onMateFaceClick,
 }: InteractiveProgramPartsLayerProps) {
   const { invalidate } = useThree()
   useEffect(() => {
@@ -197,7 +204,13 @@ export function InteractiveProgramPartsLayer({
     matesPickActive: (matesPickSlotRef?.current ?? matesPickMode.slot) !== null,
     matesPickSlotRef,
     isPartLocked,
+    onMateFaceClick: matesPickMode.active ? undefined : onMateFaceClick,
   })
+
+  /** Blokada natywnego menu — otwarcie Add mate robi kontener Viewer3D. */
+  const suppressNativeContextMenu = useCallback((event: ThreeEvent<MouseEvent>) => {
+    event.nativeEvent.preventDefault()
+  }, [])
 
   if (parts.length === 0) return null
 
@@ -225,6 +238,9 @@ export function InteractiveProgramPartsLayer({
             onPartPointerDown={onPartPointerDown}
             matesPickSlotRef={matesPickSlotRef}
             onMatePartPointerDown={handleMatePartPointerDown}
+            onMeshContextMenu={
+              preAssemblyActive ? suppressNativeContextMenu : undefined
+            }
             mateEntityHighlights={mateEntityHighlights}
           />
         ))}
@@ -250,6 +266,7 @@ function InteractiveProgramPart({
   onPartPointerDown,
   matesPickSlotRef,
   onMatePartPointerDown,
+  onMeshContextMenu,
   mateEntityHighlights,
 }: {
   part: PreAssemblyProgramPart
@@ -277,6 +294,7 @@ function InteractiveProgramPart({
     geometry: BufferGeometry,
     event: ThreeEvent<PointerEvent>,
   ) => void
+  onMeshContextMenu?: (event: ThreeEvent<MouseEvent>) => void
   mateEntityHighlights?: MateEntityHighlights | null
 }) {
   const geometryCenterOffset = useMemo(() => {
@@ -324,6 +342,7 @@ function InteractiveProgramPart({
             onMeshPointerDown={
               preAssemblyActive || matesPickContextActive ? handlePointerDown : undefined
             }
+            onMeshContextMenu={onMeshContextMenu}
           />
           <ActiveProgramPartOutline geometry={geometry} visible={isActive} />
           {mateFaces.planeA && (
@@ -360,7 +379,12 @@ function InteractiveProgramPart({
   const placeholderSize = mmToScene(PLACEHOLDER_SIZE_MM)
   const placeholderColor = programPartPlaceholderColor(isActive)
   return (
-    <mesh position={position} rotation={rotation} onPointerDown={handlePointerDown}>
+    <mesh
+      position={position}
+      rotation={rotation}
+      onPointerDown={handlePointerDown}
+      onContextMenu={onMeshContextMenu}
+    >
       <boxGeometry args={[placeholderSize, placeholderSize, placeholderSize]} />
       <meshStandardMaterial color={placeholderColor} wireframe />
       <Edges color={placeholderColor} />

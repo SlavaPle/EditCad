@@ -63,6 +63,12 @@ interface SceneContentProps {
   mateEntityHighlights?: MateEntityHighlights | null
   matesPickSlotRef?: RefObject<MatesPickSlot | null>
   onMateEntityPicked?: (slot: NonNullable<MatesPickMode['slot']>, entity: MateEntityRef) => void
+  onMateFaceClick?: (payload: {
+    partId: string
+    seedFaceIndex: number
+    faceIndices: readonly number[]
+    modifiers: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }
+  }) => void
 }
 
 export function SceneContent({
@@ -94,6 +100,7 @@ export function SceneContent({
   mateEntityHighlights = null,
   matesPickSlotRef,
   onMateEntityPicked,
+  onMateFaceClick,
 }: SceneContentProps) {
   return (
     <>
@@ -122,6 +129,7 @@ export function SceneContent({
           mateEntityHighlights={mateEntityHighlights}
           matesPickSlotRef={matesPickSlotRef}
           onMateEntityPicked={onMateEntityPicked}
+          onMateFaceClick={onMateFaceClick}
         />
       )}
       {phantom && (

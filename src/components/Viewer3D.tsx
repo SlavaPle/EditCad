@@ -65,6 +65,13 @@ export interface Viewer3DProps {
   mateEntityHighlights?: MateEntityHighlights | null
   matesPickSlotRef?: RefObject<MatesPickSlot | null>
   onMateEntityPicked?: (slot: NonNullable<MatesPickMode['slot']>, entity: MateEntityRef) => void
+  onMateFaceClick?: (payload: {
+    partId: string
+    seedFaceIndex: number
+    faceIndices: readonly number[]
+    modifiers: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }
+  }) => void
+  onViewerContextMenu?: (payload: { clientX: number; clientY: number }) => void
 }
 
 export function Viewer3D({
@@ -97,6 +104,8 @@ export function Viewer3D({
   mateEntityHighlights = null,
   matesPickSlotRef,
   onMateEntityPicked,
+  onMateFaceClick,
+  onViewerContextMenu,
 }: Viewer3DProps) {
   const clearAllSelection = (_source: 'pointerMissed' | 'grid') => {
     if (onClearSelection) {
@@ -108,7 +117,14 @@ export function Viewer3D({
   }
 
   return (
-    <div className={styles.viewer}>
+    <div
+      className={styles.viewer}
+      onContextMenu={(e) => {
+        if (!preAssemblyActive || !onViewerContextMenu) return
+        e.preventDefault()
+        onViewerContextMenu({ clientX: e.clientX, clientY: e.clientY })
+      }}
+    >
       <Canvas
         className={styles.canvas}
         camera={{ position: [5, 5, 5], fov: 50, near: 0.01, far: 1_000_000 }}
@@ -155,6 +171,7 @@ export function Viewer3D({
             mateEntityHighlights={mateEntityHighlights}
             matesPickSlotRef={matesPickSlotRef}
             onMateEntityPicked={onMateEntityPicked}
+            onMateFaceClick={onMateFaceClick}
           />
           <MouseOrbitViewControls
             makeDefault

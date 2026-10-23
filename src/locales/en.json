@@ -76,6 +76,9 @@
       "title": "Constraints",
       "close": "Close"
     },
+    "menu": {
+      "addMate": "Add mate"
+    },
     "types": {
       "parallel": "Parallel"
     },

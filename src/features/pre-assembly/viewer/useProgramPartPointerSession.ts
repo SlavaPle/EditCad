@@ -11,6 +11,7 @@ import {
 import type { ModelSelectionProximityFilter } from '../../model-selection/types'
 import type { SelectionState } from '../../../lib/selection'
 import { resumeSceneOrbit, suspendSceneOrbit } from '../../viewer-camera/orbitControlsSuspend'
+import type { MateFaceClickModifiers } from '../../assembly-mates/mateFacePairSelection'
 import type { MatesPickSlot } from '../../assembly-mates/matesPickMode'
 import {
   beginProgramPartPointerSession,
@@ -24,6 +25,13 @@ import {
   programPartPointerModeFromButton,
   type ProgramPartPointerSession,
 } from './programPartPointerInteraction'
+
+export type MateFaceClickPayload = {
+  partId: string
+  seedFaceIndex: number
+  faceIndices: readonly number[]
+  modifiers: MateFaceClickModifiers
+}
 
 const scratchCameraDir = new Vector3()
 const scratchLocal = new Vector3()
@@ -51,6 +59,11 @@ export type ProgramPartPointerSessionHandlers = {
   matesPickSlotRef?: RefObject<MatesPickSlot | null>
   /** Zablokowany detal: klik/select OK, bez translate/rotate. */
   isPartLocked?: (partId: string) => boolean
+  /**
+   * Faces-first: LKM / Shift|Ctrl na ścianie (gdy nie ma aktywnego slotu mates).
+   * Wywoływane tylko dla pick typu faces.
+   */
+  onMateFaceClick?: (payload: MateFaceClickPayload) => void
 }
 
 export function useProgramPartPointerSession(handlers: ProgramPartPointerSessionHandlers) {
@@ -142,6 +155,12 @@ export function useProgramPartPointerSession(handlers: ProgramPartPointerSession
         const mesh = meshRef.current
         const geometry = geometryRef.current
         if (mesh && geometry) {
+          const native = session.downEvent.nativeEvent
+          const modifiers: MateFaceClickModifiers = {
+            shiftKey: native.shiftKey,
+            ctrlKey: native.ctrlKey,
+            metaKey: native.metaKey,
+          }
           mesh.worldToLocal(scratchLocal.copy(session.downEvent.point))
           const result = pickMeshElementAtPointer({
             model: geometry,
@@ -151,9 +170,31 @@ export function useProgramPartPointerSession(handlers: ProgramPartPointerSession
             currentSelection: h.selection,
             currentPrimaryFaces: h.getPrimaryFaces(),
             probableFaces: h.probableFaces,
+            // Stretch probable-opposite wyłączone w montażu — Shift/Ctrl = para mates.
             shiftHeld: false,
             localPoint: scratchLocal,
           })
+          if (
+            h.onMateFaceClick &&
+            result.kind === 'picked' &&
+            result.selection.faces.length > 0
+          ) {
+            const seedFaceIndex =
+              result.primaryFaces[0] ?? result.selection.faces[0] ?? 0
+            h.onMateFaceClick({
+              partId: session.partId,
+              seedFaceIndex,
+              faceIndices: result.selection.faces,
+              modifiers,
+            })
+          } else if (h.onMateFaceClick && result.kind === 'cleared') {
+            h.onMateFaceClick({
+              partId: session.partId,
+              seedFaceIndex: -1,
+              faceIndices: [],
+              modifiers: { shiftKey: false, ctrlKey: false, metaKey: false },
+            })
+          }
           applyPickMeshElementResult(result, {
             onSelectionChange: h.onSelectionChange,
             onProbableFacesChange: h.onProbableFacesChange,

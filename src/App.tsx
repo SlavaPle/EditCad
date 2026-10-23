@@ -89,6 +89,14 @@ import { buildProgramPartDisplayNameById } from './features/pre-assembly/program
 import { isUserCancelError } from './lib/isUserCancelError'
 import { MatesPopup } from './components/assembly-mates'
 import {
+  buildViewerContextMenuItems,
+  ViewerContextMenu,
+  type ViewerContextMenuState,
+} from './components/viewer-context-menu'
+import {
+  applyMateFaceClick,
+  clearMateFacePair,
+  createEmptyMateFacePair,
   createMateDraftSession,
   mateDraftHasUnsavedApply,
   mateDraftRevert,
@@ -101,11 +109,14 @@ import {
   filterAssemblyMatesForPartIds,
   reapplyAllAssemblyMates,
   initialMatesPickSlot,
+  mateFacePairToHighlights,
   nextMatesPickFlowStep,
+  openMateFromFacePair,
   buildMateEntityHighlightsForPopup,
   type AssemblyMate,
   type MateDraftSession,
   type MateEntityHighlights,
+  type MateFacePair,
   type MatesPickMode,
   type MatesPickSlot,
   toggleMatesPickSlot,
@@ -214,6 +225,10 @@ function App() {
   const [assemblyMates, setAssemblyMates] = useState<AssemblyMate[]>([])
   const [partLockedById, setPartLockedById] = useState<Record<string, boolean>>({})
   const [treeMateHighlights, setTreeMateHighlights] = useState<MateEntityHighlights | null>(null)
+  const [mateFacePair, setMateFacePair] = useState<MateFacePair>(() => createEmptyMateFacePair())
+  const mateFacePairRef = useRef(mateFacePair)
+  mateFacePairRef.current = mateFacePair
+  const [viewerContextMenu, setViewerContextMenu] = useState<ViewerContextMenuState | null>(null)
   /** Inkrement przy clear pustego kliknięcia — drzewo dokumentu resetuje zaznaczenie węzła. */
   const [viewportSelectionClearEpoch, setViewportSelectionClearEpoch] = useState(0)
   const mateDraftSessionRef = useRef(mateDraftSession)
@@ -238,6 +253,8 @@ function App() {
     setMateOffsetInput('0')
     setMateSolverErrorKey(null)
     setTreeMateHighlights(null)
+    setMateFacePair(clearMateFacePair())
+    setViewerContextMenu(null)
     setPartLockedById({})
   }, [applyMatesPickSlot, commitMateDraftSession])
   const programPartsRef = useRef(programParts)
@@ -266,11 +283,16 @@ function App() {
       mateDraftSession.draft.entityA,
       mateDraftSession.draft.entityB,
     )
-    return mergeMateEntityHighlights(popupHighlights, treeMateHighlights)
+    const pairHighlights = matesPopupOpen ? null : mateFacePairToHighlights(mateFacePair)
+    return mergeMateEntityHighlights(
+      popupHighlights,
+      mergeMateEntityHighlights(pairHighlights, treeMateHighlights),
+    )
   }, [
     matesPopupOpen,
     mateDraftSession.draft.entityA,
     mateDraftSession.draft.entityB,
+    mateFacePair,
     treeMateHighlights,
   ])
 
@@ -316,6 +338,8 @@ function App() {
     setProbableFaces(cleared.probableFaces)
     setActiveProgramPartId(cleared.activeProgramPartId)
     setTreeMateHighlights(cleared.treeMateHighlights)
+    setMateFacePair(clearMateFacePair())
+    setViewerContextMenu(null)
     setPreAssemblySelection(cleared.preAssemblySelection)
     setFocusedLimitConstraintId(cleared.focusedLimitConstraintId)
     setLimitsInstallActive(cleared.limitsInstallActive)
@@ -984,7 +1008,37 @@ function App() {
     if (partId) {
       setSelection(createEmptySelection())
       setProbableFaces([])
+      // mateFacePair nie czyścimy — para ścian na dwóch detalach.
     }
+  }, [])
+
+  const handleMateFaceClick = useCallback(
+    (payload: {
+      partId: string
+      seedFaceIndex: number
+      faceIndices: readonly number[]
+      modifiers: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }
+    }) => {
+      if (payload.faceIndices.length === 0 || payload.seedFaceIndex < 0) {
+        setMateFacePair(clearMateFacePair())
+        return
+      }
+      setMateFacePair((current) => {
+        const result = applyMateFaceClick({
+          pair: current,
+          partId: payload.partId,
+          seedFaceIndex: payload.seedFaceIndex,
+          faceIndices: payload.faceIndices,
+          modifiers: payload.modifiers,
+        })
+        return result.pair
+      })
+    },
+    [],
+  )
+
+  const handleViewerContextMenu = useCallback((payload: { clientX: number; clientY: number }) => {
+    setViewerContextMenu({ x: payload.clientX, y: payload.clientY })
   }, [])
 
   const handleProgramPartPickError = useCallback((message: string) => {
@@ -993,6 +1047,12 @@ function App() {
 
   const handleRemoveProgramPart = useCallback((partId: string) => {
     const removedPart = programPartsRef.current.find((part) => part.id === partId)
+    setMateFacePair((pair) => {
+      if (pair.first?.partId === partId || pair.second?.partId === partId) {
+        return clearMateFacePair()
+      }
+      return pair
+    })
     setProgramParts((current) => {
       const next = removeProgramPart(current, partId)
       const partIds = new Set(next.map((part) => part.id))
@@ -1298,14 +1358,35 @@ function App() {
     })
   }, [closeMatesPopup, preAssemblyToolbarUi.createAttachmentDisabled])
 
+  const openMatesPopupFromFacePairOrTypeFirst = useCallback(() => {
+    setLimitsInstallActive(false)
+    setAppearanceEditActive(false)
+    setPreAssemblyWizard(null)
+    setViewerContextMenu(null)
+    const opened = openMateFromFacePair({
+      pair: mateFacePairRef.current,
+      geometries: programPartGeometriesRef.current,
+    })
+    commitMateDraftSession(opened.session)
+    applyMatesPickSlot(opened.pickSlot)
+    setMateOffsetInput('0')
+    setMateSolverErrorKey(null)
+    setMatesPopupOpen(true)
+    if (opened.openedFromPair) {
+      setMateFacePair(clearMateFacePair())
+    }
+  }, [applyMatesPickSlot, commitMateDraftSession])
+
   const handleToggleMatesPopup = useCallback(() => {
     if (matesPopupOpen) {
       closeMatesPopup()
       return
     }
+    // Toolbar Constraints = type-first (pusty draft + pick A).
     setLimitsInstallActive(false)
     setAppearanceEditActive(false)
     setPreAssemblyWizard(null)
+    setMateFacePair(clearMateFacePair())
     const freshSession = createMateDraftSession()
     commitMateDraftSession(freshSession)
     applyMatesPickSlot(initialMatesPickSlot(freshSession))
@@ -1313,6 +1394,14 @@ function App() {
     setMateSolverErrorKey(null)
     setMatesPopupOpen(true)
   }, [applyMatesPickSlot, closeMatesPopup, commitMateDraftSession, matesPopupOpen])
+
+  const handleAddMateFromContextMenu = useCallback(() => {
+    if (programPartsRef.current.length < 2) return
+    if (matesPopupOpen) {
+      closeMatesPopup()
+    }
+    openMatesPopupFromFacePairOrTypeFirst()
+  }, [closeMatesPopup, matesPopupOpen, openMatesPopupFromFacePairOrTypeFirst])
 
   const handleMateEntityPicked = useCallback(
     (slot: MatesPickSlot, entity: NonNullable<MateDraftSession['draft']['entityA']>) => {
@@ -1553,7 +1642,26 @@ function App() {
             mateEntityHighlights={mateEntityHighlights}
             matesPickSlotRef={matesPickSlotRef}
             onMateEntityPicked={handleMateEntityPicked}
+            onMateFaceClick={handleMateFaceClick}
+            onViewerContextMenu={
+              preAssemblyActive ? handleViewerContextMenu : undefined
+            }
           />
+          {viewerContextMenu && preAssemblyActive && (
+            <ViewerContextMenu
+              x={viewerContextMenu.x}
+              y={viewerContextMenu.y}
+              items={buildViewerContextMenuItems({
+                canAddMate: programParts.length >= 2,
+              })}
+              onAction={(action) => {
+                if (action === 'addMate') {
+                  handleAddMateFromContextMenu()
+                }
+              }}
+              onClose={() => setViewerContextMenu(null)}
+            />
+          )}
           <DocumentTreeOverlay
             mainModel={model}
             mainFileName={sourceFileName}
