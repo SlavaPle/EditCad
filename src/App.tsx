@@ -71,6 +71,7 @@ import {
   savePhantomAssemblyToHandle,
   stripEcdasmExtension,
   stripEcdpreExtension,
+  updateProgramPartTransform,
   type AssemblyFile,
   type AssemblyLoaderHandle,
   type PhantomAssemblyFile,
@@ -212,6 +213,14 @@ function App() {
     },
     [],
   )
+  /** Twardy reset UI mates (bez revert preview) — przy zmianie dokumentu. */
+  const resetMatesSessionUi = useCallback(() => {
+    setMatesPopupOpen(false)
+    applyMatesPickSlot(null)
+    commitMateDraftSession(createMateDraftSession())
+    setMateOffsetInput('0')
+    setMateSolverErrorKey(null)
+  }, [applyMatesPickSlot, commitMateDraftSession])
   const programPartsRef = useRef(programParts)
   programPartsRef.current = programParts
   const assemblyMatesRef = useRef(assemblyMates)
@@ -220,6 +229,7 @@ function App() {
   programPartGeometriesRef.current = programPartGeometries
   const programPartConstraintsRef = useRef(programPartConstraints)
   programPartConstraintsRef.current = programPartConstraints
+  const assemblyLoadGenerationRef = useRef(0)
   const modelLoaderRef = useRef<ModelLoaderHandle>(null)
   const assemblyLoaderRef = useRef<AssemblyLoaderHandle>(null)
   const programPartPickerRef = useRef<ProgramPartFilePickerHandle>(null)
@@ -342,6 +352,7 @@ function App() {
       appearance?: ModelAppearance
     },
   ) => {
+    assemblyLoadGenerationRef.current += 1
     setProgramPartGeometries((geometries) => {
       for (const g of Object.values(geometries)) {
         g.dispose()
@@ -356,6 +367,9 @@ function App() {
     setAssemblySourceFileName(null)
     setAssemblyRootDirectoryHandle(null)
     setAssemblyDocMeta({ id: 'assembly-root', name: 'Assembly' })
+    assemblyMatesRef.current = []
+    setAssemblyMates([])
+    resetMatesSessionUi()
     setPhantomDoc(null)
     setPhantomSourceFileHandle(null)
     setPhantomSourceFileName(null)
@@ -386,6 +400,23 @@ function App() {
       setDisplayMode((mode) => (mode === 'edgesOnly' ? mode : 'solidTextured'))
     }
   }, [])
+
+  const handleViewportAppearanceChange = useCallback(
+    (next: ModelAppearance) => {
+      if (editingProgramPartId) {
+        setProgramPartAppearances((current) => ({
+          ...current,
+          [editingProgramPartId]: next,
+        }))
+        if (next.surface === 'texture') {
+          setDisplayMode((mode) => (mode === 'edgesOnly' ? mode : 'solidTextured'))
+        }
+        return
+      }
+      handleAppearanceChange(next)
+    },
+    [editingProgramPartId, handleAppearanceChange],
+  )
 
   const handleMergeModelElements = useCallback(
     (newElements: readonly PreparedModelElement[]) => {
@@ -876,6 +907,18 @@ function App() {
     [applyTransformWithMates],
   )
 
+  /** Ustaw transform bez re-snap zapisanych mates (preview / revert draft). */
+  const setProgramPartTransformDirect = useCallback(
+    (partId: string, transform: PhantomTransform) => {
+      setProgramParts((current) => {
+        const next = updateProgramPartTransform(current, partId, transform)
+        programPartsRef.current = next
+        return next
+      })
+    },
+    [],
+  )
+
   const handleActiveProgramPartChange = useCallback((partId: string | null) => {
     setActiveProgramPartId(partId)
     if (partId) {
@@ -927,6 +970,7 @@ function App() {
       assemblyId: string,
       loadedParts: PreAssemblyProgramPart[],
       directory: FileSystemDirectoryHandle | null,
+      loadGeneration: number,
     ) => {
       if (loadedParts.length === 0) {
         return {
@@ -939,6 +983,10 @@ function App() {
         }
       }
       const result = await loadGeometriesFromAssembly(assemblyId, loadedParts, directory)
+      if (loadGeneration !== assemblyLoadGenerationRef.current) {
+        disposeProgramPartGeometries(result.geometries)
+        return result
+      }
       if (Object.keys(result.geometries).length > 0) {
         setProgramPartGeometries(result.geometries)
         setProgramPartAppearances(result.appearances)
@@ -966,7 +1014,7 @@ function App() {
       setProgramLoadError(messages.length > 0 ? messages.join('\n') : null)
       return result
     },
-    [i18n],
+    [disposeProgramPartGeometries, i18n],
   )
 
   const handleAssemblyLoad = useCallback(
@@ -975,7 +1023,9 @@ function App() {
       sourceHandle?: BrowserFileHandle | null,
       fileName?: string,
     ) => {
+      const loadGeneration = ++assemblyLoadGenerationRef.current
       const loadedParts = programPartsFromAssemblyProgram(file.program)
+      const nextMates = file.mates ? [...file.mates] : []
 
       setProgramPartGeometries((geometries) => {
         disposeProgramPartGeometries(geometries)
@@ -984,6 +1034,9 @@ function App() {
       setProgramPartAppearances({})
       setProgramPartConstraints({})
       setProgramParts(loadedParts)
+      setActiveProgramPartId(null)
+      setSelection(createEmptySelection())
+      setProbableFaces([])
       setProgramPartsFitToken((token) => token + 1)
       const embeddedPhantom = phantomDocFromAssemblyFile(file)
       setPhantomDoc(embeddedPhantom)
@@ -993,7 +1046,9 @@ function App() {
       setAssemblySourceFileHandle(sourceHandle ?? null)
       setAssemblySourceFileName(fileName ?? null)
       setAssemblyDocMeta({ id: file.id, name: file.name })
-      setAssemblyMates(file.mates ? [...file.mates] : [])
+      assemblyMatesRef.current = nextMates
+      setAssemblyMates(nextMates)
+      resetMatesSessionUi()
       setProgramLoadError(null)
       setProgramSaveMessage(null)
       setActiveToolbarTab('preAssembly')
@@ -1004,11 +1059,18 @@ function App() {
           currentRoot: assemblyRootDirectoryHandle,
           assemblySourceHandle: sourceHandle ?? null,
         })
+        if (loadGeneration !== assemblyLoadGenerationRef.current) return
         if (root) {
           setAssemblyRootDirectoryHandle(root)
         }
 
-        let result = await applyAssemblyGeometries(file.id, loadedParts, root)
+        const result = await applyAssemblyGeometries(
+          file.id,
+          loadedParts,
+          root,
+          loadGeneration,
+        )
+        if (loadGeneration !== assemblyLoadGenerationRef.current) return
 
         if (result.missingRefs.length > 0 && result.loadedCount < loadedParts.length) {
           if (result.loadedCount === 0) {
@@ -1019,10 +1081,10 @@ function App() {
               promptIfMissing: true,
               startInForPrompt: sourceHandle ?? null,
             })
+            if (loadGeneration !== assemblyLoadGenerationRef.current) return
             if (picked) {
-              root = picked
               setAssemblyRootDirectoryHandle(picked)
-              await applyAssemblyGeometries(file.id, loadedParts, picked)
+              await applyAssemblyGeometries(file.id, loadedParts, picked, loadGeneration)
             } else {
               setProgramLoadError((current) => {
                 const needFolder = i18n.t('preAssembly.loadAssembly.needProjectFolder')
@@ -1037,6 +1099,7 @@ function App() {
       applyAssemblyGeometries,
       assemblyRootDirectoryHandle,
       disposeProgramPartGeometries,
+      resetMatesSessionUi,
     ],
   )
 
@@ -1147,11 +1210,11 @@ function App() {
       const partId = session.movingPartId
       const revert = mateDraftRevert(session)
       if (revert.ok && partId) {
-        handleProgramPartTransformChange(partId, revert.transform)
+        setProgramPartTransformDirect(partId, revert.transform)
       }
       return revert.ok ? revert.session : session
     },
-    [handleProgramPartTransformChange],
+    [setProgramPartTransformDirect],
   )
 
   const closeMatesPopup = useCallback(() => {
@@ -1270,10 +1333,10 @@ function App() {
       }
       return
     }
-    handleProgramPartTransformChange(result.movingPartId, result.transform)
+    setProgramPartTransformDirect(result.movingPartId, result.transform)
     commitMateDraftSession(result.nextSession)
     setMateSolverErrorKey(null)
-  }, [commitMateDraftSession, handleProgramPartTransformChange, mateValidation.ok, parsedMateOffsetMm])
+  }, [commitMateDraftSession, mateValidation.ok, parsedMateOffsetMm, setProgramPartTransformDirect])
 
   useEffect(() => {
     if (!matesPopupOpen) return
@@ -1459,8 +1522,12 @@ function App() {
           constraintsLocked={constraintsLocked}
           limitsInstallActive={limitsInstallActive}
           appearanceEditActive={appearanceEditActive}
-          appearance={modelAppearance}
-          onAppearanceChange={handleAppearanceChange}
+          appearance={
+            editingProgramPartId
+              ? (programPartAppearances[editingProgramPartId] ?? DEFAULT_MODEL_APPEARANCE)
+              : modelAppearance
+          }
+          onAppearanceChange={handleViewportAppearanceChange}
           limitsInstallConstraintType={limitsInstallConstraintType}
           onLimitsInstallConstraintTypeChange={setLimitsInstallConstraintType}
           preparedModelElements={viewportPreparedModelElements}
