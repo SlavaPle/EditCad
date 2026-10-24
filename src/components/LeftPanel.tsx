@@ -144,7 +144,7 @@ export function LeftPanel({
       : undefined
 
   // Tymczasowe zwijanie panelu (debug) — do usunięcia później
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(true)
 
   if (collapsed) {
     return (
