@@ -1,9 +1,11 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, type RefObject } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { DocumentTreeContextMenuIcon } from './DocumentTreeContextMenuIcons'
 import { isRemovableSizeLimit } from './isRemovableSizeLimit'
 import { isSizeLockedByCustom } from './isSizeLockedByCustom'
 import type { DocumentTreeContextActionId, DocumentTreeNode } from './model'
+import { useFittedFixedPosition } from './useFittedFixedPosition'
 import styles from './DocumentTree.module.css'
 
 export type DocumentTreeContextMenuItem = {
@@ -23,6 +25,7 @@ export function buildContextMenuItems(node: DocumentTreeNode): DocumentTreeConte
     case 'part':
       return [
         { id: 'select', labelKey: 'documentTree.menu.select' },
+        { id: 'renamePart', labelKey: 'documentTree.menu.renamePart' },
         node.locked
           ? { id: 'unlock', labelKey: 'documentTree.menu.unlock' }
           : { id: 'lock', labelKey: 'documentTree.menu.lock' },
@@ -89,7 +92,7 @@ export function DocumentTreeContextMenu({
   onClose,
 }: DocumentTreeContextMenuProps) {
   const { t } = useTranslation()
-  const ref = useRef<HTMLUListElement>(null)
+  const { ref, style } = useFittedFixedPosition(x, y)
   const items = buildContextMenuItems(node)
 
   useEffect(() => {
@@ -107,15 +110,15 @@ export function DocumentTreeContextMenu({
       window.removeEventListener('keydown', onKey)
       window.removeEventListener('mousedown', onPointer)
     }
-  }, [onClose])
+  }, [onClose, ref])
 
   if (items.length === 0) return null
 
-  return (
+  return createPortal(
     <ul
-      ref={ref}
+      ref={ref as RefObject<HTMLUListElement | null>}
       className={styles.contextMenu}
-      style={{ left: x, top: y }}
+      style={{ left: style.left, top: style.top }}
       role="menu"
       onContextMenu={(e) => e.preventDefault()}
     >
@@ -143,6 +146,7 @@ export function DocumentTreeContextMenu({
           </button>
         </li>
       ))}
-    </ul>
+    </ul>,
+    document.body,
   )
 }

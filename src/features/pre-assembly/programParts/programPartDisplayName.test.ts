@@ -8,30 +8,32 @@ function part(id: string, name: string, ref: string): PreAssemblyProgramPart {
 }
 
 describe('buildProgramPartDisplayNameById', () => {
-  it('uses file ref as label', () => {
+  it('uses program name as label', () => {
     const map = buildProgramPartDisplayNameById([
-      part('a', 'Part1', 'Part1panel.ecdprt'),
-      part('b', 'Part1', 'Part1.ecdprt'),
-      part('c', 'Part1', 'New.ecdprt'),
+      part('a', 'Bracket', 'Part1panel.ecdprt'),
+      part('b', 'Plate', 'Part1.ecdprt'),
+      part('c', 'New', 'New.ecdprt'),
     ])
-    expect(map.a).toBe('Part1panel.ecdprt')
-    expect(map.b).toBe('Part1.ecdprt')
-    expect(map.c).toBe('New.ecdprt')
+    expect(map.a).toBe('Bracket')
+    expect(map.b).toBe('Plate')
+    expect(map.c).toBe('New')
   })
 
-  it('numbers duplicate refs', () => {
+  it('numbers duplicate names', () => {
     const map = buildProgramPartDisplayNameById([
-      part('a', 'Part1', 'New.ecdprt'),
-      part('b', 'Part1', 'New.ecdprt'),
-      part('c', 'Part1', 'New.ecdprt'),
+      part('a', 'New', 'a.ecdprt'),
+      part('b', 'New', 'b.ecdprt'),
+      part('c', 'New', 'c.ecdprt'),
     ])
-    expect(map.a).toBe('New.ecdprt')
-    expect(map.b).toBe('New.ecdprt (2)')
-    expect(map.c).toBe('New.ecdprt (3)')
+    expect(map.a).toBe('New')
+    expect(map.b).toBe('New (2)')
+    expect(map.c).toBe('New (3)')
   })
 
-  it('falls back to part id when ref is empty', () => {
-    const map = buildProgramPartDisplayNameById([part('part-x', 'Part1', '  ')])
-    expect(map['part-x']).toBe('part-x')
+  it('falls back to ref then part id when name is empty', () => {
+    expect(buildProgramPartDisplayNameById([part('part-x', '  ', 'panel.ecdprt')])['part-x']).toBe(
+      'panel.ecdprt',
+    )
+    expect(buildProgramPartDisplayNameById([part('part-x', '  ', '  ')])['part-x']).toBe('part-x')
   })
 })

@@ -232,6 +232,8 @@ function partSubtree(
     id: prefix,
     kind: 'part',
     label: displayName,
+    /** Surowa nazwa z programu (.ecdasm) — bez „(2)” z etykiety UI. */
+    displayName: part.name.trim() || undefined,
     partId: part.id,
     locked,
     children,

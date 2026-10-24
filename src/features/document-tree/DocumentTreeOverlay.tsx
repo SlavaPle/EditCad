@@ -43,6 +43,8 @@ export type DocumentTreeOverlayProps = {
   onApplySizeEdit?: (node: DocumentTreeNode, payload: SizeEditApplyPayload) => void
   onRemoveSizeLimit?: (node: DocumentTreeNode) => void
   onRenameSize?: (node: DocumentTreeNode, displayName: string) => void
+  /** Zmiana name w programie montażu — bez zapisu .ecdprt. */
+  onRenamePart?: (node: DocumentTreeNode, displayName: string) => void
   onAddCustomSize?: (partId: string | null) => void
   selectionClearEpoch?: number
   /** Po stretch in-place ta sama ref geometrii — wymusza przeliczenie sizeMm w drzewie. */
@@ -72,6 +74,7 @@ export function DocumentTreeOverlay({
   onApplySizeEdit,
   onRemoveSizeLimit,
   onRenameSize,
+  onRenamePart,
   onAddCustomSize,
   selectionClearEpoch = 0,
   geometryRevision = 0,
@@ -247,6 +250,7 @@ export function DocumentTreeOverlay({
           setSelectedNodeId(node.id)
           break
         case 'renameSize':
+        case 'renamePart':
           setSelectedNodeId(node.id)
           break
         case 'highlightElement':
@@ -327,6 +331,7 @@ export function DocumentTreeOverlay({
           onSelectNode={handleSelectNode}
           onEditNode={handleEditNode}
           onRenameSize={onRenameSize}
+          onRenamePart={onRenamePart}
           onApplySizeEdit={onApplySizeEdit}
           onRemoveSizeLimit={onRemoveSizeLimit}
           onContextAction={handleContextAction}

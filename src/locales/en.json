@@ -165,6 +165,7 @@
       "copySize": "Copy size",
       "editSize": "Edit size",
       "renameSize": "Rename size",
+      "renamePart": "Rename part",
       "removeSizeLimit": "Remove size limit",
       "addCustomSize": "Add size between planes",
       "highlightElement": "Highlight faces",
@@ -175,6 +176,9 @@
       "deleteMate": "Delete",
       "expandAll": "Expand all",
       "collapseAll": "Collapse all"
+    },
+    "part": {
+      "renameAria": "Part name"
     },
     "size": {
       "valueAria": "Size value in millimetres",

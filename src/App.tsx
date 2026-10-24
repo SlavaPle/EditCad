@@ -86,6 +86,7 @@ import {
 import { layoutProgramPartPositionsMm } from './features/pre-assembly/viewer'
 import { loadGeometriesFromAssembly } from './features/pre-assembly/programParts/loadAssemblyProgramPartGeometries'
 import { buildProgramPartDisplayNameById } from './features/pre-assembly/programParts/programPartDisplayName'
+import { renameProgramPart } from './features/pre-assembly/programParts/renameProgramPart'
 import { isUserCancelError } from './lib/isUserCancelError'
 import { MatesPopup } from './components/assembly-mates'
 import {
@@ -1024,6 +1025,15 @@ function App() {
     (_partId: string | null, faceIndices: number[]) => {
       setSelection(selectFaces(createEmptySelection(), faceIndices, 'replace'))
       setProbableFaces([])
+    },
+    [],
+  )
+
+  const handleDocumentTreeRenamePart = useCallback(
+    (node: { partId?: string }, displayName: string) => {
+      if (!node.partId) return
+      // Tylko wpis w programie .ecdasm — ref / plik .ecdprt bez zmian
+      setProgramParts((current) => renameProgramPart(current, node.partId!, displayName))
     },
     [],
   )
@@ -2144,6 +2154,7 @@ function App() {
             onApplySizeEdit={handleDocumentTreeApplySizeEdit}
             onRemoveSizeLimit={handleDocumentTreeRemoveSizeLimit}
             onRenameSize={handleDocumentTreeRenameSize}
+            onRenamePart={handleDocumentTreeRenamePart}
             onAddCustomSize={handleDocumentTreeAddCustomSize}
             selectionClearEpoch={viewportSelectionClearEpoch}
             geometryRevision={geometryRevision}

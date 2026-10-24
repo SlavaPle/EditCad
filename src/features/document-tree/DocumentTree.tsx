@@ -6,13 +6,13 @@ import {
   useState,
   type MouseEvent,
 } from 'react'
-import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import {
   collectExpandableNodeIds,
   findDocumentTreeNode,
 } from './buildDocumentTree'
 import { DocumentTreeContextMenu } from './DocumentTreeContextMenu'
+import { DocumentTreeFittedSizePopup } from './DocumentTreeFittedSizePopup'
 import { DocumentTreeIcon } from './DocumentTreeIcons'
 import { DocumentTreeSizeEditPanel } from './DocumentTreeSizeEditPanel'
 import { DocumentTreeSizeHoverControls } from './DocumentTreeSizeHoverControls'
@@ -74,6 +74,8 @@ export type DocumentTreeProps = {
   onSelectNode: (node: DocumentTreeNode) => void
   onEditNode: (node: DocumentTreeNode) => void
   onRenameSize?: (node: DocumentTreeNode, displayName: string) => void
+  /** Tylko program montażu (.ecdasm) — bez zapisu do .ecdprt. */
+  onRenamePart?: (node: DocumentTreeNode, displayName: string) => void
   onApplySizeEdit?: (node: DocumentTreeNode, payload: SizeEditApplyPayload) => void
   onRemoveSizeLimit?: (node: DocumentTreeNode) => void
   onContextAction: (action: DocumentTreeContextActionId, node: DocumentTreeNode) => void
@@ -95,6 +97,7 @@ function TreeNodeRow({
   onEdit,
   onStartRename,
   onSizeLabelClick,
+  onPartLabelClick,
   onCommitRename,
   onCancelRename,
   onApplySizeEdit,
@@ -118,6 +121,7 @@ function TreeNodeRow({
   onEdit: (node: DocumentTreeNode) => void
   onStartRename: (node: DocumentTreeNode) => void
   onSizeLabelClick: (node: DocumentTreeNode, detail: number) => void
+  onPartLabelClick: (node: DocumentTreeNode, detail: number) => void
   onCommitRename: (node: DocumentTreeNode, name: string) => void
   onCancelRename: () => void
   onApplySizeEdit: (node: DocumentTreeNode, payload: SizeEditApplyPayload) => void
@@ -286,19 +290,56 @@ function TreeNodeRow({
             <span className={styles.icon}>
               <DocumentTreeIcon kind={node.kind} axis={node.axis} locked={node.locked} />
             </span>
-            <button
-              type="button"
-              className={styles.label}
-              onClick={() => onSelect(node)}
-              onDoubleClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                onEdit(node)
-              }}
-              title={displayLabel}
-            >
-              {displayLabel}
-            </button>
+            {isRenaming && node.kind === 'part' ? (
+              <input
+                ref={renameInputRef}
+                className={styles.sizeRenameInput}
+                value={renameText}
+                aria-label={t('documentTree.part.renameAria')}
+                onChange={(e) => setRenameText(e.target.value)}
+                onBlur={() => {
+                  if (!renameReadyRef.current) return
+                  onCommitRename(node, renameText)
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    renameReadyRef.current = true
+                    onCommitRename(node, renameText)
+                  }
+                  if (e.key === 'Escape') {
+                    e.preventDefault()
+                    onCancelRename()
+                  }
+                }}
+                onClick={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <button
+                type="button"
+                className={styles.label}
+                onClick={(e) => {
+                  if (node.kind === 'part') {
+                    onPartLabelClick(node, e.detail)
+                    return
+                  }
+                  onSelect(node)
+                }}
+                onDoubleClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  if (node.kind === 'part') {
+                    onPartLabelClick(node, e.detail)
+                    return
+                  }
+                  onEdit(node)
+                }}
+                title={displayLabel}
+              >
+                {displayLabel}
+              </button>
+            )}
           </>
         )}
       </div>
@@ -322,6 +363,7 @@ function TreeNodeRow({
               onEdit={onEdit}
               onStartRename={onStartRename}
               onSizeLabelClick={onSizeLabelClick}
+              onPartLabelClick={onPartLabelClick}
               onCommitRename={onCommitRename}
               onCancelRename={onCancelRename}
               onApplySizeEdit={onApplySizeEdit}
@@ -344,6 +386,7 @@ export function DocumentTree({
   onSelectNode,
   onEditNode,
   onRenameSize,
+  onRenamePart,
   onApplySizeEdit,
   onRemoveSizeLimit,
   onContextAction,
@@ -443,7 +486,7 @@ export function DocumentTree({
 
   const startRename = useCallback(
     (node: DocumentTreeNode) => {
-      if (!isSizeKind(node.kind)) return
+      if (!isSizeKind(node.kind) && node.kind !== 'part') return
       clearRenameDeferTimer()
       clearSizeHoverTimer()
       setEditingSizeId(null)
@@ -494,6 +537,37 @@ export function DocumentTree({
     [beginEditValue, clearRenameDeferTimer, onSelectNode, selectedNodeId, startRename],
   )
 
+  const handlePartLabelClick = useCallback(
+    (node: DocumentTreeNode, detail: number) => {
+      const selected = selectedNodeId === node.id
+      const { kind, nextState } = classifyDocumentTreeSizeClick({
+        nodeId: node.id,
+        detail,
+        nowMs: Date.now(),
+        state: sizeClickTimingRef.current,
+        isSelected: selected,
+      })
+      sizeClickTimingRef.current = nextState
+      if (kind === 'editValue') {
+        // Dblclick na detalu — bez edycji limitu; anuluj odłożony rename
+        clearRenameDeferTimer()
+        onSelectNode(node)
+        return
+      }
+      if (kind === 'renameCandidate') {
+        clearRenameDeferTimer()
+        renameDeferTimerRef.current = window.setTimeout(() => {
+          renameDeferTimerRef.current = null
+          startRename(node)
+        }, DOCUMENT_TREE_RENAME_DEFER_MS)
+        return
+      }
+      clearRenameDeferTimer()
+      onSelectNode(node)
+    },
+    [clearRenameDeferTimer, onSelectNode, selectedNodeId, startRename],
+  )
+
   const handleMenuAction = useCallback(
     (action: DocumentTreeContextActionId) => {
       if (!menuNode) return
@@ -509,7 +583,7 @@ export function DocumentTree({
         beginEditValue(menuNode)
         return
       }
-      if (action === 'renameSize') {
+      if (action === 'renameSize' || action === 'renamePart') {
         startRename(menuNode)
         return
       }
@@ -572,9 +646,15 @@ export function DocumentTree({
           onEdit={handleEdit}
           onStartRename={startRename}
           onSizeLabelClick={handleSizeLabelClick}
+          onPartLabelClick={handlePartLabelClick}
           onCommitRename={(n, name) => {
             setRenamingSizeId(null)
-            onRenameSize?.(n, name.trim())
+            const trimmed = name.trim()
+            if (n.kind === 'part') {
+              onRenamePart?.(n, trimmed)
+              return
+            }
+            onRenameSize?.(n, trimmed)
           }}
           onCancelRename={() => setRenamingSizeId(null)}
           onApplySizeEdit={(n, payload) => onApplySizeEdit?.(n, payload)}
@@ -593,54 +673,48 @@ export function DocumentTree({
           onClose={() => setMenu(null)}
         />
       ) : null}
-      {(showHoverPopup || showEditPopup) && popupNode && popupAnchor
-        ? createPortal(
-            <div
-              className={styles.sizePopupLayerFixed}
-              style={{
-                // Na prawo od wiersza — ścieżka myszy nie przecina X/Y/Z poniżej
-                top: popupAnchor.rect.top,
-                left: popupAnchor.rect.right + 4,
+      {(showHoverPopup || showEditPopup) && popupNode && popupAnchor ? (
+        <DocumentTreeFittedSizePopup
+          // Na prawo od wiersza — ścieżka myszy nie przecina X/Y/Z poniżej
+          top={popupAnchor.rect.top}
+          left={popupAnchor.rect.right + 4}
+          onMouseEnter={keepPopupHover}
+          onMouseLeave={clearSizeHoverSoon}
+        >
+          {showHoverPopup ? (
+            <DocumentTreeSizeHoverControls
+              initialMm={popupNode.sizeMm ?? null}
+              limitMinMm={popupNode.limitMinMm}
+              limitMaxMm={popupNode.limitMaxMm}
+              limitType={sizeLimitTypeOf(popupNode)}
+              disabled={popupNode.sizeStatus === 'const'}
+              onApply={(payload) => onApplySizeEdit?.(popupNode, payload)}
+            />
+          ) : null}
+          {showEditPopup ? (
+            <DocumentTreeSizeEditPanel
+              initialMm={popupNode.sizeMm ?? null}
+              initialMinMm={popupNode.limitMinMm}
+              initialMaxMm={popupNode.limitMaxMm}
+              constraintId={popupNode.constraintId}
+              constraintType={sizeLimitTypeOf(popupNode)}
+              onApply={(payload) => {
+                onApplySizeEdit?.(popupNode, payload)
+                setEditingSizeId(null)
               }}
-              onMouseEnter={keepPopupHover}
-              onMouseLeave={clearSizeHoverSoon}
-            >
-              {showHoverPopup ? (
-                <DocumentTreeSizeHoverControls
-                  initialMm={popupNode.sizeMm ?? null}
-                  limitMinMm={popupNode.limitMinMm}
-                  limitMaxMm={popupNode.limitMaxMm}
-                  limitType={sizeLimitTypeOf(popupNode)}
-                  disabled={popupNode.sizeStatus === 'const'}
-                  onApply={(payload) => onApplySizeEdit?.(popupNode, payload)}
-                />
-              ) : null}
-              {showEditPopup ? (
-                <DocumentTreeSizeEditPanel
-                  initialMm={popupNode.sizeMm ?? null}
-                  initialMinMm={popupNode.limitMinMm}
-                  initialMaxMm={popupNode.limitMaxMm}
-                  constraintId={popupNode.constraintId}
-                  constraintType={sizeLimitTypeOf(popupNode)}
-                  onApply={(payload) => {
-                    onApplySizeEdit?.(popupNode, payload)
-                    setEditingSizeId(null)
-                  }}
-                  onCancel={() => setEditingSizeId(null)}
-                  onRemoveLimit={
-                    onRemoveSizeLimit && isRemovableSizeLimit(popupNode)
-                      ? () => {
-                          setEditingSizeId(null)
-                          onRemoveSizeLimit(popupNode)
-                        }
-                      : undefined
-                  }
-                />
-              ) : null}
-            </div>,
-            document.body,
-          )
-        : null}
+              onCancel={() => setEditingSizeId(null)}
+              onRemoveLimit={
+                onRemoveSizeLimit && isRemovableSizeLimit(popupNode)
+                  ? () => {
+                      setEditingSizeId(null)
+                      onRemoveSizeLimit(popupNode)
+                    }
+                  : undefined
+              }
+            />
+          ) : null}
+        </DocumentTreeFittedSizePopup>
+      ) : null}
     </>
   )
 }

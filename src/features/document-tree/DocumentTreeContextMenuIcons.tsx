@@ -67,6 +67,7 @@ export function DocumentTreeContextMenuIcon({
         </svg>
       )
     case 'renameSize':
+    case 'renamePart':
       return (
         <svg {...svgProps}>
           <path d="M3 13h10M4 10l7-7 2 2-7 7H4v-2z" />
@@ -144,6 +145,7 @@ export function documentTreeContextActionHasIcon(
     'copySize',
     'editSize',
     'renameSize',
+    'renamePart',
     'addCustomSize',
     'removeSizeLimit',
     'highlightElement',

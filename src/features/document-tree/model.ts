@@ -80,6 +80,7 @@ export type DocumentTreeContextActionId =
   | 'copySize'
   | 'editSize'
   | 'renameSize'
+  | 'renamePart'
   | 'removeSizeLimit'
   | 'addCustomSize'
   | 'highlightElement'
