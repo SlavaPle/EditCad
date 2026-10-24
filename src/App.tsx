@@ -1022,7 +1022,9 @@ function App() {
   )
 
   const handleDocumentTreeHighlightElementFaces = useCallback(
-    (_partId: string | null, faceIndices: number[]) => {
+    (partId: string | null, faceIndices: number[]) => {
+      // W montażu overlay idzie tylko na activePart — ustaw aktywną część przed faces.
+      if (partId) setActiveProgramPartId(partId)
       setSelection(selectFaces(createEmptySelection(), faceIndices, 'replace'))
       setProbableFaces([])
     },

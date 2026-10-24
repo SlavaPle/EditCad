@@ -6,7 +6,10 @@ import { useThree } from '@react-three/fiber'
 import { Box3, BufferGeometry, Mesh, Vector3 } from 'three'
 import type { ThreeEvent } from '@react-three/fiber'
 import { SelectableModel } from '../../../components/Viewer3D/SelectableModel'
-import type { SelectionState } from '../../../lib/selection'
+import { createEmptySelection, type SelectionState } from '../../../lib/selection'
+
+/** Współdzielone puste zaznaczenie — nieaktywne detale nie rysują globalnych face indices. */
+const NO_PART_FACE_SELECTION: SelectionState = createEmptySelection()
 import {
   DEFAULT_MODEL_DISPLAY_MODE,
   type ModelDisplayMode,
@@ -219,7 +222,12 @@ export function InteractiveProgramPartsLayer({
   return (
     <Bounds margin={1.2} fit key={fitToken}>
       <group ref={partsRootRef}>
-        {parts.map((part) => (
+        {parts.map((part) => {
+          const isActive = activePartId === part.id
+          // SelectionState nie ma partId — overlay tylko na aktywnej detali (indeksy ścian
+          // z innej geometrii nie mogą trafiać na pozostałe części montażu).
+          const partSelection = isActive ? selection : NO_PART_FACE_SELECTION
+          return (
           <InteractiveProgramPart
             key={part.id}
             part={part}
@@ -230,8 +238,8 @@ export function InteractiveProgramPartsLayer({
             preAssemblyActive={assemblyInteractionActive}
             matesPickContextActive={matesPickMode.active}
             matesPickActive={matesPickMode.active && matesPickMode.slot !== null}
-            isActive={activePartId === part.id}
-            selection={selection}
+            isActive={isActive}
+            selection={partSelection}
             onSelectionChange={onSelectionChange}
             selectionProximityFilter={selectionProximityFilter}
             onProbableFacesChange={handleProbableFacesChange}
@@ -243,7 +251,8 @@ export function InteractiveProgramPartsLayer({
             }
             mateEntityHighlights={mateEntityHighlights}
           />
-        ))}
+          )
+        })}
       </group>
     </Bounds>
   )
