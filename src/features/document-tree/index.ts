@@ -38,6 +38,7 @@ export { findAxisExtremeFacePatches } from './findAxisExtremeFacePatches'
 export { createCustomSizeConstraint } from './createCustomSizeConstraint'
 export { buildCustomSizeTreeNodes } from './buildCustomSizeTreeNodes'
 export { classifyDocumentTreeSizeClick } from './documentTreeClickTiming'
+export { isSizeLockedByCustom } from './isSizeLockedByCustom'
 
 export {
   clampSizeEditValue,

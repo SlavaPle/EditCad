@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { alignSizeSliderBounds, snapSizeMmToStep } from './snapSizeMmToStep'
+import {
+  alignSizeSliderBounds,
+  cleanSizeMmFloat,
+  formatSizeMmInput,
+  sizeMmForUi,
+  snapSizeMmToStep,
+} from './snapSizeMmToStep'
 
 describe('snapSizeMmToStep', () => {
   it('zaokrągla do kroku 1', () => {
@@ -11,6 +17,19 @@ describe('snapSizeMmToStep', () => {
   it('zaokrągla do kroku 0.5', () => {
     expect(snapSizeMmToStep(10.24, 0.5)).toBe(10)
     expect(snapSizeMmToStep(10.25, 0.5)).toBe(10.5)
+  })
+})
+
+describe('cleanSizeMmFloat / sizeMmForUi', () => {
+  it('usuwa szum float po stretch', () => {
+    expect(cleanSizeMmFloat(100.0000000002)).toBe(100)
+    expect(formatSizeMmInput(100.0000000002)).toBe('100')
+  })
+
+  it('sizeMmForUi trzyma siatkę kroku', () => {
+    expect(sizeMmForUi(100.0000002, () => 1)).toBe(100)
+    expect(sizeMmForUi(10.24, () => 0.5)).toBe(10)
+    expect(sizeMmForUi(10.25, () => 0.5)).toBe(10.5)
   })
 })
 

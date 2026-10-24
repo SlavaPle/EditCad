@@ -1,3 +1,4 @@
+import { isSizeLockedByCustom } from './isSizeLockedByCustom'
 import type { DocumentTreeContextActionId, DocumentTreeNode } from './model'
 
 /**
@@ -15,6 +16,8 @@ export function resolveDocumentTreeEditAction(node: DocumentTreeNode): DocumentT
     return { kind: 'contextAction', action: 'editAppearance' }
   }
   if (node.kind === 'size' || node.kind === 'sizeCustom') {
+    // Oś zależna od custom — edycja tylko na węźle sizeCustom
+    if (isSizeLockedByCustom(node)) return { kind: 'none' }
     // CONST / locked: panel nadal otwieramy (usuń limit); bez constraint i bez editable — none
     if (node.editable === false && !node.constraintId) return { kind: 'none' }
     if ((node.faceIndices?.length ?? 0) < 2) return { kind: 'none' }

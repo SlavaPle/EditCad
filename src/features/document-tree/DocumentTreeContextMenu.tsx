@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DocumentTreeContextMenuIcon } from './DocumentTreeContextMenuIcons'
 import { isRemovableSizeLimit } from './isRemovableSizeLimit'
+import { isSizeLockedByCustom } from './isSizeLockedByCustom'
 import type { DocumentTreeContextActionId, DocumentTreeNode } from './model'
 import styles from './DocumentTree.module.css'
 
@@ -36,7 +37,9 @@ export function buildContextMenuItems(node: DocumentTreeNode): DocumentTreeConte
         {
           id: 'editSize',
           labelKey: 'documentTree.menu.editSize',
-          disabled: node.editable === false && !node.constraintId,
+          disabled:
+            isSizeLockedByCustom(node) ||
+            (node.editable === false && !node.constraintId),
         },
         {
           id: 'renameSize',

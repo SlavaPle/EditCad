@@ -65,4 +65,20 @@ describe('resolveDocumentTreeEditAction', () => {
       resolveDocumentTreeEditAction({ id: 'sg', kind: 'sizesGroup', label: 'Sizes' }),
     ).toEqual({ kind: 'none' })
   })
+
+  it('returns none for axis locked by custom (edycja tylko sizeCustom)', () => {
+    expect(
+      resolveDocumentTreeEditAction({
+        id: 'z',
+        kind: 'size',
+        label: 'Z',
+        axis: 'z',
+        editable: false,
+        constraintId: 'custom-1',
+        sizeStatus: 'lockedByCustom',
+        sizeLockReason: 'customConflict',
+        faceIndices: [0, 1],
+      }),
+    ).toEqual({ kind: 'none' })
+  })
 })

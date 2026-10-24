@@ -11,6 +11,12 @@ export {
   type ProgramSettings,
 } from './programSettings'
 
-export { snapSizeMmToStep, alignSizeSliderBounds } from './snapSizeMmToStep'
+export {
+  snapSizeMmToStep,
+  alignSizeSliderBounds,
+  cleanSizeMmFloat,
+  sizeMmForUi,
+  formatSizeMmInput,
+} from './snapSizeMmToStep'
 
 export { SettingsWindow, type SettingsWindowProps } from './SettingsWindow'

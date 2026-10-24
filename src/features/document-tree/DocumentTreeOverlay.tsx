@@ -6,6 +6,7 @@ import type { MateEntityHighlights } from '../assembly-mates/matePlaneFaceOverla
 import type { FaceConstraint } from '../face-constraints/model'
 import type { SizeEditApplyPayload } from './sizeEditApplyPayload'
 import type { PreAssemblyProgramPart } from '../pre-assembly/preAssemblyProgram'
+import { cleanSizeMmFloat, resolveSizeStepMm, sizeMmForUi } from '../app-settings'
 import { geometryExtentMm } from '../pre-assembly/viewer/layoutProgramPartPositionsMm'
 import { buildProgramPartDisplayNameById } from '../pre-assembly/programParts/programPartDisplayName'
 import type { PreparedElementConstraints } from '../../lib/preparedElementFormat'
@@ -91,7 +92,13 @@ export function DocumentTreeOverlay({
   const partSizeMmById = useMemo(() => {
     const map: Record<string, { x: number; y: number; z: number }> = {}
     for (const part of programParts) {
-      map[part.id] = geometryExtentMm(programPartGeometries[part.id]).sizeMm
+      const raw = geometryExtentMm(programPartGeometries[part.id]).sizeMm
+      // Tylko szum float — siatkę kroku nakłada buildDocumentTree wg editable / lockedByCustom
+      map[part.id] = {
+        x: cleanSizeMmFloat(raw.x),
+        y: cleanSizeMmFloat(raw.y),
+        z: cleanSizeMmFloat(raw.z),
+      }
     }
     return map
     // geometryRevision: bbox po stretch in-place
@@ -118,7 +125,16 @@ export function DocumentTreeOverlay({
     () =>
       buildDocumentTree({
         partRootLabel: mainFileName ?? t('documentTree.untitledPart'),
-        partSizeMm: mainModel ? geometryExtentMm(mainModel).sizeMm : null,
+        partSizeMm: mainModel
+          ? (() => {
+              const raw = geometryExtentMm(mainModel).sizeMm
+              return {
+                x: cleanSizeMmFloat(raw.x),
+                y: cleanSizeMmFloat(raw.y),
+                z: cleanSizeMmFloat(raw.z),
+              }
+            })()
+          : null,
         hasPartModel: !!mainModel,
         mainGeometry: mainModel,
         mainFaceConstraints,
@@ -219,7 +235,9 @@ export function DocumentTreeOverlay({
           break
         case 'copySize':
           if (node.sizeMm != null && Number.isFinite(node.sizeMm)) {
-            void navigator.clipboard?.writeText(String(node.sizeMm))
+            void navigator.clipboard?.writeText(
+              String(sizeMmForUi(node.sizeMm, resolveSizeStepMm)),
+            )
           }
           break
         case 'addCustomSize':

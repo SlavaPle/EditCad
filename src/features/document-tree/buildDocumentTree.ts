@@ -1,12 +1,16 @@
 import type { BufferGeometry } from 'three'
 import type { AssemblyMate } from '../assembly-mates/model'
+import { cleanSizeMmFloat, resolveSizeStepMm, sizeMmForUi } from '../app-settings'
 import type { FaceConstraint } from '../face-constraints/model'
 import type { PreAssemblyProgramPart } from '../pre-assembly/preAssemblyProgram'
 import type { PreparedModelElement } from '../../lib/preparedElementFormat'
 import { buildCustomSizeTreeNodes } from './buildCustomSizeTreeNodes'
 import type { DocumentTreeAxis, DocumentTreeNode } from './model'
 import { isPartLocked, type PartLockMap } from './partLock'
-import { resolveCanonicalSizeNodeBinding } from './resolveSizeNodeBinding'
+import {
+  resolveCanonicalSizeNodeBinding,
+  type SizeNodeBinding,
+} from './resolveSizeNodeBinding'
 
 export type SizeMm = { x: number; y: number; z: number }
 
@@ -32,8 +36,28 @@ export type BuildDocumentTreeInput = {
 
 function formatSizeMm(value: number): string {
   if (!Number.isFinite(value)) return '—'
+  // 2 miejsca — bez szumu float w etykiecie
   const rounded = Math.round(value * 100) / 100
   return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2)
+}
+
+/**
+ * Editable → siatka kroku UI; lockedByCustom / inne zablokowane → tylko clean float
+ * (Y/Z zależne od custom nie mogą być „zaokrąglane” do 1 / 0.5).
+ */
+function sizeMmForCanonicalNode(
+  raw: number | null | undefined,
+  binding: SizeNodeBinding,
+): number | undefined {
+  if (raw == null || !Number.isFinite(raw)) return undefined
+  if (
+    !binding.editable ||
+    binding.status === 'lockedByCustom' ||
+    binding.lockReason === 'customConflict'
+  ) {
+    return cleanSizeMmFloat(raw)
+  }
+  return sizeMmForUi(raw, resolveSizeStepMm)
 }
 
 function sizeChildren(params: {
@@ -47,14 +71,15 @@ function sizeChildren(params: {
   const { prefix, size, partId, geometry, modelElements, constraints } = params
   const axes: DocumentTreeAxis[] = ['x', 'y', 'z']
   const canonical = axes.map((axis) => {
-    const value = size?.[axis]
+    const raw = size?.[axis]
     const binding = resolveCanonicalSizeNodeBinding({
       geometry,
       modelElements,
       constraints,
       axis,
-      sizeMm: value,
+      sizeMm: raw,
     })
+    const value = sizeMmForCanonicalNode(raw, binding)
     const axisLabel = axis.toUpperCase()
     const name = binding.displayName?.trim() || axisLabel
     const label =
@@ -72,8 +97,11 @@ function sizeChildren(params: {
       sizeStatus: binding.status,
       sizeLockReason: binding.lockReason,
       faceIndices: binding.faceIndices,
-      limitMinMm: binding.limitMinMm ?? undefined,
-      limitMaxMm: binding.limitMaxMm ?? undefined,
+      // Limity custom NIE są limitami osi Y/Z — nie kopiuj na węzeł zależny
+      limitMinMm:
+        binding.status === 'lockedByCustom' ? undefined : binding.limitMinMm ?? undefined,
+      limitMaxMm:
+        binding.status === 'lockedByCustom' ? undefined : binding.limitMaxMm ?? undefined,
     }
   })
 

@@ -24,6 +24,7 @@ import {
   type DocumentTreeClickTimingState,
 } from './documentTreeClickTiming'
 import { isRemovableSizeLimit } from './isRemovableSizeLimit'
+import { isSizeLockedByCustom } from './isSizeLockedByCustom'
 import type {
   DocumentTreeContextActionId,
   DocumentTreeContextMenuState,
@@ -135,8 +136,10 @@ function TreeNodeRow({
     selectedNodeId === node.id ||
     (node.kind === 'part' && node.partId != null && node.partId === activePartId)
   const sizeLocked = isSizeKind(node.kind) && node.editable === false
+  // lockedByCustom: edycja tylko na sizeCustom — nie otwieraj panelu na Y/Z
   const canOpenSizeEdit =
     isSizeKind(node.kind) &&
+    !isSizeLockedByCustom(node) &&
     (node.editable !== false || Boolean(node.constraintId)) &&
     (node.faceIndices?.length ?? 0) >= 2
   const isEditing = editingSizeId === node.id

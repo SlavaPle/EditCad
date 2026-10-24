@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   alignSizeSliderBounds,
+  formatSizeMmInput,
   getProgramSettings,
   resolveSizeStepMm,
+  sizeMmForUi,
   snapSizeMmToStep,
 } from '../app-settings'
 import type { FaceConstraintType } from '../face-constraints/model'
@@ -58,7 +60,9 @@ export function DocumentTreeSizeEditPanel({
     initialMaxMm != null && Number.isFinite(initialMaxMm) ? String(initialMaxMm) : '',
   )
   const [text, setText] = useState(
-    initialMm != null && Number.isFinite(initialMm) ? String(initialMm) : '',
+    initialMm != null && Number.isFinite(initialMm)
+      ? formatSizeMmInput(sizeMmForUi(initialMm, resolveSizeStepMm))
+      : '',
   )
 
   useEffect(() => {
@@ -106,7 +110,7 @@ export function DocumentTreeSizeEditPanel({
       maxMm: maxMm ?? undefined,
     })
     if (clamped == null) return
-    setText(String(snapAdaptive(clamped)))
+    setText(formatSizeMmInput(snapAdaptive(clamped)))
   }
 
   const commit = () => {

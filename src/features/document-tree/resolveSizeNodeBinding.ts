@@ -1,6 +1,7 @@
 import type { BufferGeometry } from 'three'
 import type { PreparedModelElement } from '../../lib/preparedElementFormat'
 import { analyzeTwoFaceStretch } from '../../lib/twoFaceStretch'
+import { resolveSizeStepMm, sizeMmForUi } from '../app-settings'
 import type { FaceConstraint, FaceConstraintType } from '../face-constraints/model'
 import {
   axisToDimensionSlot,
@@ -198,6 +199,7 @@ export function resolveCanonicalSizeNodeBinding(params: {
       constraintFaces(params.modelElements, customs[0]!) ??
       findAxisExtremeFacePatches(geometry, params.axis)?.faceIndices ??
       []
+    // Limity custom dotyczą szczeliny custom — nie min/max osi Y/Z
     return withBounds(
       {
         slot,
@@ -209,7 +211,7 @@ export function resolveCanonicalSizeNodeBinding(params: {
         faceIndices: faces,
         sizeMm: params.sizeMm ?? null,
       },
-      customs[0],
+      null,
     )
   }
 
@@ -254,7 +256,7 @@ export function resolveCanonicalSizeNodeBinding(params: {
         faceIndices,
         sizeMm: params.sizeMm ?? null,
       },
-      bound ?? customs[0],
+      bound,
     )
   }
 
@@ -300,7 +302,8 @@ export function resolveCustomSizeNodeBinding(params: {
   const analysis = faces.length >= 2 ? analyzeTwoFaceStretch(geometry, faces) : null
   const slot =
     analysis && analysis.ok ? axisToDimensionSlot(analysis.axis) : slotFallback
-  const sizeMm = analysis && analysis.ok ? analysis.gapMm : null
+  const sizeMm =
+    analysis && analysis.ok ? sizeMmForUi(analysis.gapMm, resolveSizeStepMm) : null
 
   if (faces.length < 2) {
     return withBounds(

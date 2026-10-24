@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   alignSizeSliderBounds,
+  formatSizeMmInput,
   getProgramSettings,
   resolveSizeStepMm,
+  sizeMmForUi,
   snapSizeMmToStep,
 } from '../app-settings'
 import type { FaceConstraintType } from '../face-constraints/model'
@@ -39,11 +41,17 @@ export function DocumentTreeSizeHoverControls({
 }: DocumentTreeSizeHoverControlsProps) {
   const { t } = useTranslation()
   const [text, setText] = useState(
-    initialMm != null && Number.isFinite(initialMm) ? String(initialMm) : '',
+    initialMm != null && Number.isFinite(initialMm)
+      ? formatSizeMmInput(sizeMmForUi(initialMm, resolveSizeStepMm))
+      : '',
   )
 
   useEffect(() => {
-    setText(initialMm != null && Number.isFinite(initialMm) ? String(initialMm) : '')
+    setText(
+      initialMm != null && Number.isFinite(initialMm)
+        ? formatSizeMmInput(sizeMmForUi(initialMm, resolveSizeStepMm))
+        : '',
+    )
   }, [initialMm])
 
   const minMm = limitMinMm ?? undefined
@@ -74,7 +82,7 @@ export function DocumentTreeSizeHoverControls({
     })
     if (clamped == null) return
     const valueMm = snapAdaptive(clamped)
-    setText(String(valueMm))
+    setText(formatSizeMmInput(valueMm))
     onApply({
       valueMm,
       limitType,
@@ -127,7 +135,7 @@ export function DocumentTreeSizeHoverControls({
             return Math.min(sliderMax, Math.max(sliderMin, v))
           })()}
           onChange={(e) => {
-            setText(String(snapAdaptive(Number(e.target.value))))
+            setText(formatSizeMmInput(snapAdaptive(Number(e.target.value))))
           }}
           onMouseUp={(e) => {
             commit(Number((e.target as HTMLInputElement).value))
