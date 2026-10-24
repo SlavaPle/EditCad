@@ -3,6 +3,17 @@ import type { DocumentTreeNode } from './model'
 import { resolveDocumentTreeEditAction } from './resolveDocumentTreeEditAction'
 
 describe('resolveDocumentTreeEditAction', () => {
+  it('opens appearance edit on appearance node', () => {
+    expect(
+      resolveDocumentTreeEditAction({
+        id: 'a',
+        kind: 'appearance',
+        label: 'A',
+        partId: 'pa',
+      }),
+    ).toEqual({ kind: 'contextAction', action: 'editAppearance' })
+  })
+
   it('opens size edit on editable size node', () => {
     const node: DocumentTreeNode = {
       id: 's',
@@ -46,12 +57,12 @@ describe('resolveDocumentTreeEditAction', () => {
     })
   })
 
-  it('returns none for part / appearance', () => {
+  it('returns none for part / groups', () => {
     expect(
       resolveDocumentTreeEditAction({ id: 'p', kind: 'part', label: 'P', partId: 'pa' }),
     ).toEqual({ kind: 'none' })
     expect(
-      resolveDocumentTreeEditAction({ id: 'a', kind: 'appearance', label: 'A' }),
+      resolveDocumentTreeEditAction({ id: 'sg', kind: 'sizesGroup', label: 'Sizes' }),
     ).toEqual({ kind: 'none' })
   })
 })

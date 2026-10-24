@@ -1,13 +1,19 @@
 import type { DocumentTreeContextActionId, DocumentTreeNode } from './model'
 
 /**
- * Skutek podwójnego kliknięcia: wejście w edycję wartości rozmiaru (X/Y/Z / custom).
+ * Skutek podwójnego kliknięcia w węzeł drzewa: wejście w edycję
+ * (LKM = wybór, DblClick = edycja — jak w Inventor / SolidWorks).
+ *
+ * Zwraca id akcji z menu kontekstowego, żeby Overlay mógł użyć tego samego handlera.
  */
 export type DocumentTreeEditAction =
   | { kind: 'contextAction'; action: DocumentTreeContextActionId }
   | { kind: 'none' }
 
 export function resolveDocumentTreeEditAction(node: DocumentTreeNode): DocumentTreeEditAction {
+  if (node.kind === 'appearance') {
+    return { kind: 'contextAction', action: 'editAppearance' }
+  }
   if (node.kind === 'size' || node.kind === 'sizeCustom') {
     // CONST / locked: panel nadal otwieramy (usuń limit); bez constraint i bez editable — none
     if (node.editable === false && !node.constraintId) return { kind: 'none' }

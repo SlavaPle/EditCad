@@ -280,14 +280,19 @@ export function DocumentTreeOverlay({
     (node: DocumentTreeNode) => {
       setSelectedNodeId(node.id)
       const edit = resolveDocumentTreeEditAction(node)
-      if (edit.kind === 'contextAction' && edit.action === 'editSize') {
+      if (edit.kind !== 'contextAction') return
+      // editSize: UI lokalne w DocumentTree (+ podświetlenie płaszczyzn)
+      if (edit.action === 'editSize') {
         if (node.faceIndices && node.faceIndices.length > 0) {
           if (node.partId) onActivePartChange(node.partId)
           onHighlightElementFaces?.(node.partId ?? null, node.faceIndices)
         }
+        return
       }
+      // appearance i inne — ten sam handler co menu kontekstowe
+      handleContextAction(edit.action, node)
     },
-    [onActivePartChange, onHighlightElementFaces],
+    [handleContextAction, onActivePartChange, onHighlightElementFaces],
   )
 
   if (!root) {
