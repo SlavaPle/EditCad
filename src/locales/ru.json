@@ -37,6 +37,11 @@
       "faceBottom": "Снизу",
       "faceFront": "Спереди",
       "faceBack": "Сзади"
+    },
+    "axisGizmo": {
+      "axisX": "X",
+      "axisY": "Y",
+      "axisZ": "Z"
     }
   },
   "toolbar": {

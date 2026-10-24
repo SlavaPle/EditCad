@@ -4,6 +4,7 @@ import { Canvas } from '@react-three/fiber'
 import { Grid } from '@react-three/drei'
 import { MouseOrbitViewControls } from '../features/viewer-camera/MouseOrbitViewControls'
 import { OrbitViewRotationProvider } from '../features/viewer-camera/OrbitViewRotationProvider'
+import { AxisGizmo } from '../features/view-navigation/AxisGizmo'
 import { ViewCubeGizmo } from '../features/view-navigation/ViewCubeGizmo'
 import { SceneContent } from './Viewer3D/SceneContent'
 import { shouldClearSelectionOnPointerMiss } from '../features/viewer-selection'
@@ -187,6 +188,7 @@ export function Viewer3D({
             }}
           />
           <ViewCubeGizmo />
+          <AxisGizmo />
           <Grid
           args={[20, 20]}
           cellSize={1}

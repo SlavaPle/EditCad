@@ -37,6 +37,11 @@
       "faceBottom": "Bottom",
       "faceFront": "Front",
       "faceBack": "Back"
+    },
+    "axisGizmo": {
+      "axisX": "X",
+      "axisY": "Y",
+      "axisZ": "Z"
     }
   },
   "toolbar": {
