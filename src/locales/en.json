@@ -410,6 +410,8 @@
   },
   "leftPanel": {
     "header": "Model & load",
+    "collapsePanel": "Collapse left panel",
+    "expandPanel": "Expand left panel",
     "file": "File",
     "limits": {
       "title": "Limits",

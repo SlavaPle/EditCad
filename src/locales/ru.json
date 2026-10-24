@@ -410,6 +410,8 @@
   },
   "leftPanel": {
     "header": "Модель и загрузка",
+    "collapsePanel": "Свернуть левую панель",
+    "expandPanel": "Развернуть левую панель",
     "file": "Файл",
     "limits": {
       "title": "Лимиты",

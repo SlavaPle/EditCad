@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, Fragment } from 'react'
+import { useCallback, useMemo, useRef, useState, Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelLoader } from './ModelLoader'
 import { isSupportedExtension } from '../lib/loadModel'
@@ -143,9 +143,41 @@ export function LeftPanel({
       ? visibleLimits.find((c) => c.id === focusedLimitConstraintId)
       : undefined
 
+  // Tymczasowe zwijanie panelu (debug) — do usunięcia później
+  const [collapsed, setCollapsed] = useState(false)
+
+  if (collapsed) {
+    return (
+      <aside className={styles.panelCollapsed} aria-label={t('leftPanel.header')}>
+        <button
+          type="button"
+          className={styles.collapseToggle}
+          aria-expanded={false}
+          aria-label={t('leftPanel.expandPanel')}
+          title={t('leftPanel.expandPanel')}
+          onClick={() => setCollapsed(false)}
+        >
+          ›
+        </button>
+      </aside>
+    )
+  }
+
   return (
     <aside className={styles.panel}>
-      <div className={styles.header}>{t('leftPanel.header')}</div>
+      <div className={styles.header}>
+        <span className={styles.headerTitle}>{t('leftPanel.header')}</span>
+        <button
+          type="button"
+          className={styles.collapseToggle}
+          aria-expanded={true}
+          aria-label={t('leftPanel.collapsePanel')}
+          title={t('leftPanel.collapsePanel')}
+          onClick={() => setCollapsed(true)}
+        >
+          ‹
+        </button>
+      </div>
       <div className={styles.content}>
         {preAssemblyActive ? (
           <PreAssemblyProgramPanel
