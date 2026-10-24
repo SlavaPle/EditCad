@@ -2,39 +2,56 @@ import { describe, expect, it } from 'vitest'
 import type { DocumentTreeNode } from './model'
 import { resolveDocumentTreeEditAction } from './resolveDocumentTreeEditAction'
 
-function node(
-  kind: DocumentTreeNode['kind'],
-  extras: Partial<DocumentTreeNode> = {},
-): DocumentTreeNode {
-  return { id: `id:${kind}`, kind, label: kind, ...extras }
-}
-
 describe('resolveDocumentTreeEditAction', () => {
-  it('opens appearance edit on appearance node', () => {
-    expect(resolveDocumentTreeEditAction(node('appearance', { partId: 'pa' }))).toEqual({
-      kind: 'contextAction',
-      action: 'editAppearance',
-    })
-  })
-
-  it('opens appearance edit on part node (edit that part)', () => {
-    expect(resolveDocumentTreeEditAction(node('part', { partId: 'pa' }))).toEqual({
-      kind: 'contextAction',
-      action: 'editAppearance',
-    })
-  })
-
-  it('returns none when node has no dedicated edit mode', () => {
-    for (const kind of [
-      'mate',
-      'element',
-      'root',
-      'model',
-      'size',
-      'elementsGroup',
-      'matesGroup',
-    ] as const) {
-      expect(resolveDocumentTreeEditAction(node(kind))).toEqual({ kind: 'none' })
+  it('opens size edit on editable size node', () => {
+    const node: DocumentTreeNode = {
+      id: 's',
+      kind: 'size',
+      label: 'X',
+      axis: 'x',
+      editable: true,
+      faceIndices: [0, 1],
     }
+    expect(resolveDocumentTreeEditAction(node)).toEqual({
+      kind: 'contextAction',
+      action: 'editSize',
+    })
+  })
+
+  it('returns none for locked size without faces/constraint', () => {
+    const node: DocumentTreeNode = {
+      id: 's',
+      kind: 'size',
+      label: 'X',
+      axis: 'x',
+      editable: false,
+    }
+    expect(resolveDocumentTreeEditAction(node)).toEqual({ kind: 'none' })
+  })
+
+  it('opens edit for const size with faces (remove limit / view)', () => {
+    const node: DocumentTreeNode = {
+      id: 's',
+      kind: 'size',
+      label: 'X',
+      axis: 'x',
+      editable: false,
+      constraintId: 'c1',
+      faceIndices: [0, 1],
+      sizeStatus: 'const',
+    }
+    expect(resolveDocumentTreeEditAction(node)).toEqual({
+      kind: 'contextAction',
+      action: 'editSize',
+    })
+  })
+
+  it('returns none for part / appearance', () => {
+    expect(
+      resolveDocumentTreeEditAction({ id: 'p', kind: 'part', label: 'P', partId: 'pa' }),
+    ).toEqual({ kind: 'none' })
+    expect(
+      resolveDocumentTreeEditAction({ id: 'a', kind: 'appearance', label: 'A' }),
+    ).toEqual({ kind: 'none' })
   })
 })

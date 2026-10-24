@@ -4,6 +4,8 @@ export type {
   DocumentTreeContextMenuState,
   DocumentTreeNode,
   DocumentTreeNodeKind,
+  SizeNodeLockReason,
+  SizeNodeStatus,
 } from './model'
 
 export {
@@ -24,6 +26,26 @@ export {
   resolveDocumentTreeEditAction,
   type DocumentTreeEditAction,
 } from './resolveDocumentTreeEditAction'
+
+export {
+  resolveCanonicalSizeNodeBinding,
+  resolveCustomSizeNodeBinding,
+  isCustomSizeConstraint,
+  type SizeNodeBinding,
+} from './resolveSizeNodeBinding'
+
+export { findAxisExtremeFacePatches } from './findAxisExtremeFacePatches'
+export { createCustomSizeConstraint } from './createCustomSizeConstraint'
+export { buildCustomSizeTreeNodes } from './buildCustomSizeTreeNodes'
+export { classifyDocumentTreeSizeClick } from './documentTreeClickTiming'
+
+export {
+  clampSizeEditValue,
+  isSizeValueFieldDisabled,
+  isSizeValueFieldMuted,
+} from './clampSizeEditValue'
+
+export type { SizeEditApplyPayload } from './sizeEditApplyPayload'
 
 export {
   filterPartLocksForPartIds,

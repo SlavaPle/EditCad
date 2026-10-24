@@ -12,6 +12,8 @@ export type FaceConstraintBase = {
   /** Referencje do wpisów modelElements w pliku ECDPRT — pełniejszy opis „elementów” niż sam facePair. */
   elementAId?: string
   elementBId?: string
+  /** Etykieta użytkownika (np. „długość”) — opcjonalna, zapisywana w .ecdprt. */
+  displayName?: string
 }
 
 export type MinFaceConstraint = FaceConstraintBase & {
@@ -375,7 +377,9 @@ export function parseFaceConstraint(value: unknown): FaceConstraint | null {
   const facePair = parseFacePair(value.facePair)
   const elementAId = typeof value.elementAId === 'string' ? value.elementAId : undefined
   const elementBId = typeof value.elementBId === 'string' ? value.elementBId : undefined
-  const common = { id: value.id, facePair, elementAId, elementBId }
+  const rawDisplayName = typeof value.displayName === 'string' ? value.displayName.trim() : ''
+  const displayName = rawDisplayName.length > 0 ? rawDisplayName : undefined
+  const common = { id: value.id, facePair, elementAId, elementBId, displayName }
 
   switch (value.type) {
     case 'min':

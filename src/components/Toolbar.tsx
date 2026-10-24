@@ -12,6 +12,7 @@ import {
   type ToolbarActionId,
   type ToolbarTabId
 } from './ToolbarTabsConfig'
+import { SettingsWindow } from '../features/app-settings'
 import type { PreAssemblyToolbarUi, PreAssemblyWizard } from '../features/pre-assembly'
 import { getPreAssemblySaveTitleKey } from '../features/pre-assembly'
 interface ToolbarProps {
@@ -143,8 +144,7 @@ export function Toolbar({
             title={t('toolbar.settings')}
             aria-label={t('toolbar.settings')}
             onClick={() => {
-              // Placeholder for future settings handling
-              console.log('Open settings')
+              // Później: otwarcie SettingsWindow (singleton sizeStepMm już w programSettings).
             }}
           >
             <span className={styles.icon}>
@@ -561,6 +561,8 @@ export function Toolbar({
 
   return (
     <header className={styles.toolbar}>
+      {/* Zaślepka okna Settings — singleton sizeStepMm w programSettings */}
+      <SettingsWindow open={false} />
       <div className={styles.toolbarTitle}>
         <span className={styles.title}>{t('app.title')}</span>
       </div>

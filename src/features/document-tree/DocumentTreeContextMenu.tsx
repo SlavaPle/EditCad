@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DocumentTreeContextMenuIcon } from './DocumentTreeContextMenuIcons'
+import { isRemovableSizeLimit } from './isRemovableSizeLimit'
 import type { DocumentTreeContextActionId, DocumentTreeNode } from './model'
 import styles from './DocumentTree.module.css'
 
@@ -16,6 +17,7 @@ export function buildContextMenuItems(node: DocumentTreeNode): DocumentTreeConte
       return [
         { id: 'expandAll', labelKey: 'documentTree.menu.expandAll' },
         { id: 'collapseAll', labelKey: 'documentTree.menu.collapseAll' },
+        { id: 'addCustomSize', labelKey: 'documentTree.menu.addCustomSize' },
       ]
     case 'part':
       return [
@@ -23,12 +25,30 @@ export function buildContextMenuItems(node: DocumentTreeNode): DocumentTreeConte
         node.locked
           ? { id: 'unlock', labelKey: 'documentTree.menu.unlock' }
           : { id: 'lock', labelKey: 'documentTree.menu.lock' },
+        { id: 'addCustomSize', labelKey: 'documentTree.menu.addCustomSize' },
         { id: 'removePart', labelKey: 'documentTree.menu.removePart' },
       ]
     case 'appearance':
       return [{ id: 'editAppearance', labelKey: 'documentTree.menu.editAppearance' }]
     case 'size':
-      return [{ id: 'copySize', labelKey: 'documentTree.menu.copySize', disabled: node.sizeMm == null }]
+    case 'sizeCustom':
+      return [
+        {
+          id: 'editSize',
+          labelKey: 'documentTree.menu.editSize',
+          disabled: node.editable === false && !node.constraintId,
+        },
+        {
+          id: 'renameSize',
+          labelKey: 'documentTree.menu.renameSize',
+        },
+        {
+          id: 'removeSizeLimit',
+          labelKey: 'documentTree.menu.removeSizeLimit',
+          disabled: !isRemovableSizeLimit(node),
+        },
+        { id: 'copySize', labelKey: 'documentTree.menu.copySize', disabled: node.sizeMm == null },
+      ]
     case 'element':
       return [{ id: 'highlightElement', labelKey: 'documentTree.menu.highlightElement' }]
     case 'mate':
@@ -40,6 +60,8 @@ export function buildContextMenuItems(node: DocumentTreeNode): DocumentTreeConte
           : { id: 'suppressMate', labelKey: 'documentTree.menu.suppressMate' },
         { id: 'deleteMate', labelKey: 'documentTree.menu.deleteMate' },
       ]
+    case 'sizesGroup':
+      return [{ id: 'addCustomSize', labelKey: 'documentTree.menu.addCustomSize' }]
     case 'model':
     case 'elementsGroup':
     case 'matesGroup':

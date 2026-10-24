@@ -1,8 +1,12 @@
+import type { BufferGeometry } from 'three'
 import type { AssemblyMate } from '../assembly-mates/model'
+import type { FaceConstraint } from '../face-constraints/model'
 import type { PreAssemblyProgramPart } from '../pre-assembly/preAssemblyProgram'
 import type { PreparedModelElement } from '../../lib/preparedElementFormat'
-import type { DocumentTreeNode } from './model'
+import { buildCustomSizeTreeNodes } from './buildCustomSizeTreeNodes'
+import type { DocumentTreeAxis, DocumentTreeNode } from './model'
 import { isPartLocked, type PartLockMap } from './partLock'
+import { resolveCanonicalSizeNodeBinding } from './resolveSizeNodeBinding'
 
 export type SizeMm = { x: number; y: number; z: number }
 
@@ -11,12 +15,17 @@ export type BuildDocumentTreeInput = {
   partRootLabel: string
   partSizeMm: SizeMm | null
   hasPartModel: boolean
+  mainGeometry?: BufferGeometry | null
+  mainFaceConstraints?: readonly FaceConstraint[]
+  mainModelElements?: readonly PreparedModelElement[]
   /** Tryb montażu. */
   assemblyName: string
   programParts: readonly PreAssemblyProgramPart[]
   partDisplayNameById: Readonly<Record<string, string>>
   partSizeMmById: Readonly<Record<string, SizeMm | undefined>>
   modelElementsByPartId: Readonly<Record<string, readonly PreparedModelElement[] | undefined>>
+  partGeometryById?: Readonly<Record<string, BufferGeometry | undefined>>
+  faceConstraintsByPartId?: Readonly<Record<string, readonly FaceConstraint[] | undefined>>
   mates: readonly AssemblyMate[]
   partLocks: PartLockMap
 }
@@ -27,20 +36,65 @@ function formatSizeMm(value: number): string {
   return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2)
 }
 
-function sizeChildren(prefix: string, size: SizeMm | null, partId?: string): DocumentTreeNode[] {
-  const axes = [
-    { axis: 'x' as const, value: size?.x },
-    { axis: 'y' as const, value: size?.y },
-    { axis: 'z' as const, value: size?.z },
-  ]
-  return axes.map(({ axis, value }) => ({
-    id: `${prefix}:size:${axis}`,
-    kind: 'size' as const,
-    label: size != null && value != null ? `${axis.toUpperCase()}: ${formatSizeMm(value)} mm` : axis.toUpperCase(),
-    axis,
-    sizeMm: value,
+function sizeChildren(params: {
+  prefix: string
+  size: SizeMm | null
+  partId?: string
+  geometry: BufferGeometry | null
+  modelElements: readonly PreparedModelElement[]
+  constraints: readonly FaceConstraint[]
+}): DocumentTreeNode[] {
+  const { prefix, size, partId, geometry, modelElements, constraints } = params
+  const axes: DocumentTreeAxis[] = ['x', 'y', 'z']
+  const canonical = axes.map((axis) => {
+    const value = size?.[axis]
+    const binding = resolveCanonicalSizeNodeBinding({
+      geometry,
+      modelElements,
+      constraints,
+      axis,
+      sizeMm: value,
+    })
+    const axisLabel = axis.toUpperCase()
+    const name = binding.displayName?.trim() || axisLabel
+    const label =
+      size != null && value != null ? `${name}: ${formatSizeMm(value)} mm` : name
+    return {
+      id: `${prefix}:size:${axis}`,
+      kind: 'size' as const,
+      label,
+      axis,
+      sizeMm: value,
+      partId,
+      constraintId: binding.constraintId ?? undefined,
+      displayName: binding.displayName ?? undefined,
+      editable: binding.editable,
+      sizeStatus: binding.status,
+      sizeLockReason: binding.lockReason,
+      faceIndices: binding.faceIndices,
+      limitMinMm: binding.limitMinMm ?? undefined,
+      limitMaxMm: binding.limitMaxMm ?? undefined,
+    }
+  })
+
+  const custom = buildCustomSizeTreeNodes({
+    prefix,
     partId,
-  }))
+    geometry,
+    modelElements,
+    constraints,
+  })
+
+  // Jedna zwijana grupa „Sizes” (X/Y/Z + własne)
+  return [
+    {
+      id: `${prefix}:sizes`,
+      kind: 'sizesGroup',
+      label: 'Sizes',
+      partId,
+      children: [...canonical, ...custom],
+    },
+  ]
 }
 
 /** Id detali biorących udział w przywiązaniu (A i B — bez duplikatów). */
@@ -98,9 +152,12 @@ function partSubtree(
   locked: boolean,
   mates: readonly AssemblyMate[],
   mateIndexById: ReadonlyMap<string, number>,
+  geometry: BufferGeometry | null,
+  constraints: readonly FaceConstraint[],
 ): DocumentTreeNode {
   const prefix = `part:${part.id}`
-  const elementNodes: DocumentTreeNode[] = (elements ?? []).map((el) => ({
+  const modelElements = elements ?? []
+  const elementNodes: DocumentTreeNode[] = modelElements.map((el) => ({
     id: `${prefix}:element:${el.id}`,
     kind: 'element',
     label: el.id,
@@ -121,7 +178,14 @@ function partSubtree(
       label: 'Appearance',
       partId: part.id,
     },
-    ...sizeChildren(prefix, size ?? null, part.id),
+    ...sizeChildren({
+      prefix,
+      size: size ?? null,
+      partId: part.id,
+      geometry,
+      modelElements,
+      constraints,
+    }),
   ]
 
   if (elementNodes.length > 0) {
@@ -156,11 +220,16 @@ export function buildDocumentTree(input: BuildDocumentTreeInput): DocumentTreeNo
     partRootLabel,
     partSizeMm,
     hasPartModel,
+    mainGeometry = null,
+    mainFaceConstraints = [],
+    mainModelElements = [],
     assemblyName,
     programParts,
     partDisplayNameById,
     partSizeMmById,
     modelElementsByPartId,
+    partGeometryById = {},
+    faceConstraintsByPartId = {},
     mates,
     partLocks,
   } = input
@@ -176,6 +245,8 @@ export function buildDocumentTree(input: BuildDocumentTreeInput): DocumentTreeNo
         isPartLocked(partLocks, part.id),
         mates,
         mateIndexById,
+        partGeometryById[part.id] ?? null,
+        faceConstraintsByPartId[part.id] ?? [],
       ),
     )
 
@@ -206,7 +277,13 @@ export function buildDocumentTree(input: BuildDocumentTreeInput): DocumentTreeNo
         kind: 'appearance',
         label: 'Appearance',
       },
-      ...sizeChildren('part:main', partSizeMm),
+      ...sizeChildren({
+        prefix: 'part:main',
+        size: partSizeMm,
+        geometry: mainGeometry,
+        modelElements: mainModelElements,
+        constraints: mainFaceConstraints,
+      }),
     ],
   }
 }

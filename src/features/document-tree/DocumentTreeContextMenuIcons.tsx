@@ -60,6 +60,30 @@ export function DocumentTreeContextMenuIcon({
           <path d="M3 11V3h8" />
         </svg>
       )
+    case 'editSize':
+      return (
+        <svg {...svgProps}>
+          <path d="M3 8h10M5 5l-2 3 2 3M11 5l2 3-2 3" />
+        </svg>
+      )
+    case 'renameSize':
+      return (
+        <svg {...svgProps}>
+          <path d="M3 13h10M4 10l7-7 2 2-7 7H4v-2z" />
+        </svg>
+      )
+    case 'addCustomSize':
+      return (
+        <svg {...svgProps}>
+          <path d="M3 8h10M8 3v10" />
+        </svg>
+      )
+    case 'removeSizeLimit':
+      return (
+        <svg {...svgProps}>
+          <path d="M4 4l8 8M12 4l-8 8" />
+        </svg>
+      )
     case 'highlightElement':
     case 'highlightMate':
       return (
@@ -118,6 +142,10 @@ export function documentTreeContextActionHasIcon(
     'removePart',
     'editAppearance',
     'copySize',
+    'editSize',
+    'renameSize',
+    'addCustomSize',
+    'removeSizeLimit',
     'highlightElement',
     'highlightMate',
     'clearMateHighlight',

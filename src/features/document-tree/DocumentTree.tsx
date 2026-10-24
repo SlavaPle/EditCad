@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useState, type MouseEvent } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+} from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import {
   collectExpandableNodeIds,
@@ -6,13 +14,27 @@ import {
 } from './buildDocumentTree'
 import { DocumentTreeContextMenu } from './DocumentTreeContextMenu'
 import { DocumentTreeIcon } from './DocumentTreeIcons'
+import { DocumentTreeSizeEditPanel } from './DocumentTreeSizeEditPanel'
+import { DocumentTreeSizeHoverControls } from './DocumentTreeSizeHoverControls'
+import { DocumentTreeSizeStatusIcon } from './DocumentTreeSizeStatusIcon'
+import {
+  classifyDocumentTreeSizeClick,
+  DOCUMENT_TREE_RENAME_DEFER_MS,
+  initialDocumentTreeClickTimingState,
+  type DocumentTreeClickTimingState,
+} from './documentTreeClickTiming'
+import { isRemovableSizeLimit } from './isRemovableSizeLimit'
 import type {
   DocumentTreeContextActionId,
   DocumentTreeContextMenuState,
   DocumentTreeNode,
   DocumentTreeNodeKind,
 } from './model'
+import type { SizeEditApplyPayload } from './sizeEditApplyPayload'
 import styles from './DocumentTree.module.css'
+
+const HOVER_CLEAR_MS = 120
+const RENAME_BLUR_READY_MS = 80
 
 function labelForKind(kind: DocumentTreeNodeKind, fallback: string, t: (key: string) => string): string {
   switch (kind) {
@@ -24,9 +46,24 @@ function labelForKind(kind: DocumentTreeNodeKind, fallback: string, t: (key: str
       return t('documentTree.nodes.elements')
     case 'matesGroup':
       return t('documentTree.nodes.mates')
+    case 'sizesGroup':
+      return t('documentTree.nodes.sizes')
     default:
       return fallback
   }
+}
+
+function isSizeKind(kind: DocumentTreeNodeKind): boolean {
+  return kind === 'size' || kind === 'sizeCustom'
+}
+
+function sizeLimitTypeOf(node: DocumentTreeNode) {
+  return node.sizeStatus === 'min' ||
+    node.sizeStatus === 'max' ||
+    node.sizeStatus === 'minmax' ||
+    node.sizeStatus === 'const'
+    ? node.sizeStatus
+    : ('free' as const)
 }
 
 export type DocumentTreeProps = {
@@ -35,6 +72,9 @@ export type DocumentTreeProps = {
   selectedNodeId: string | null
   onSelectNode: (node: DocumentTreeNode) => void
   onEditNode: (node: DocumentTreeNode) => void
+  onRenameSize?: (node: DocumentTreeNode, displayName: string) => void
+  onApplySizeEdit?: (node: DocumentTreeNode, payload: SizeEditApplyPayload) => void
+  onRemoveSizeLimit?: (node: DocumentTreeNode) => void
   onContextAction: (action: DocumentTreeContextActionId, node: DocumentTreeNode) => void
 }
 
@@ -44,37 +84,127 @@ function TreeNodeRow({
   expandedIds,
   activePartId,
   selectedNodeId,
+  editingSizeId,
+  renamingSizeId,
+  hoveredSizeId,
+  onKeepSizeHover,
+  onClearSizeHoverSoon,
   onToggleExpand,
   onSelect,
   onEdit,
+  onStartRename,
+  onSizeLabelClick,
+  onCommitRename,
+  onCancelRename,
+  onApplySizeEdit,
+  onRemoveSizeLimit,
+  onCancelSizeEdit,
   onContextMenu,
+  onSizePopupAnchor,
 }: {
   node: DocumentTreeNode
   depth: number
   expandedIds: ReadonlySet<string>
   activePartId: string | null
   selectedNodeId: string | null
+  editingSizeId: string | null
+  renamingSizeId: string | null
+  hoveredSizeId: string | null
+  onKeepSizeHover: (id: string) => void
+  onClearSizeHoverSoon: () => void
   onToggleExpand: (id: string) => void
   onSelect: (node: DocumentTreeNode) => void
   onEdit: (node: DocumentTreeNode) => void
+  onStartRename: (node: DocumentTreeNode) => void
+  onSizeLabelClick: (node: DocumentTreeNode, detail: number) => void
+  onCommitRename: (node: DocumentTreeNode, name: string) => void
+  onCancelRename: () => void
+  onApplySizeEdit: (node: DocumentTreeNode, payload: SizeEditApplyPayload) => void
+  onRemoveSizeLimit?: (node: DocumentTreeNode) => void
+  onCancelSizeEdit: () => void
   onContextMenu: (e: MouseEvent, node: DocumentTreeNode) => void
+  onSizePopupAnchor: (nodeId: string, rect: DOMRect | null) => void
 }) {
   const { t } = useTranslation()
+  const rowRef = useRef<HTMLDivElement>(null)
+  const renameInputRef = useRef<HTMLInputElement>(null)
+  const renameReadyRef = useRef(false)
   const hasChildren = (node.children?.length ?? 0) > 0
   const expanded = expandedIds.has(node.id)
   const isSelected =
     selectedNodeId === node.id ||
     (node.kind === 'part' && node.partId != null && node.partId === activePartId)
-
+  const sizeLocked = isSizeKind(node.kind) && node.editable === false
+  const canOpenSizeEdit =
+    isSizeKind(node.kind) &&
+    (node.editable !== false || Boolean(node.constraintId)) &&
+    (node.faceIndices?.length ?? 0) >= 2
+  const isEditing = editingSizeId === node.id
+  const isRenaming = renamingSizeId === node.id
+  const isHovered = hoveredSizeId === node.id
+  const showHoverControls =
+    isSizeKind(node.kind) && isHovered && !isEditing && !isRenaming && canOpenSizeEdit
+  const showSizePopup = showHoverControls || isEditing
   const displayLabel = labelForKind(node.kind, node.label, t)
+  const renameSeed = node.displayName?.trim() || node.label || ''
+  const [renameText, setRenameText] = useState(renameSeed)
+
+  const clearHoverSoon = () => {
+    onClearSizeHoverSoon()
+  }
+
+  const keepHover = () => {
+    if (isSizeKind(node.kind) && !isRenaming) onKeepSizeHover(node.id)
+  }
+
+  useEffect(() => {
+    if (!isRenaming) {
+      renameReadyRef.current = false
+      return
+    }
+    renameReadyRef.current = false
+    setRenameText(node.displayName?.trim() || node.label || '')
+    const tId = window.setTimeout(() => {
+      renameInputRef.current?.focus()
+      renameInputRef.current?.select()
+      renameReadyRef.current = true
+    }, RENAME_BLUR_READY_MS)
+    return () => window.clearTimeout(tId)
+  }, [isRenaming, node.displayName, node.label])
+
+  useLayoutEffect(() => {
+    if (!showSizePopup) {
+      onSizePopupAnchor(node.id, null)
+      return
+    }
+    const el = rowRef.current
+    if (!el) return
+    const publish = () => onSizePopupAnchor(node.id, el.getBoundingClientRect())
+    publish()
+    window.addEventListener('resize', publish)
+    window.addEventListener('scroll', publish, true)
+    return () => {
+      window.removeEventListener('resize', publish)
+      window.removeEventListener('scroll', publish, true)
+      onSizePopupAnchor(node.id, null)
+    }
+  }, [showSizePopup, node.id, onSizePopupAnchor, displayLabel, node.sizeMm])
 
   return (
-    <li>
+    <li
+      onMouseEnter={keepHover}
+      onMouseLeave={() => {
+        if (!isSizeKind(node.kind)) return
+        clearHoverSoon()
+      }}
+    >
       <div
+        ref={rowRef}
         className={[
           styles.row,
           isSelected ? styles.rowSelected : '',
           node.suppressed ? styles.rowSuppressed : '',
+          sizeLocked ? styles.rowSizeLocked : '',
         ]
           .filter(Boolean)
           .join(' ')}
@@ -97,21 +227,77 @@ function TreeNodeRow({
         ) : (
           <span className={styles.expandSpacer} />
         )}
-        <span className={styles.icon}>
-          <DocumentTreeIcon kind={node.kind} axis={node.axis} locked={node.locked} />
-        </span>
-        <button
-          type="button"
-          className={styles.label}
-          onClick={(e) => {
-            onSelect(node)
-            // detail===2 jest wiarygodniejsze niż osobny onDoubleClick przy re-renderze zaznaczenia
-            if (e.detail === 2) onEdit(node)
-          }}
-          title={displayLabel}
-        >
-          {displayLabel}
-        </button>
+        {isSizeKind(node.kind) ? (
+          <div
+            className={styles.sizeHit}
+            onClick={(e) => {
+              if (isRenaming) return
+              onSizeLabelClick(node, e.detail)
+            }}
+            onDoubleClick={(e) => {
+              if (isRenaming) return
+              e.preventDefault()
+              e.stopPropagation()
+              onEdit(node)
+            }}
+          >
+            <span className={styles.icon}>
+              <DocumentTreeIcon kind={node.kind} axis={node.axis} locked={node.locked} />
+            </span>
+            <span className={styles.sizeStatusIcon} title={node.sizeStatus}>
+              <DocumentTreeSizeStatusIcon status={node.sizeStatus} />
+            </span>
+            {isRenaming ? (
+              <input
+                ref={renameInputRef}
+                className={styles.sizeRenameInput}
+                value={renameText}
+                aria-label={t('documentTree.size.renameAria')}
+                onChange={(e) => setRenameText(e.target.value)}
+                onBlur={() => {
+                  if (!renameReadyRef.current) return
+                  onCommitRename(node, renameText)
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    renameReadyRef.current = true
+                    onCommitRename(node, renameText)
+                  }
+                  if (e.key === 'Escape') {
+                    e.preventDefault()
+                    onCancelRename()
+                  }
+                }}
+                onClick={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <span className={styles.sizeHitLabel} title={displayLabel}>
+                {displayLabel}
+              </span>
+            )}
+          </div>
+        ) : (
+          <>
+            <span className={styles.icon}>
+              <DocumentTreeIcon kind={node.kind} axis={node.axis} locked={node.locked} />
+            </span>
+            <button
+              type="button"
+              className={styles.label}
+              onClick={() => onSelect(node)}
+              onDoubleClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                onEdit(node)
+              }}
+              title={displayLabel}
+            >
+              {displayLabel}
+            </button>
+          </>
+        )}
       </div>
       {hasChildren && expanded ? (
         <ul className={styles.treeListNested}>
@@ -123,10 +309,23 @@ function TreeNodeRow({
               expandedIds={expandedIds}
               activePartId={activePartId}
               selectedNodeId={selectedNodeId}
+              editingSizeId={editingSizeId}
+              renamingSizeId={renamingSizeId}
+              hoveredSizeId={hoveredSizeId}
+              onKeepSizeHover={onKeepSizeHover}
+              onClearSizeHoverSoon={onClearSizeHoverSoon}
               onToggleExpand={onToggleExpand}
               onSelect={onSelect}
               onEdit={onEdit}
+              onStartRename={onStartRename}
+              onSizeLabelClick={onSizeLabelClick}
+              onCommitRename={onCommitRename}
+              onCancelRename={onCancelRename}
+              onApplySizeEdit={onApplySizeEdit}
+              onRemoveSizeLimit={onRemoveSizeLimit}
+              onCancelSizeEdit={onCancelSizeEdit}
               onContextMenu={onContextMenu}
+              onSizePopupAnchor={onSizePopupAnchor}
             />
           ))}
         </ul>
@@ -141,6 +340,9 @@ export function DocumentTree({
   selectedNodeId,
   onSelectNode,
   onEditNode,
+  onRenameSize,
+  onApplySizeEdit,
+  onRemoveSizeLimit,
   onContextAction,
 }: DocumentTreeProps) {
   const { t } = useTranslation()
@@ -148,15 +350,72 @@ export function DocumentTree({
     () => new Set(collectExpandableNodeIds(root)),
   )
   const [menu, setMenu] = useState<DocumentTreeContextMenuState | null>(null)
+  const [editingSizeId, setEditingSizeId] = useState<string | null>(null)
+  const [renamingSizeId, setRenamingSizeId] = useState<string | null>(null)
+  const [hoveredSizeId, setHoveredSizeId] = useState<string | null>(null)
+  const [popupAnchor, setPopupAnchor] = useState<{ nodeId: string; rect: DOMRect } | null>(null)
+  // Jeden timer dla wierszy + portalu — osobne timery wierszy kasowały hover po wejściu w popup
+  const sizeHoverClearRef = useRef<number | null>(null)
+  const sizeClickTimingRef = useRef<DocumentTreeClickTimingState>(initialDocumentTreeClickTimingState())
+  const renameDeferTimerRef = useRef<number | null>(null)
 
-  // Gdy zmienia się korzeń (nowy dokument), rozwiń domyślnie — nie przy lock/size.
+  const clearRenameDeferTimer = useCallback(() => {
+    if (renameDeferTimerRef.current != null) {
+      window.clearTimeout(renameDeferTimerRef.current)
+      renameDeferTimerRef.current = null
+    }
+  }, [])
+
+  const clearSizeHoverTimer = useCallback(() => {
+    if (sizeHoverClearRef.current != null) {
+      window.clearTimeout(sizeHoverClearRef.current)
+      sizeHoverClearRef.current = null
+    }
+  }, [])
+
+  const keepSizeHover = useCallback(
+    (id: string) => {
+      clearSizeHoverTimer()
+      setHoveredSizeId(id)
+    },
+    [clearSizeHoverTimer],
+  )
+
+  const clearSizeHoverSoon = useCallback(() => {
+    clearSizeHoverTimer()
+    sizeHoverClearRef.current = window.setTimeout(() => {
+      sizeHoverClearRef.current = null
+      setHoveredSizeId(null)
+    }, HOVER_CLEAR_MS)
+  }, [clearSizeHoverTimer])
+
+  useEffect(() => () => {
+    clearSizeHoverTimer()
+    clearRenameDeferTimer()
+  }, [clearSizeHoverTimer, clearRenameDeferTimer])
+
   const rootId = root.id
   useEffect(() => {
+    clearSizeHoverTimer()
+    clearRenameDeferTimer()
     setExpandedIds(new Set(collectExpandableNodeIds(root)))
     setMenu(null)
-    // Tylko zmiana dokumentu (root.id), nie przebudowa etykiet.
+    setEditingSizeId(null)
+    setRenamingSizeId(null)
+    setHoveredSizeId(null)
+    setPopupAnchor(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- root.id
   }, [rootId])
+
+  const handleSizePopupAnchor = useCallback((nodeId: string, rect: DOMRect | null) => {
+    setPopupAnchor((prev) => {
+      if (!rect) {
+        if (prev?.nodeId === nodeId) return null
+        return prev
+      }
+      return { nodeId, rect }
+    })
+  }, [])
 
   const toggleExpand = useCallback((id: string) => {
     setExpandedIds((current) => {
@@ -170,10 +429,67 @@ export function DocumentTree({
   const handleContextMenu = useCallback((e: MouseEvent, node: DocumentTreeNode) => {
     e.preventDefault()
     e.stopPropagation()
+    // Schowaj hover-popup, żeby nie zasłaniał menu (z-index / pointer-events)
+    clearSizeHoverTimer()
+    setHoveredSizeId(null)
+    setPopupAnchor(null)
     setMenu({ x: e.clientX, y: e.clientY, nodeId: node.id })
-  }, [])
+  }, [clearSizeHoverTimer])
 
   const menuNode = menu ? findDocumentTreeNode(root, menu.nodeId) : null
+
+  const startRename = useCallback(
+    (node: DocumentTreeNode) => {
+      if (!isSizeKind(node.kind)) return
+      clearRenameDeferTimer()
+      clearSizeHoverTimer()
+      setEditingSizeId(null)
+      setHoveredSizeId(null)
+      setPopupAnchor(null)
+      setRenamingSizeId(node.id)
+    },
+    [clearRenameDeferTimer, clearSizeHoverTimer],
+  )
+
+  const beginEditValue = useCallback(
+    (node: DocumentTreeNode) => {
+      clearRenameDeferTimer()
+      setRenamingSizeId(null)
+      setEditingSizeId(node.id)
+      onEditNode(node)
+    },
+    [clearRenameDeferTimer, onEditNode],
+  )
+
+  const handleSizeLabelClick = useCallback(
+    (node: DocumentTreeNode, detail: number) => {
+      const selected = selectedNodeId === node.id
+      const { kind, nextState } = classifyDocumentTreeSizeClick({
+        nodeId: node.id,
+        detail,
+        nowMs: Date.now(),
+        state: sizeClickTimingRef.current,
+        isSelected: selected,
+      })
+      sizeClickTimingRef.current = nextState
+      if (kind === 'editValue') {
+        beginEditValue(node)
+        return
+      }
+      if (kind === 'renameCandidate') {
+        // Nie podmieniaj label→input od razu — 2. klik dblclick musi trafić w button
+        clearRenameDeferTimer()
+        renameDeferTimerRef.current = window.setTimeout(() => {
+          renameDeferTimerRef.current = null
+          startRename(node)
+        }, DOCUMENT_TREE_RENAME_DEFER_MS)
+        return
+      }
+      clearRenameDeferTimer()
+      onSelectNode(node)
+    },
+    [beginEditValue, clearRenameDeferTimer, onSelectNode, selectedNodeId, startRename],
+  )
 
   const handleMenuAction = useCallback(
     (action: DocumentTreeContextActionId) => {
@@ -186,10 +502,53 @@ export function DocumentTree({
         setExpandedIds(new Set())
         return
       }
+      if (action === 'editSize') {
+        beginEditValue(menuNode)
+        return
+      }
+      if (action === 'renameSize') {
+        startRename(menuNode)
+        return
+      }
+      if (action === 'removeSizeLimit') {
+        if (!isRemovableSizeLimit(menuNode)) {
+          return
+        }
+        setEditingSizeId(null)
+        onRemoveSizeLimit?.(menuNode)
+        return
+      }
       onContextAction(action, menuNode)
     },
-    [menuNode, onContextAction, root],
+    [menuNode, onContextAction, onRemoveSizeLimit, root, startRename, beginEditValue],
   )
+
+  const handleEdit = useCallback(
+    (node: DocumentTreeNode) => {
+      if (isSizeKind(node.kind)) {
+        beginEditValue(node)
+        return
+      }
+      onEditNode(node)
+    },
+    [beginEditValue, onEditNode],
+  )
+
+  const popupNodeId = editingSizeId ?? hoveredSizeId
+  const popupNode =
+    popupNodeId && popupAnchor?.nodeId === popupNodeId
+      ? findDocumentTreeNode(root, popupNodeId)
+      : null
+  const showHoverPopup =
+    popupNode != null &&
+    hoveredSizeId === popupNode.id &&
+    editingSizeId !== popupNode.id &&
+    renamingSizeId !== popupNode.id
+  const showEditPopup = popupNode != null && editingSizeId === popupNode.id
+
+  const keepPopupHover = () => {
+    if (popupNode) keepSizeHover(popupNode.id)
+  }
 
   return (
     <>
@@ -200,10 +559,26 @@ export function DocumentTree({
           expandedIds={expandedIds}
           activePartId={activePartId}
           selectedNodeId={selectedNodeId}
+          editingSizeId={editingSizeId}
+          renamingSizeId={renamingSizeId}
+          hoveredSizeId={hoveredSizeId}
+          onKeepSizeHover={keepSizeHover}
+          onClearSizeHoverSoon={clearSizeHoverSoon}
           onToggleExpand={toggleExpand}
           onSelect={onSelectNode}
-          onEdit={onEditNode}
+          onEdit={handleEdit}
+          onStartRename={startRename}
+          onSizeLabelClick={handleSizeLabelClick}
+          onCommitRename={(n, name) => {
+            setRenamingSizeId(null)
+            onRenameSize?.(n, name.trim())
+          }}
+          onCancelRename={() => setRenamingSizeId(null)}
+          onApplySizeEdit={(n, payload) => onApplySizeEdit?.(n, payload)}
+          onRemoveSizeLimit={onRemoveSizeLimit}
+          onCancelSizeEdit={() => setEditingSizeId(null)}
           onContextMenu={handleContextMenu}
+          onSizePopupAnchor={handleSizePopupAnchor}
         />
       </ul>
       {menu && menuNode ? (
@@ -215,6 +590,54 @@ export function DocumentTree({
           onClose={() => setMenu(null)}
         />
       ) : null}
+      {(showHoverPopup || showEditPopup) && popupNode && popupAnchor
+        ? createPortal(
+            <div
+              className={styles.sizePopupLayerFixed}
+              style={{
+                // Na prawo od wiersza — ścieżka myszy nie przecina X/Y/Z poniżej
+                top: popupAnchor.rect.top,
+                left: popupAnchor.rect.right + 4,
+              }}
+              onMouseEnter={keepPopupHover}
+              onMouseLeave={clearSizeHoverSoon}
+            >
+              {showHoverPopup ? (
+                <DocumentTreeSizeHoverControls
+                  initialMm={popupNode.sizeMm ?? null}
+                  limitMinMm={popupNode.limitMinMm}
+                  limitMaxMm={popupNode.limitMaxMm}
+                  limitType={sizeLimitTypeOf(popupNode)}
+                  disabled={popupNode.sizeStatus === 'const'}
+                  onApply={(payload) => onApplySizeEdit?.(popupNode, payload)}
+                />
+              ) : null}
+              {showEditPopup ? (
+                <DocumentTreeSizeEditPanel
+                  initialMm={popupNode.sizeMm ?? null}
+                  initialMinMm={popupNode.limitMinMm}
+                  initialMaxMm={popupNode.limitMaxMm}
+                  constraintId={popupNode.constraintId}
+                  constraintType={sizeLimitTypeOf(popupNode)}
+                  onApply={(payload) => {
+                    onApplySizeEdit?.(popupNode, payload)
+                    setEditingSizeId(null)
+                  }}
+                  onCancel={() => setEditingSizeId(null)}
+                  onRemoveLimit={
+                    onRemoveSizeLimit && isRemovableSizeLimit(popupNode)
+                      ? () => {
+                          setEditingSizeId(null)
+                          onRemoveSizeLimit(popupNode)
+                        }
+                      : undefined
+                  }
+                />
+              ) : null}
+            </div>,
+            document.body,
+          )
+        : null}
     </>
   )
 }

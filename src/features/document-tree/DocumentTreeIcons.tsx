@@ -77,6 +77,18 @@ export function DocumentTreeIcon({
         </svg>
       )
     }
+    case 'sizeCustom':
+      return (
+        <svg {...svgProps}>
+          <path d="M3 8h10M5 5l-2 3 2 3M11 5l2 3-2 3" />
+        </svg>
+      )
+    case 'sizesGroup':
+      return (
+        <svg {...svgProps}>
+          <path d="M2 4h12M2 8h12M2 12h8" />
+        </svg>
+      )
     case 'elementsGroup':
     case 'element':
       return (

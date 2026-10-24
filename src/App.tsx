@@ -126,6 +126,7 @@ import {
 } from './features/assembly-mates'
 import {
   DocumentTreeOverlay,
+  createCustomSizeConstraint,
   filterPartLocksForPartIds,
   isPartLocked,
   lockedPartIdSet,
@@ -1027,6 +1028,408 @@ function App() {
     [],
   )
 
+  const handleDocumentTreeRenameSize = useCallback(
+    (
+      node: {
+        constraintId?: string
+        partId?: string
+        faceIndices?: number[]
+        sizeMm?: number
+      },
+      displayName: string,
+    ) => {
+      const name = displayName.trim()
+      if (node.constraintId) {
+        const patchList = (list: FaceConstraint[]): FaceConstraint[] =>
+          list.map((c) =>
+            c.id === node.constraintId
+              ? ({ ...c, displayName: name || undefined } as FaceConstraint)
+              : c,
+          )
+        if (node.partId) {
+          setProgramPartConstraints((current) => {
+            const prev =
+              current[node.partId!] ??
+              ({ mode: 'fixed', faceConstraints: [], modelElements: [] } as PreparedElementConstraints)
+            return {
+              ...current,
+              [node.partId!]: {
+                ...prev,
+                faceConstraints: patchList(prev.faceConstraints ?? []),
+              } as PreparedElementConstraints,
+            }
+          })
+          return
+        }
+        setPreparedConstraints(
+          (prev) =>
+            ({
+              ...prev,
+              faceConstraints: patchList(prev.faceConstraints ?? []),
+            }) as PreparedElementConstraints,
+        )
+        return
+      }
+
+      // Brak limitu — utwórz minmax z nazwą (granice z faceIndices węzła).
+      const faces = node.faceIndices ?? []
+      if (faces.length < 2 || !name) return
+      const geo = node.partId ? programPartGeometries[node.partId] ?? null : model
+      if (!geo) return
+      const existing =
+        (node.partId
+          ? programPartConstraints[node.partId]?.modelElements
+          : preparedConstraints.modelElements) ?? []
+      const created = createCustomSizeConstraint({
+        geometry: geo,
+        existingElements: existing,
+        mergedFaceIndices: faces,
+        targetMm: node.sizeMm && node.sizeMm > 0 ? node.sizeMm : 1,
+        displayName: name,
+        type: 'minmax',
+      })
+      if (!created.ok) return
+      if (node.partId) {
+        setProgramPartConstraints((current) => {
+          const prev =
+            current[node.partId!] ??
+            ({ mode: 'fixed', faceConstraints: [], modelElements: [] } as PreparedElementConstraints)
+          return {
+            ...current,
+            [node.partId!]: {
+              ...prev,
+              modelElements: created.modelElements,
+              faceConstraints: [...(prev.faceConstraints ?? []), created.constraint],
+            } as PreparedElementConstraints,
+          }
+        })
+      } else {
+        setPreparedConstraints(
+          (prev) =>
+            ({
+              ...prev,
+              modelElements: created.modelElements,
+              faceConstraints: [...(prev.faceConstraints ?? []), created.constraint],
+            }) as PreparedElementConstraints,
+        )
+      }
+    },
+    [model, preparedConstraints.modelElements, programPartConstraints, programPartGeometries],
+  )
+
+  const handleDocumentTreeApplySizeEdit = useCallback(
+    (
+      node: {
+        partId?: string
+        faceIndices?: number[]
+        constraintId?: string
+        displayName?: string
+        sizeMm?: number
+      },
+      payload: {
+        valueMm: number
+        limitType: FaceConstraintType | 'free'
+        minMm?: number
+        maxMm?: number
+      },
+    ) => {
+      const faces = node.faceIndices ?? []
+      if (faces.length < 2) return
+      const { valueMm, limitType, minMm, maxMm } = payload
+
+      // CONST: nie stretchuj geometrii (wartość zablokowana)
+      if (limitType !== 'const') {
+        // Stretch konkretnej geometrii węzła (partId), nie tylko aktywnego viewportu
+        let stretch:
+          | { ok: true; geometry: BufferGeometry; effectiveTargetMm: number }
+          | { ok: false; error: TwoFaceStretchError | PreparedStretchPrecheckError }
+        if (node.partId) {
+          const targetGeometry = programPartGeometries[node.partId]
+          if (!targetGeometry) return
+          const preparedForStretch = programPartConstraints[node.partId] ?? {
+            mode: 'fixed' as const,
+            faceConstraints: [],
+            modelElements: [],
+          }
+          stretch = applyTwoFaceStretchWithConstraints({
+            geometry: targetGeometry,
+            targetMm: valueMm,
+            mergedFaces: faces,
+            prepared: preparedForStretch,
+            constraintsLocked,
+          })
+          if (stretch.ok) {
+            const nextGeo = stretch.geometry
+            const partId = node.partId
+            setProgramPartGeometries((current) => ({
+              ...current,
+              [partId]: nextGeo,
+            }))
+            setGeometryRevision((n) => n + 1)
+          }
+        } else {
+          stretch = handleApplyTwoFaceStretch(valueMm, { mergedFaces: faces })
+        }
+        if (!stretch.ok) return
+      }
+
+      if (limitType === 'free') {
+        // Tylko stretch; zostaw istniejący constraint bez zmian (usuwanie = removeSizeLimit)
+        return
+      }
+
+      const buildConstraint = (base: {
+        id: string
+        facePair: FaceConstraint['facePair']
+        elementAId?: string
+        elementBId?: string
+        displayName?: string
+      }): FaceConstraint => {
+        if (limitType === 'minmax') {
+          return {
+            ...base,
+            type: 'minmax',
+            minMm: minMm != null && Number.isFinite(minMm) ? Math.max(0, minMm) : 0,
+            maxMm: maxMm != null && Number.isFinite(maxMm) && maxMm > 0 ? maxMm : valueMm,
+          }
+        }
+        if (limitType === 'const') {
+          return { ...base, type: 'const', valueMm }
+        }
+        if (limitType === 'min') {
+          return {
+            ...base,
+            type: 'min',
+            valueMm: minMm != null && Number.isFinite(minMm) ? minMm : valueMm,
+          }
+        }
+        return {
+          ...base,
+          type: 'max',
+          valueMm: maxMm != null && Number.isFinite(maxMm) ? maxMm : valueMm,
+        }
+      }
+
+      if (node.constraintId) {
+        const patchConstraint = (c: FaceConstraint): FaceConstraint => {
+          if (c.id !== node.constraintId) return c
+          return buildConstraint({
+            id: c.id,
+            facePair: c.facePair,
+            elementAId: c.elementAId,
+            elementBId: c.elementBId,
+            displayName: c.displayName,
+          })
+        }
+        if (node.partId) {
+          setProgramPartConstraints((current) => {
+            const prev =
+              current[node.partId!] ??
+              ({ mode: 'fixed', faceConstraints: [], modelElements: [] } as PreparedElementConstraints)
+            return {
+              ...current,
+              [node.partId!]: {
+                ...prev,
+                faceConstraints: (prev.faceConstraints ?? []).map(patchConstraint),
+              } as PreparedElementConstraints,
+            }
+          })
+        } else {
+          setPreparedConstraints(
+            (prev) =>
+              ({
+                ...prev,
+                faceConstraints: (prev.faceConstraints ?? []).map(patchConstraint),
+              }) as PreparedElementConstraints,
+          )
+        }
+        return
+      }
+
+      // Brak constraint — utwórz nowy przy wyborze limitu
+      const geo = node.partId ? programPartGeometries[node.partId] ?? null : model
+      if (!geo) return
+      const existing =
+        (node.partId
+          ? programPartConstraints[node.partId]?.modelElements
+          : preparedConstraints.modelElements) ?? []
+      const created = createCustomSizeConstraint({
+        geometry: geo,
+        existingElements: existing,
+        mergedFaceIndices: faces,
+        targetMm: valueMm,
+        displayName: node.displayName,
+        type: limitType as 'minmax' | 'const' | 'min' | 'max',
+      })
+      if (!created.ok) return
+      const patched = buildConstraint({
+        id: created.constraint.id,
+        facePair: created.constraint.facePair,
+        elementAId: created.constraint.elementAId,
+        elementBId: created.constraint.elementBId,
+        displayName: created.constraint.displayName,
+      })
+      if (node.partId) {
+        setProgramPartConstraints((current) => {
+          const prev =
+            current[node.partId!] ??
+            ({ mode: 'fixed', faceConstraints: [], modelElements: [] } as PreparedElementConstraints)
+          return {
+            ...current,
+            [node.partId!]: {
+              ...prev,
+              modelElements: created.modelElements,
+              faceConstraints: [...(prev.faceConstraints ?? []), patched],
+            } as PreparedElementConstraints,
+          }
+        })
+      } else {
+        setPreparedConstraints(
+          (prev) =>
+            ({
+              ...prev,
+              modelElements: created.modelElements,
+              faceConstraints: [...(prev.faceConstraints ?? []), patched],
+            }) as PreparedElementConstraints,
+        )
+      }
+    },
+    [
+      constraintsLocked,
+      handleApplyTwoFaceStretch,
+      model,
+      preparedConstraints.modelElements,
+      programPartConstraints,
+      programPartGeometries,
+    ],
+  )
+
+  const handleDocumentTreeRemoveSizeLimit = useCallback(
+    (node: { constraintId?: string; partId?: string; sizeStatus?: string }) => {
+      if (!node.constraintId) return
+      // Tylko limit elementarny tego rozmiaru — nie block/panel/profil (wspólne dla X/Y/Z)
+      const status = node.sizeStatus
+      if (
+        status !== 'min' &&
+        status !== 'max' &&
+        status !== 'minmax' &&
+        status !== 'const' &&
+        status !== 'block' &&
+        status !== 'panel' &&
+        status !== 'profil'
+      ) {
+        return
+      }
+      const idToRemove = node.constraintId
+      const filterOut = (list: FaceConstraint[]) => list.filter((c) => c.id !== idToRemove)
+      if (node.partId) {
+        setProgramPartConstraints((current) => {
+          const prev =
+            current[node.partId!] ??
+            ({ mode: 'fixed', faceConstraints: [], modelElements: [] } as PreparedElementConstraints)
+          const before = (prev.faceConstraints ?? []).length
+          const nextList = filterOut(prev.faceConstraints ?? [])
+          return {
+            ...current,
+            [node.partId!]: {
+              ...prev,
+              faceConstraints: nextList,
+            } as PreparedElementConstraints,
+          }
+        })
+        return
+      }
+      setPreparedConstraints(
+        (prev) => {
+          const before = (prev.faceConstraints ?? []).length
+          const nextList = filterOut(prev.faceConstraints ?? [])
+          return {
+            ...prev,
+            faceConstraints: nextList,
+          } as PreparedElementConstraints
+        },
+      )
+    },
+    [],
+  )
+
+  const handleDocumentTreeAddCustomSize = useCallback(
+    (partId: string | null) => {
+      if (partId) setActiveProgramPartId(partId)
+      // Użyj bieżącego zaznaczenia dwóch płaszczyzn (stretch) — jak w Dimensions.
+      const faces = [...selection.faces]
+      const seen = new Set(faces)
+      for (const fi of probableFaces) {
+        if (!seen.has(fi)) faces.push(fi)
+      }
+      if (faces.length < 2) {
+        setLimitsInstallActive(false)
+        setAppearanceEditActive(false)
+        return
+      }
+
+      const geo = partId
+        ? programPartGeometries[partId] ?? null
+        : model
+      if (!geo) return
+
+      const existing =
+        (partId
+          ? programPartConstraints[partId]?.modelElements
+          : preparedConstraints.modelElements) ?? []
+
+      const measured = createCustomSizeConstraint({
+        geometry: geo,
+        existingElements: existing,
+        mergedFaceIndices: faces,
+        targetMm: 1,
+        type: 'minmax',
+      })
+      if (!measured.ok) return
+      const withGap = createCustomSizeConstraint({
+        geometry: geo,
+        existingElements: existing,
+        mergedFaceIndices: faces,
+        targetMm: measured.gapMm,
+        type: 'minmax',
+      })
+      if (!withGap.ok) return
+
+      if (partId) {
+        setProgramPartConstraints((current) => {
+          const prev =
+            current[partId] ??
+            ({ mode: 'fixed', faceConstraints: [], modelElements: [] } as PreparedElementConstraints)
+          return {
+            ...current,
+            [partId]: {
+              ...prev,
+              modelElements: withGap.modelElements,
+              faceConstraints: [...(prev.faceConstraints ?? []), withGap.constraint],
+            } as PreparedElementConstraints,
+          }
+        })
+      } else {
+        setPreparedConstraints(
+          (prev) =>
+            ({
+              ...prev,
+              modelElements: withGap.modelElements,
+              faceConstraints: [...(prev.faceConstraints ?? []), withGap.constraint],
+            }) as PreparedElementConstraints,
+        )
+      }
+    },
+    [
+      model,
+      probableFaces,
+      preparedConstraints.modelElements,
+      programPartConstraints,
+      programPartGeometries,
+      selection.faces,
+    ],
+  )
+
   /** Ustaw transform bez re-snap zapisanych mates (preview / revert draft). */
   const setProgramPartTransformDirect = useCallback(
     (partId: string, transform: PhantomTransform) => {
@@ -1721,6 +2124,8 @@ function App() {
           <DocumentTreeOverlay
             mainModel={model}
             mainFileName={sourceFileName}
+            mainFaceConstraints={preparedFaceConstraints}
+            mainModelElements={preparedConstraints.modelElements ?? []}
             assemblyName={assemblyDocMeta.name}
             programParts={programParts}
             programPartGeometries={programPartGeometries}
@@ -1736,7 +2141,12 @@ function App() {
             onHighlightElementFaces={handleDocumentTreeHighlightElementFaces}
             onDeleteMate={handleDeleteAssemblyMate}
             onToggleMateSuppressed={handleToggleMateSuppressed}
+            onApplySizeEdit={handleDocumentTreeApplySizeEdit}
+            onRemoveSizeLimit={handleDocumentTreeRemoveSizeLimit}
+            onRenameSize={handleDocumentTreeRenameSize}
+            onAddCustomSize={handleDocumentTreeAddCustomSize}
             selectionClearEpoch={viewportSelectionClearEpoch}
+            geometryRevision={geometryRevision}
           />
         </div>
         {matesPopupOpen && (

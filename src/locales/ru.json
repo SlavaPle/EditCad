@@ -153,7 +153,8 @@
       "model": "Модель",
       "appearance": "Внешний вид",
       "elements": "Элементы",
-      "mates": "Привязки"
+      "mates": "Привязки",
+      "sizes": "Размеры"
     },
     "menu": {
       "select": "Выбрать",
@@ -162,6 +163,10 @@
       "removePart": "Удалить деталь",
       "editAppearance": "Редактировать внешний вид",
       "copySize": "Копировать размер",
+      "editSize": "Изменить размер",
+      "renameSize": "Переименовать размер",
+      "removeSizeLimit": "Снять ограничение размера",
+      "addCustomSize": "Добавить размер между плоскостями",
       "highlightElement": "Подсветить грани",
       "highlightMate": "Подсветить привязку",
       "clearMateHighlight": "Снять подсветку",
@@ -170,6 +175,25 @@
       "deleteMate": "Удалить",
       "expandAll": "Развернуть всё",
       "collapseAll": "Свернуть всё"
+    },
+    "size": {
+      "valueAria": "Значение размера в миллиметрах",
+      "renameAria": "Имя размера",
+      "limitLabel": "Ограничение",
+      "limitFree": "Без ограничения",
+      "limitType": {
+        "minmax": "Мин / Макс",
+        "const": "Точный (CONST)",
+        "min": "Минимум",
+        "max": "Максимум"
+      },
+      "minLabel": "Мин (мм)",
+      "maxLabel": "Макс (мм)",
+      "sliderAria": "Размер в пределах лимита",
+      "valueWithinLimitsHint": "Значение ограничено активным лимитом размера",
+      "removeLimit": "Снять ограничение",
+      "apply": "Применить",
+      "cancel": "Отмена"
     }
   },
   "preAssembly": {

@@ -3,6 +3,8 @@ import type { BufferGeometry } from 'three'
 import { useTranslation } from 'react-i18next'
 import type { AssemblyMate } from '../assembly-mates/model'
 import type { MateEntityHighlights } from '../assembly-mates/matePlaneFaceOverlay'
+import type { FaceConstraint } from '../face-constraints/model'
+import type { SizeEditApplyPayload } from './sizeEditApplyPayload'
 import type { PreAssemblyProgramPart } from '../pre-assembly/preAssemblyProgram'
 import { geometryExtentMm } from '../pre-assembly/viewer/layoutProgramPartPositionsMm'
 import { buildProgramPartDisplayNameById } from '../pre-assembly/programParts/programPartDisplayName'
@@ -18,9 +20,10 @@ import { shouldClearDocumentTreeNodeSelection } from '../viewer-selection'
 import styles from './DocumentTree.module.css'
 
 export type DocumentTreeOverlayProps = {
-  /** Główny model (tryb detalu). */
   mainModel: BufferGeometry | null
   mainFileName: string | null
+  mainFaceConstraints?: readonly FaceConstraint[]
+  mainModelElements?: PreparedElementConstraints['modelElements']
   assemblyName: string
   programParts: readonly PreAssemblyProgramPart[]
   programPartGeometries: Readonly<Record<string, BufferGeometry | undefined>>
@@ -36,13 +39,20 @@ export type DocumentTreeOverlayProps = {
   onHighlightElementFaces?: (partId: string | null, faceIndices: number[]) => void
   onDeleteMate?: (mateId: string) => void
   onToggleMateSuppressed?: (mateId: string) => void
-  /** Epoch z App po clear pustego kliknięcia — zeruje zaznaczenie węzła w drzewie. */
+  onApplySizeEdit?: (node: DocumentTreeNode, payload: SizeEditApplyPayload) => void
+  onRemoveSizeLimit?: (node: DocumentTreeNode) => void
+  onRenameSize?: (node: DocumentTreeNode, displayName: string) => void
+  onAddCustomSize?: (partId: string | null) => void
   selectionClearEpoch?: number
+  /** Po stretch in-place ta sama ref geometrii — wymusza przeliczenie sizeMm w drzewie. */
+  geometryRevision?: number
 }
 
 export function DocumentTreeOverlay({
   mainModel,
   mainFileName,
+  mainFaceConstraints = [],
+  mainModelElements = [],
   assemblyName,
   programParts,
   programPartGeometries,
@@ -58,7 +68,12 @@ export function DocumentTreeOverlay({
   onHighlightElementFaces,
   onDeleteMate,
   onToggleMateSuppressed,
+  onApplySizeEdit,
+  onRemoveSizeLimit,
+  onRenameSize,
+  onAddCustomSize,
   selectionClearEpoch = 0,
+  geometryRevision = 0,
 }: DocumentTreeOverlayProps) {
   const { t } = useTranslation()
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
@@ -79,12 +94,22 @@ export function DocumentTreeOverlay({
       map[part.id] = geometryExtentMm(programPartGeometries[part.id]).sizeMm
     }
     return map
-  }, [programParts, programPartGeometries])
+    // geometryRevision: bbox po stretch in-place
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- revision forces remeasure
+  }, [programParts, programPartGeometries, geometryRevision])
 
   const modelElementsByPartId = useMemo(() => {
     const map: Record<string, PreparedElementConstraints['modelElements']> = {}
     for (const part of programParts) {
       map[part.id] = programPartConstraints[part.id]?.modelElements
+    }
+    return map
+  }, [programParts, programPartConstraints])
+
+  const faceConstraintsByPartId = useMemo(() => {
+    const map: Record<string, readonly FaceConstraint[] | undefined> = {}
+    for (const part of programParts) {
+      map[part.id] = programPartConstraints[part.id]?.faceConstraints
     }
     return map
   }, [programParts, programPartConstraints])
@@ -95,24 +120,34 @@ export function DocumentTreeOverlay({
         partRootLabel: mainFileName ?? t('documentTree.untitledPart'),
         partSizeMm: mainModel ? geometryExtentMm(mainModel).sizeMm : null,
         hasPartModel: !!mainModel,
+        mainGeometry: mainModel,
+        mainFaceConstraints,
+        mainModelElements: mainModelElements ?? [],
         assemblyName: assemblyName || t('documentTree.untitledAssembly'),
         programParts,
         partDisplayNameById,
         partSizeMmById,
         modelElementsByPartId,
+        partGeometryById: programPartGeometries,
+        faceConstraintsByPartId,
         mates: assemblyMates,
         partLocks,
       }),
     [
       mainFileName,
       mainModel,
+      mainFaceConstraints,
+      mainModelElements,
       assemblyName,
       programParts,
       partDisplayNameById,
       partSizeMmById,
       modelElementsByPartId,
+      programPartGeometries,
+      faceConstraintsByPartId,
       assemblyMates,
       partLocks,
+      geometryRevision,
       t,
     ],
   )
@@ -149,6 +184,11 @@ export function DocumentTreeOverlay({
       if (effect.kind === 'highlightElement') {
         onActivePartChange(effect.partId)
         onHighlightElementFaces?.(effect.partId, effect.faceIndices)
+        return
+      }
+      if (effect.kind === 'highlightSize') {
+        if (effect.partId) onActivePartChange(effect.partId)
+        onHighlightElementFaces?.(effect.partId, effect.faceIndices)
       }
     },
     [
@@ -182,6 +222,15 @@ export function DocumentTreeOverlay({
             void navigator.clipboard?.writeText(String(node.sizeMm))
           }
           break
+        case 'addCustomSize':
+          onAddCustomSize?.(node.partId ?? activeProgramPartId)
+          break
+        case 'editSize':
+          setSelectedNodeId(node.id)
+          break
+        case 'renameSize':
+          setSelectedNodeId(node.id)
+          break
         case 'highlightElement':
           if (node.partId && node.elementId) {
             const elements = programPartConstraints[node.partId]?.modelElements ?? []
@@ -212,8 +261,10 @@ export function DocumentTreeOverlay({
       }
     },
     [
+      activeProgramPartId,
       findMate,
       onActivePartChange,
+      onAddCustomSize,
       onDeleteMate,
       onEditAppearance,
       onHighlightElementFaces,
@@ -229,11 +280,14 @@ export function DocumentTreeOverlay({
     (node: DocumentTreeNode) => {
       setSelectedNodeId(node.id)
       const edit = resolveDocumentTreeEditAction(node)
-      if (edit.kind === 'contextAction') {
-        handleContextAction(edit.action, node)
+      if (edit.kind === 'contextAction' && edit.action === 'editSize') {
+        if (node.faceIndices && node.faceIndices.length > 0) {
+          if (node.partId) onActivePartChange(node.partId)
+          onHighlightElementFaces?.(node.partId ?? null, node.faceIndices)
+        }
       }
     },
-    [handleContextAction],
+    [onActivePartChange, onHighlightElementFaces],
   )
 
   if (!root) {
@@ -249,6 +303,9 @@ export function DocumentTreeOverlay({
           selectedNodeId={selectedNodeId}
           onSelectNode={handleSelectNode}
           onEditNode={handleEditNode}
+          onRenameSize={onRenameSize}
+          onApplySizeEdit={onApplySizeEdit}
+          onRemoveSizeLimit={onRemoveSizeLimit}
           onContextAction={handleContextAction}
         />
       </div>

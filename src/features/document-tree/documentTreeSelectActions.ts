@@ -12,6 +12,11 @@ export type DocumentTreeSelectEffect =
       partId: string
       faceIndices: number[]
     }
+  | {
+      kind: 'highlightSize'
+      partId: string | null
+      faceIndices: number[]
+    }
   | { kind: 'none' }
 
 /**
@@ -46,6 +51,18 @@ export function resolveDocumentTreeSelectEffect(
       kind: 'highlightElement',
       partId: node.partId,
       faceIndices: [...el.faceIndices],
+    }
+  }
+
+  if (
+    (node.kind === 'size' || node.kind === 'sizeCustom') &&
+    node.faceIndices &&
+    node.faceIndices.length > 0
+  ) {
+    return {
+      kind: 'highlightSize',
+      partId: node.partId ?? null,
+      faceIndices: [...node.faceIndices],
     }
   }
 

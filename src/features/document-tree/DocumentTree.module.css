@@ -44,6 +44,33 @@
   cursor: default;
 }
 
+/** Cały wiersz size (ikona + status + etykieta) — jeden hit-target, cursor pointer. */
+.sizeHit {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.sizeHitLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+  cursor: inherit;
+}
+
+/** Portal fixed — poza overflow panelu drzewa (bez scrollbarów). */
+.sizePopupLayerFixed {
+  position: fixed;
+  z-index: 60;
+  pointer-events: auto;
+}
+
 .row:hover {
   background: rgba(15, 23, 42, 0.35);
 }
@@ -112,7 +139,8 @@
 
 .contextMenu {
   position: fixed;
-  z-index: 50;
+  /* Powyżej sizePopupLayerFixed (60) — inaczej hover-popup przechwytuje kliknięcia menu */
+  z-index: 70;
   min-width: 160px;
   padding: 4px 0;
   margin: 0;
@@ -174,4 +202,162 @@
   padding: 4px 6px;
   opacity: 0.7;
   font-size: 0.75rem;
+}
+
+.rowSizeLocked {
+  opacity: 0.42;
+}
+
+.rowSizeLocked .label {
+  cursor: default;
+}
+
+.sizeStatusIcon {
+  flex: 0 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.9;
+}
+
+.sizeEditPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 6px;
+  border-radius: 4px;
+  background: rgba(15, 23, 42, 0.96);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+  text-shadow: none;
+  max-width: 220px;
+  min-width: 160px;
+}
+
+.sizeEditInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 4px 6px;
+  border: 1px solid #64748b;
+  border-radius: 3px;
+  background: #0f172a;
+  color: #f1f5f9;
+  font: inherit;
+}
+
+.sizeEditInputMuted {
+  background: #1e293b;
+  color: #94a3b8;
+  border-color: #475569;
+}
+
+.sizeEditInputMuted:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.sizeEditSlider {
+  width: 100%;
+  margin: 2px 0 4px;
+  accent-color: #38bdf8;
+}
+
+.sizeHoverControls {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: rgba(15, 23, 42, 0.94);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+  text-shadow: none;
+  max-width: 200px;
+  min-width: 140px;
+}
+
+.sizeEditBoundsRow {
+  display: flex;
+  gap: 6px;
+}
+
+.sizeEditBoundField {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.75rem;
+}
+
+.sizeEditRemoveLimit {
+  width: 100%;
+  margin-top: 2px;
+  padding: 4px 6px;
+  border-radius: 3px;
+  border: 1px solid #7f1d1d;
+  background: transparent;
+  color: #fca5a5;
+  font: inherit;
+  cursor: pointer;
+}
+
+.sizeEditRemoveLimit:hover {
+  background: rgba(127, 29, 29, 0.35);
+}
+
+.sizeEditLimitRow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.75rem;
+}
+
+.sizeEditLimitLabel {
+  opacity: 0.85;
+}
+
+.sizeEditLimitSelect {
+  padding: 3px 4px;
+  border-radius: 3px;
+  border: 1px solid #64748b;
+  background: #0f172a;
+  color: #f1f5f9;
+  font: inherit;
+}
+
+.sizeEditActions {
+  display: flex;
+  gap: 6px;
+}
+
+.sizeEditBtn,
+.sizeEditBtnSecondary {
+  flex: 1;
+  padding: 4px 6px;
+  border-radius: 3px;
+  border: 1px solid #64748b;
+  font: inherit;
+  cursor: pointer;
+  color: #f1f5f9;
+}
+
+.sizeEditBtn {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.sizeEditBtnSecondary {
+  background: transparent;
+}
+
+.sizeRenameInput {
+  flex: 1;
+  min-width: 0;
+  padding: 1px 4px;
+  border: 1px solid #38bdf8;
+  border-radius: 2px;
+  background: #0f172a;
+  color: #f1f5f9;
+  font: inherit;
+  text-shadow: none;
 }

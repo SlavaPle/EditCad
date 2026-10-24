@@ -64,6 +64,21 @@ describe('resolveDocumentTreeSelectEffect', () => {
     })
   })
 
+  it('highlights faces on size node click', () => {
+    const node: DocumentTreeNode = {
+      id: 'part:main:size:x',
+      kind: 'size',
+      label: 'X',
+      axis: 'x',
+      faceIndices: [1, 2, 7, 8],
+    }
+    expect(resolveDocumentTreeSelectEffect(node)).toEqual({
+      kind: 'highlightSize',
+      partId: null,
+      faceIndices: [1, 2, 7, 8],
+    })
+  })
+
   it('returns none for root / model / appearance / missing mate', () => {
     expect(
       resolveDocumentTreeSelectEffect({ id: 'root:assembly', kind: 'root', label: 'Asm' }),

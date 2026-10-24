@@ -153,7 +153,8 @@
       "model": "Model",
       "appearance": "Appearance",
       "elements": "Elements",
-      "mates": "Mates"
+      "mates": "Mates",
+      "sizes": "Sizes"
     },
     "menu": {
       "select": "Select",
@@ -162,6 +163,10 @@
       "removePart": "Remove part",
       "editAppearance": "Edit appearance",
       "copySize": "Copy size",
+      "editSize": "Edit size",
+      "renameSize": "Rename size",
+      "removeSizeLimit": "Remove size limit",
+      "addCustomSize": "Add size between planes",
       "highlightElement": "Highlight faces",
       "highlightMate": "Highlight mates",
       "clearMateHighlight": "Clear highlight",
@@ -170,6 +175,25 @@
       "deleteMate": "Delete",
       "expandAll": "Expand all",
       "collapseAll": "Collapse all"
+    },
+    "size": {
+      "valueAria": "Size value in millimetres",
+      "renameAria": "Size name",
+      "limitLabel": "Limit",
+      "limitFree": "No limit",
+      "limitType": {
+        "minmax": "Min / Max",
+        "const": "Exact (CONST)",
+        "min": "Minimum",
+        "max": "Maximum"
+      },
+      "minLabel": "Min (mm)",
+      "maxLabel": "Max (mm)",
+      "sliderAria": "Size within limits",
+      "valueWithinLimitsHint": "Value is constrained by the active size limit",
+      "removeLimit": "Remove limit",
+      "apply": "Apply",
+      "cancel": "Cancel"
     }
   },
   "preAssembly": {

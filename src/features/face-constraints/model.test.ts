@@ -346,4 +346,25 @@ describe('face constraints model', () => {
     expect(parsed).not.toBeNull()
     expect(parsed?.length).toBe(2)
   })
+
+  it('parses optional displayName and trims empty to undefined', () => {
+    const withName = parseFaceConstraint({
+      id: 'c-name',
+      type: 'const',
+      facePair: { a: 2, b: 4 },
+      valueMm: 10,
+      displayName: '  Length  ',
+    })
+    expect(withName?.displayName).toBe('Length')
+
+    const blank = parseFaceConstraint({
+      id: 'c-blank',
+      type: 'minmax',
+      facePair: { a: 1, b: 2 },
+      minMm: 0,
+      maxMm: 50,
+      displayName: '   ',
+    })
+    expect(blank?.displayName).toBeUndefined()
+  })
 })
