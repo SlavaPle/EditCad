@@ -16,7 +16,26 @@ const partPrepared: PreparedElementConstraints = {
 }
 
 describe('resolveViewportPreparedBinding', () => {
-  it('uses main model prepared data outside pre-assembly', () => {
+  it('uses main model when no active program part', () => {
+    const main = new BoxGeometry(1, 1, 1)
+    const part = new BoxGeometry(2, 2, 2)
+    const binding = resolveViewportPreparedBinding({
+      preAssemblyActive: false,
+      activeProgramPartId: null,
+      programPartGeometries: { p1: part },
+      programPartConstraints: { p1: partPrepared },
+      mainModel: main,
+      mainPrepared,
+    })
+    expect(binding.model).toBe(main)
+    expect(binding.activeProgramPartId).toBeNull()
+    expect(binding.modelElements).toEqual(mainPrepared.modelElements)
+    expect(binding.faceConstraints.map((c) => c.id)).toEqual(['main-c'])
+    main.dispose()
+    part.dispose()
+  })
+
+  it('pairs active program part geometry even outside pre-assembly tab', () => {
     const main = new BoxGeometry(1, 1, 1)
     const part = new BoxGeometry(2, 2, 2)
     const binding = resolveViewportPreparedBinding({
@@ -27,10 +46,10 @@ describe('resolveViewportPreparedBinding', () => {
       mainModel: main,
       mainPrepared,
     })
-    expect(binding.model).toBe(main)
-    expect(binding.activeProgramPartId).toBeNull()
-    expect(binding.modelElements).toEqual(mainPrepared.modelElements)
-    expect(binding.faceConstraints.map((c) => c.id)).toEqual(['main-c'])
+    expect(binding.model).toBe(part)
+    expect(binding.activeProgramPartId).toBe('p1')
+    expect(binding.modelElements).toEqual(partPrepared.modelElements)
+    expect(binding.faceConstraints.map((c) => c.id)).toEqual(['part-c'])
     main.dispose()
     part.dispose()
   })

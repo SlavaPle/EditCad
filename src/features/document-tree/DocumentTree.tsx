@@ -34,6 +34,7 @@ export type DocumentTreeProps = {
   activePartId: string | null
   selectedNodeId: string | null
   onSelectNode: (node: DocumentTreeNode) => void
+  onEditNode: (node: DocumentTreeNode) => void
   onContextAction: (action: DocumentTreeContextActionId, node: DocumentTreeNode) => void
 }
 
@@ -45,6 +46,7 @@ function TreeNodeRow({
   selectedNodeId,
   onToggleExpand,
   onSelect,
+  onEdit,
   onContextMenu,
 }: {
   node: DocumentTreeNode
@@ -54,6 +56,7 @@ function TreeNodeRow({
   selectedNodeId: string | null
   onToggleExpand: (id: string) => void
   onSelect: (node: DocumentTreeNode) => void
+  onEdit: (node: DocumentTreeNode) => void
   onContextMenu: (e: MouseEvent, node: DocumentTreeNode) => void
 }) {
   const { t } = useTranslation()
@@ -100,7 +103,11 @@ function TreeNodeRow({
         <button
           type="button"
           className={styles.label}
-          onClick={() => onSelect(node)}
+          onClick={(e) => {
+            onSelect(node)
+            // detail===2 jest wiarygodniejsze niż osobny onDoubleClick przy re-renderze zaznaczenia
+            if (e.detail === 2) onEdit(node)
+          }}
           title={displayLabel}
         >
           {displayLabel}
@@ -118,6 +125,7 @@ function TreeNodeRow({
               selectedNodeId={selectedNodeId}
               onToggleExpand={onToggleExpand}
               onSelect={onSelect}
+              onEdit={onEdit}
               onContextMenu={onContextMenu}
             />
           ))}
@@ -132,6 +140,7 @@ export function DocumentTree({
   activePartId,
   selectedNodeId,
   onSelectNode,
+  onEditNode,
   onContextAction,
 }: DocumentTreeProps) {
   const { t } = useTranslation()
@@ -193,6 +202,7 @@ export function DocumentTree({
           selectedNodeId={selectedNodeId}
           onToggleExpand={toggleExpand}
           onSelect={onSelectNode}
+          onEdit={onEditNode}
           onContextMenu={handleContextMenu}
         />
       </ul>

@@ -61,5 +61,5 @@ function lookupMate(
 ): AssemblyMate | undefined {
   if (!matesById) return undefined
   if (matesById instanceof Map) return matesById.get(mateId)
-  return matesById[mateId]
+  return (matesById as Readonly<Record<string, AssemblyMate | undefined>>)[mateId]
 }

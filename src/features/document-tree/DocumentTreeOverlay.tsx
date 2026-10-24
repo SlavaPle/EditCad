@@ -12,6 +12,7 @@ import { DocumentTree } from './DocumentTree'
 import { resolveDocumentTreeSelectEffect } from './documentTreeSelectActions'
 import { highlightsFromAssemblyMate } from './mateHighlightsFromTree'
 import type { DocumentTreeContextActionId, DocumentTreeNode } from './model'
+import { resolveDocumentTreeEditAction } from './resolveDocumentTreeEditAction'
 import type { PartLockMap } from './partLock'
 import { shouldClearDocumentTreeNodeSelection } from '../viewer-selection'
 import styles from './DocumentTree.module.css'
@@ -224,6 +225,17 @@ export function DocumentTreeOverlay({
     ],
   )
 
+  const handleEditNode = useCallback(
+    (node: DocumentTreeNode) => {
+      setSelectedNodeId(node.id)
+      const edit = resolveDocumentTreeEditAction(node)
+      if (edit.kind === 'contextAction') {
+        handleContextAction(edit.action, node)
+      }
+    },
+    [handleContextAction],
+  )
+
   if (!root) {
     return null
   }
@@ -236,6 +248,7 @@ export function DocumentTreeOverlay({
           activePartId={activeProgramPartId}
           selectedNodeId={selectedNodeId}
           onSelectNode={handleSelectNode}
+          onEditNode={handleEditNode}
           onContextAction={handleContextAction}
         />
       </div>

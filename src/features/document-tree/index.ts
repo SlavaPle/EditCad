@@ -21,6 +21,11 @@ export {
 } from './documentTreeSelectActions'
 
 export {
+  resolveDocumentTreeEditAction,
+  type DocumentTreeEditAction,
+} from './resolveDocumentTreeEditAction'
+
+export {
   filterPartLocksForPartIds,
   isPartLocked,
   lockedPartIdSet,

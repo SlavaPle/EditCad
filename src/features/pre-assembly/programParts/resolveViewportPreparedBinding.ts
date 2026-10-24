@@ -35,15 +35,17 @@ export function resolveViewportPreparedBinding(params: {
   mainPrepared: PreparedElementConstraints
 }): ViewportPreparedBinding {
   const {
-    preAssemblyActive,
     activeProgramPartId,
     programPartGeometries,
     programPartConstraints,
     mainModel,
     mainPrepared,
   } = params
+  // preAssemblyActive: zostaje w API (App / Viewer); binding zależy od activeProgramPartId.
 
-  if (preAssemblyActive && activeProgramPartId) {
+  // Aktywny detal programu (klik/dblclick w drzewie) — niezależnie od zakładki toolbaru,
+  // żeby RightPanel (appearance / limits) dostał właściwą geometrię.
+  if (activeProgramPartId) {
     const partGeometry = programPartGeometries[activeProgramPartId]
     if (partGeometry) {
       const prepared = programPartConstraints[activeProgramPartId] ?? EMPTY_PREPARED
