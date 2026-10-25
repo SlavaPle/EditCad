@@ -30,8 +30,11 @@ import { MatePlaneFaceOverlay } from '../../assembly-mates/matePlaneFaceOverlayV
 import { MateLineOverlay } from '../../assembly-mates/mateLineOverlayView'
 import { MateEllipseOverlay } from '../../assembly-mates/mateEllipseOverlayView'
 import { MateEllipseCenterOverlay } from '../../assembly-mates/mateEllipseCenterOverlayView'
+import { MateCurvedAxisOverlay } from '../../assembly-mates/mateCurvedAxisOverlayView'
 import { MateVertexOverlay } from '../../assembly-mates/mateVertexOverlayView'
 import {
+  mateCurvedAxisHighlightsForPart,
+  mateCurvedBoundaryEllipsesForPart,
   mateEllipseCenterHighlightsForPart,
   mateEllipseHighlightsForPart,
   mateLineHighlightsForPart,
@@ -343,7 +346,11 @@ function InteractiveProgramPart({
   const mateLines = mateLineHighlightsForPart(part.id, mateEntityHighlights)
   const mateVertices = mateVertexHighlightsForPart(part.id, mateEntityHighlights)
   const mateEllipses = mateEllipseHighlightsForPart(part.id, mateEntityHighlights)
+  const mateCurvedEllipses = mateCurvedBoundaryEllipsesForPart(part.id, mateEntityHighlights)
   const mateEllipseCenters = mateEllipseCenterHighlightsForPart(part.id, mateEntityHighlights)
+  const mateCurvedAxes = geometry
+    ? mateCurvedAxisHighlightsForPart(part.id, geometry, mateEntityHighlights)
+    : { axisA: null, axisB: null }
 
   const handlePointerDown = (event: ThreeEvent<PointerEvent>) => {
     if (matesPickExcluded) return
@@ -422,6 +429,38 @@ function InteractiveProgramPart({
             <MateEllipseOverlay
               geometry={geometry}
               ellipse={mateEllipses.ellipseB}
+              variant="planeB"
+            />
+          )}
+          {mateCurvedEllipses.ellipsesA.map((ellipse, i) => (
+            <MateEllipseOverlay
+              key={`curved-a-${i}`}
+              geometry={geometry}
+              ellipse={ellipse}
+              variant="planeA"
+              showCenter={false}
+            />
+          ))}
+          {mateCurvedEllipses.ellipsesB.map((ellipse, i) => (
+            <MateEllipseOverlay
+              key={`curved-b-${i}`}
+              geometry={geometry}
+              ellipse={ellipse}
+              variant="planeB"
+              showCenter={false}
+            />
+          ))}
+          {mateCurvedAxes.axisA && (
+            <MateCurvedAxisOverlay
+              geometry={geometry}
+              axis={mateCurvedAxes.axisA}
+              variant="planeA"
+            />
+          )}
+          {mateCurvedAxes.axisB && (
+            <MateCurvedAxisOverlay
+              geometry={geometry}
+              axis={mateCurvedAxes.axisB}
               variant="planeB"
             />
           )}

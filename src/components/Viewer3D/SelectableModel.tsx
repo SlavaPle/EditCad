@@ -10,6 +10,7 @@ import {
   type InterleavedBufferAttribute,
 } from 'three'
 import type { ThreeEvent } from '@react-three/fiber'
+import { Sphere } from '@react-three/drei'
 import type { SelectionState } from '../../lib/selection'
 import { resolveProximityPick } from '../../features/model-selection/proximityPick'
 import {
@@ -23,6 +24,11 @@ import {
   trySelectEllipseFromVertex,
   trySelectEllipseNearFace,
 } from '../../features/model-selection/edgeEllipseSelection'
+import { trySelectCurvedPlaneFromFace } from '../../features/model-selection/curvedPlaneSelection'
+import {
+  curvedAxisMarkerRadius,
+  dashDotAxisPositions,
+} from '../../features/assembly-mates/dashDotAxisPositions'
 import type { ModelSelectionProximityFilter } from '../../features/model-selection/types'
 import {
   buildMeshEdgeLinePositions,
@@ -50,6 +56,12 @@ const FACE_OVERLAY_OFFSET = {
   polygonOffsetUnits: -4,
 } as const
 
+type CurvedHoverArc = {
+  polyline: readonly number[]
+  closed: boolean
+  center?: readonly [number, number, number]
+}
+
 type HoverState =
   | { type: 'none' }
   | { type: 'faces'; indices: readonly number[] }
@@ -63,7 +75,24 @@ type HoverState =
       /** Środek dopasowanej elipsy (lokalnie). */
       center?: readonly [number, number, number]
     }
+  | {
+      type: 'curvedPlane'
+      indices: readonly number[]
+      arcs: readonly CurvedHoverArc[]
+      axisFrom?: readonly [number, number, number]
+      axisTo?: readonly [number, number, number]
+    }
   | { type: 'vertex'; index: number }
+
+function sameHoverArc(a: CurvedHoverArc, b: CurvedHoverArc): boolean {
+  if (a.closed !== b.closed || a.polyline.length !== b.polyline.length) return false
+  if (!a.polyline.every((v, i) => v === b.polyline[i])) return false
+  const ca = a.center
+  const cb = b.center
+  if (!ca && !cb) return true
+  if (!ca || !cb) return false
+  return ca[0] === cb[0] && ca[1] === cb[1] && ca[2] === cb[2]
+}
 
 function sameHover(a: HoverState, b: HoverState): boolean {
   if (a.type !== b.type) return false
@@ -82,6 +111,28 @@ function sameHover(a: HoverState, b: HoverState): boolean {
     if (!ca && !cb) return true
     if (!ca || !cb) return false
     return ca[0] === cb[0] && ca[1] === cb[1] && ca[2] === cb[2]
+  }
+  if (a.type === 'curvedPlane' && b.type === 'curvedPlane') {
+    if (a.indices.length !== b.indices.length) return false
+    const sa = [...a.indices].sort((x, y) => x - y)
+    const sb = [...b.indices].sort((x, y) => x - y)
+    if (!sa.every((v, i) => v === sb[i])) return false
+    if (a.arcs.length !== b.arcs.length) return false
+    if (!a.arcs.every((arc, i) => sameHoverArc(arc, b.arcs[i]!))) return false
+    const af = a.axisFrom
+    const bf = b.axisFrom
+    const at = a.axisTo
+    const bt = b.axisTo
+    if (!af && !bf && !at && !bt) return true
+    if (!af || !bf || !at || !bt) return false
+    return (
+      af[0] === bf[0] &&
+      af[1] === bf[1] &&
+      af[2] === bf[2] &&
+      at[0] === bt[0] &&
+      at[1] === bt[1] &&
+      at[2] === bt[2]
+    )
   }
   if (a.type === 'faces' && b.type === 'faces') {
     if (a.indices.length !== b.indices.length) return false
@@ -271,23 +322,69 @@ export function SelectableModel({
         pointer: { x: event.nativeEvent.offsetX, y: event.nativeEvent.offsetY },
         viewport: { width: viewportWidth, height: viewportHeight },
       })
-      // Najpierw łuk — zanim pokażemy ścianę/wierzchołek (inaczej widać flash)
+      // Najpierw pas walca/stożka: łuki + oś (bez wypełnienia ścian — mniej artefaktów)
       if (expandEdgeHoverToEllipse) {
-        const arc =
-          pick.type === 'edge'
-            ? trySelectEllipseFromEdge(model, pick.a, pick.b)
-            : pick.type === 'vertex'
-              ? trySelectEllipseFromVertex(model, pick.index)
-              : trySelectEllipseNearFace(model, fi)
-        if (arc && arc.vertexIndices.length >= 2) {
-          const fitted = ellipseCenterFromVertexChain(model, arc.vertexIndices)
+        const curved = trySelectCurvedPlaneFromFace(model, fi)
+        if (curved && curved.faceIndices.length > 0) {
+          const arcs: CurvedHoverArc[] = []
+          const cA = ellipseCenterFromVertexChain(model, curved.arcA.vertexIndices)
+          arcs.push({
+            polyline: curved.arcA.vertexIndices,
+            closed: curved.arcA.closed,
+            center: cA?.center,
+          })
+          let axisTo: readonly [number, number, number] | undefined
+          if (curved.arcB) {
+            const cB = ellipseCenterFromVertexChain(model, curved.arcB.vertexIndices)
+            arcs.push({
+              polyline: curved.arcB.vertexIndices,
+              closed: curved.arcB.closed,
+              center: cB?.center,
+            })
+            if (cB?.center) axisTo = cB.center
+          } else if (curved.apexVertexIndex !== undefined) {
+            const position = model.getAttribute('position')
+            const vi = curved.apexVertexIndex
+            if (position && vi >= 0 && vi < position.count) {
+              axisTo = [position.getX(vi), position.getY(vi), position.getZ(vi)]
+            }
+          }
           return {
-            type: 'edge',
-            a: arc.vertexIndices[0]!,
-            b: arc.vertexIndices[1]!,
-            polyline: arc.vertexIndices,
-            closed: arc.closed,
-            center: fitted?.center,
+            type: 'curvedPlane',
+            indices: curved.faceIndices,
+            arcs,
+            axisFrom: cA?.center,
+            axisTo,
+          }
+        }
+        if (pick.type === 'edge' || pick.type === 'vertex') {
+          const arc =
+            pick.type === 'edge'
+              ? trySelectEllipseFromEdge(model, pick.a, pick.b)
+              : trySelectEllipseFromVertex(model, pick.index)
+          if (arc && arc.vertexIndices.length >= 2) {
+            const fitted = ellipseCenterFromVertexChain(model, arc.vertexIndices)
+            return {
+              type: 'edge',
+              a: arc.vertexIndices[0]!,
+              b: arc.vertexIndices[1]!,
+              polyline: arc.vertexIndices,
+              closed: arc.closed,
+              center: fitted?.center,
+            }
+          }
+        } else {
+          const arc = trySelectEllipseNearFace(model, fi)
+          if (arc && arc.vertexIndices.length >= 2) {
+            const fitted = ellipseCenterFromVertexChain(model, arc.vertexIndices)
+            return {
+              type: 'edge',
+              a: arc.vertexIndices[0]!,
+              b: arc.vertexIndices[1]!,
+              polyline: arc.vertexIndices,
+              closed: arc.closed,
+              center: fitted?.center,
+            }
           }
         }
       }
@@ -422,14 +519,20 @@ export function SelectableModel({
   }, [vertexPointsGeometry])
 
   const hoverFaceOverlayGeometry = useMemo(() => {
-    if (hover.type !== 'faces' || hover.indices.length === 0) return null
+    const indices =
+      hover.type === 'faces'
+        ? hover.indices
+        : hover.type === 'curvedPlane'
+          ? hover.indices
+          : null
+    if (!indices || indices.length === 0) return null
     const position = model.getAttribute('position')
     if (!position) return null
 
-    const arr = new Float32Array(hover.indices.length * 9)
+    const arr = new Float32Array(indices.length * 9)
     let w = 0
     let triIdx = 0
-    for (const fi of hover.indices) {
+    for (const fi of indices) {
       const [ia, ib, ic] = triangleIndicesForFace(model, fi)
       w = pushOverlayTriangle(position, ia, ib, ic, triIdx++, overlayDepthBias, arr, w)
     }
@@ -446,6 +549,24 @@ export function SelectableModel({
   }, [hoverFaceOverlayGeometry])
 
   const hoverEdgeLinePositions = useMemo(() => {
+    if (hover.type === 'curvedPlane') {
+      const chunks: Float32Array[] = []
+      let total = 0
+      for (const arc of hover.arcs) {
+        const seg = ellipseChainToSegmentPositions(model, arc.polyline, arc.closed)
+        if (!seg) continue
+        chunks.push(seg)
+        total += seg.length
+      }
+      if (chunks.length === 0) return null
+      const arr = new Float32Array(total)
+      let w = 0
+      for (const c of chunks) {
+        arr.set(c, w)
+        w += c.length
+      }
+      return arr
+    }
     if (hover.type !== 'edge') return null
     if (hover.polyline && hover.polyline.length >= 2) {
       return ellipseChainToSegmentPositions(model, hover.polyline, hover.closed === true)
@@ -465,7 +586,47 @@ export function SelectableModel({
     ])
   }, [model, geometryRevision, hover])
 
+  const hoverCurvedAxisPositions = useMemo(() => {
+    if (hover.type !== 'curvedPlane' || !hover.axisFrom || !hover.axisTo) return null
+    if (!model.boundingSphere) model.computeBoundingSphere()
+    return dashDotAxisPositions(hover.axisFrom, hover.axisTo, model.boundingSphere?.radius)
+  }, [model, geometryRevision, hover])
+
+  const hoverCurvedAxisMarkers = useMemo(() => {
+    if (hover.type !== 'curvedPlane' || !hover.axisFrom || !hover.axisTo) return null
+    if (!model.boundingSphere) model.computeBoundingSphere()
+    const modelScale = model.boundingSphere?.radius
+    const axisLen = Math.hypot(
+      hover.axisTo[0] - hover.axisFrom[0],
+      hover.axisTo[1] - hover.axisFrom[1],
+      hover.axisTo[2] - hover.axisFrom[2],
+    )
+    const radius = curvedAxisMarkerRadius(axisLen, modelScale)
+    // #region agent log
+    fetch('http://127.0.0.1:7882/ingest/cc58a8d9-c779-4012-82fb-05fda4bfad8c', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '334439' },
+      body: JSON.stringify({
+        sessionId: '334439',
+        runId: 'pre-fix',
+        hypothesisId: 'H2-H4',
+        location: 'SelectableModel.tsx:hoverCurvedAxisMarkers',
+        message: 'curved hover axis scale',
+        data: {
+          axisLen,
+          modelScale: modelScale ?? null,
+          markerRadius: radius,
+          segCount: hoverCurvedAxisPositions ? hoverCurvedAxisPositions.length / 6 : 0,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
+    return { from: hover.axisFrom, to: hover.axisTo, radius }
+  }, [model, geometryRevision, hover, hoverCurvedAxisPositions])
+
   const hoverVertexGeometry = useMemo(() => {
+    if (hover.type === 'curvedPlane') return null
     if (hover.type === 'edge' && hover.center) {
       const arr = new Float32Array([hover.center[0], hover.center[1], hover.center[2]])
       const geo = new BufferGeometry()
@@ -661,7 +822,47 @@ export function SelectableModel({
         renderOrder={9}
         raycastDisabled
         depthWrite={false}
+        depthTest={hover.type !== 'curvedPlane'}
       />
+      <FatLineSegments
+        positions={hoverCurvedAxisPositions}
+        color={PREVIEW_COLOR_HEX}
+        linewidth={1.5}
+        renderOrder={12}
+        raycastDisabled
+        depthWrite={false}
+        depthTest={false}
+      />
+      {hoverCurvedAxisMarkers && (
+        <>
+          <Sphere
+            args={[hoverCurvedAxisMarkers.radius, 10, 10]}
+            position={hoverCurvedAxisMarkers.from}
+            renderOrder={13}
+          >
+            <meshBasicMaterial
+              color={PREVIEW_COLOR_HEX}
+              transparent
+              opacity={0.95}
+              depthTest={false}
+              depthWrite={false}
+            />
+          </Sphere>
+          <Sphere
+            args={[hoverCurvedAxisMarkers.radius, 10, 10]}
+            position={hoverCurvedAxisMarkers.to}
+            renderOrder={13}
+          >
+            <meshBasicMaterial
+              color={PREVIEW_COLOR_HEX}
+              transparent
+              opacity={0.95}
+              depthTest={false}
+              depthWrite={false}
+            />
+          </Sphere>
+        </>
+      )}
       {vertexPointsGeometry && (
         <points ref={vertexPointsRef} geometry={vertexPointsGeometry} renderOrder={10}>
           <pointsMaterial

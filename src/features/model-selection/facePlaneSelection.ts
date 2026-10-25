@@ -47,7 +47,8 @@ export function getFaceVertices(geometry: BufferGeometry): FaceVertices[] {
   return faces
 }
 
-function getFaceNeighbors(geometry: BufferGeometry): number[][] {
+/** Sąsiedztwo trójkątów po wspólnej krawędzi (cache w userData). */
+export function getFaceNeighbors(geometry: BufferGeometry): number[][] {
   const cached = (geometry as { userData: { __faceNeighbors?: number[][] } }).userData.__faceNeighbors
   if (cached) return cached
 

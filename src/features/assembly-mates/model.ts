@@ -4,7 +4,13 @@ export type MateKind = 'parallel' | 'perpendicular' | 'angular'
 /** Sposób zorientowania równoległych płaszczyzn / linii. */
 export type MateAlignment = 'faceToFace' | 'sameDirection'
 
-export type MateEntityKind = 'plane' | 'line' | 'vertex' | 'ellipse' | 'ellipseCenter'
+export type MateEntityKind =
+  | 'plane'
+  | 'line'
+  | 'vertex'
+  | 'ellipse'
+  | 'ellipseCenter'
+  | 'curvedPlane'
 
 export type MatePairKind = `${MateEntityKind}-${MateEntityKind}`
 
@@ -57,12 +63,31 @@ export type MateEllipseCenterRef = {
   closed: boolean
 }
 
+/** Pas ścian walca / stożka między łukami (lub łuk + wierzchołek). */
+export type MateCurvedPlaneArcRef = {
+  vertexIndices: number[]
+  closed: boolean
+}
+
+export type MateCurvedPlaneRef = {
+  kind: 'curvedPlane'
+  partId: string
+  faceIndex: number
+  faceIndices: number[]
+  arcA: MateCurvedPlaneArcRef
+  /** Drugi brzeg (walec). */
+  arcB?: MateCurvedPlaneArcRef
+  /** Wierzchołek stożka zamiast arcB. */
+  apexVertexIndex?: number
+}
+
 export type MateEntityRef =
   | MatePlaneRef
   | MateLineRef
   | MateVertexRef
   | MateEllipseRef
   | MateEllipseCenterRef
+  | MateCurvedPlaneRef
 
 export type ParallelMate = {
   id: string
@@ -113,6 +138,7 @@ export function mateEntityKindFromRef(ref: MateEntityRef): MateEntityKind {
   if (ref.kind === 'vertex') return 'vertex'
   if (ref.kind === 'ellipse') return 'ellipse'
   if (ref.kind === 'ellipseCenter') return 'ellipseCenter'
+  if (ref.kind === 'curvedPlane') return 'curvedPlane'
   return 'plane'
 }
 
@@ -158,7 +184,12 @@ export function mateKindAvailableForEntities(
   const restrictOrient = (ref: MateEntityRef | null | undefined) => {
     if (!ref) return false
     const k = mateEntityKindFromRef(ref)
-    return k === 'vertex' || k === 'ellipse' || k === 'ellipseCenter'
+    return (
+      k === 'vertex' ||
+      k === 'ellipse' ||
+      k === 'ellipseCenter' ||
+      k === 'curvedPlane'
+    )
   }
   return !restrictOrient(entityA) && !restrictOrient(entityB)
 }
@@ -176,7 +207,8 @@ export function validateMatePlaneRef(value: unknown): value is MatePlaneRef {
     v.kind === 'line' ||
     v.kind === 'vertex' ||
     v.kind === 'ellipse' ||
-    v.kind === 'ellipseCenter'
+    v.kind === 'ellipseCenter' ||
+    v.kind === 'curvedPlane'
   ) {
     return false
   }
@@ -227,13 +259,50 @@ export function validateMateEllipseCenterRef(value: unknown): value is MateEllip
   return v.vertexIndices.every((i) => typeof i === 'number' && Number.isInteger(i) && i >= 0)
 }
 
+function validateMateCurvedPlaneArcRef(value: unknown): value is MateCurvedPlaneArcRef {
+  if (typeof value !== 'object' || value === null) return false
+  const v = value as Record<string, unknown>
+  if (typeof v.closed !== 'boolean') return false
+  if (!Array.isArray(v.vertexIndices) || v.vertexIndices.length < 5) return false
+  return v.vertexIndices.every((i) => typeof i === 'number' && Number.isInteger(i) && i >= 0)
+}
+
+export function validateMateCurvedPlaneRef(value: unknown): value is MateCurvedPlaneRef {
+  if (typeof value !== 'object' || value === null) return false
+  const v = value as Record<string, unknown>
+  if (v.kind !== 'curvedPlane') return false
+  if (typeof v.partId !== 'string' || v.partId.trim().length === 0) return false
+  if (typeof v.faceIndex !== 'number' || !Number.isInteger(v.faceIndex) || v.faceIndex < 0) {
+    return false
+  }
+  if (!Array.isArray(v.faceIndices) || v.faceIndices.length === 0) return false
+  if (!v.faceIndices.every((f) => typeof f === 'number' && Number.isInteger(f) && f >= 0)) {
+    return false
+  }
+  if (!validateMateCurvedPlaneArcRef(v.arcA)) return false
+  const hasArcB = v.arcB !== undefined
+  const hasApex = v.apexVertexIndex !== undefined
+  if (hasArcB === hasApex) return false
+  if (hasArcB && !validateMateCurvedPlaneArcRef(v.arcB)) return false
+  if (
+    hasApex &&
+    (typeof v.apexVertexIndex !== 'number' ||
+      !Number.isInteger(v.apexVertexIndex) ||
+      v.apexVertexIndex < 0)
+  ) {
+    return false
+  }
+  return true
+}
+
 export function validateMateEntityRef(value: unknown): value is MateEntityRef {
   return (
     validateMatePlaneRef(value) ||
     validateMateLineRef(value) ||
     validateMateVertexRef(value) ||
     validateMateEllipseRef(value) ||
-    validateMateEllipseCenterRef(value)
+    validateMateEllipseCenterRef(value) ||
+    validateMateCurvedPlaneRef(value)
   )
 }
 

@@ -3,7 +3,9 @@ import {
   BufferGeometry,
   type InterleavedBufferAttribute,
 } from 'three'
+import { ellipseCenterFromVertexChain } from '../model-selection/edgeEllipseSelection'
 import type {
+  MateCurvedPlaneRef,
   MateEllipseCenterRef,
   MateEllipseRef,
   MateEntityRef,
@@ -12,6 +14,7 @@ import type {
   MateVertexRef,
 } from './model'
 import {
+  asMateCurvedPlaneRef,
   asMateEllipseCenterRef,
   asMateEllipseRef,
   asMateLineRef,
@@ -130,17 +133,27 @@ export function buildMatePlaneFaceOverlayGeometry(
   return overlay
 }
 
+function faceIndicesForSurfaceEntity(
+  partId: string,
+  entity: MateEntityRef | null,
+): readonly number[] | null {
+  if (!entity || entity.partId !== partId) return null
+  const plane = asMatePlaneRef(entity)
+  if (plane) return plane.faceIndices
+  const curved = asMateCurvedPlaneRef(entity)
+  if (curved) return curved.faceIndices
+  return null
+}
+
 export function matePlaneHighlightsForPart(
   partId: string,
   highlights: MatePlaneHighlights | MateEntityHighlights | null | undefined,
 ): { planeA: readonly number[] | null; planeB: readonly number[] | null } {
   if (!highlights) return { planeA: null, planeB: null }
   if ('entityA' in highlights) {
-    const planeA = highlights.entityA ? asMatePlaneRef(highlights.entityA) : null
-    const planeB = highlights.entityB ? asMatePlaneRef(highlights.entityB) : null
     return {
-      planeA: planeA?.partId === partId ? planeA.faceIndices : null,
-      planeB: planeB?.partId === partId ? planeB.faceIndices : null,
+      planeA: faceIndicesForSurfaceEntity(partId, highlights.entityA),
+      planeB: faceIndicesForSurfaceEntity(partId, highlights.entityB),
     }
   }
   return {
@@ -173,14 +186,50 @@ export function mateVertexHighlightsForPart(
   if (!highlights) {
     return { vertexA: null, vertexB: null }
   }
-  const vertexA = highlights.entityA ? asMateVertexRef(highlights.entityA) : null
-  const vertexB = highlights.entityB ? asMateVertexRef(highlights.entityB) : null
+  let vertexA = highlights.entityA ? asMateVertexRef(highlights.entityA) : null
+  let vertexB = highlights.entityB ? asMateVertexRef(highlights.entityB) : null
+  if (vertexA?.partId !== partId) vertexA = null
+  if (vertexB?.partId !== partId) vertexB = null
+
+  const curvedA = highlights.entityA ? asMateCurvedPlaneRef(highlights.entityA) : null
+  const curvedB = highlights.entityB ? asMateCurvedPlaneRef(highlights.entityB) : null
+  if (!vertexA && curvedA?.partId === partId && curvedA.apexVertexIndex !== undefined) {
+    vertexA = {
+      kind: 'vertex',
+      partId,
+      vertexIndex: curvedA.apexVertexIndex,
+    }
+  }
+  if (!vertexB && curvedB?.partId === partId && curvedB.apexVertexIndex !== undefined) {
+    vertexB = {
+      kind: 'vertex',
+      partId,
+      vertexIndex: curvedB.apexVertexIndex,
+    }
+  }
+
+  return { vertexA, vertexB }
+}
+
+function ellipseFromCurvedArc(
+  partId: string,
+  curved: MateCurvedPlaneRef,
+  which: 'arcA' | 'arcB',
+): MateEllipseRef | null {
+  const arc = which === 'arcA' ? curved.arcA : curved.arcB
+  if (!arc) return null
   return {
-    vertexA: vertexA?.partId === partId ? vertexA : null,
-    vertexB: vertexB?.partId === partId ? vertexB : null,
+    kind: 'ellipse',
+    partId,
+    vertexIndices: arc.vertexIndices,
+    closed: arc.closed,
   }
 }
 
+/**
+ * Elipsy do overlay: bezpośrednie MateEllipseRef (bez łuków curvedPlane —
+ * te idą w mateCurvedBoundaryEllipsesForPart, oba w kolorze swojego slotu).
+ */
 export function mateEllipseHighlightsForPart(
   partId: string,
   highlights: MateEntityHighlights | null | undefined,
@@ -188,11 +237,38 @@ export function mateEllipseHighlightsForPart(
   if (!highlights) {
     return { ellipseA: null, ellipseB: null }
   }
-  const ellipseA = highlights.entityA ? asMateEllipseRef(highlights.entityA) : null
-  const ellipseB = highlights.entityB ? asMateEllipseRef(highlights.entityB) : null
+  let ellipseA = highlights.entityA ? asMateEllipseRef(highlights.entityA) : null
+  let ellipseB = highlights.entityB ? asMateEllipseRef(highlights.entityB) : null
+  if (ellipseA?.partId !== partId) ellipseA = null
+  if (ellipseB?.partId !== partId) ellipseB = null
+  return { ellipseA, ellipseB }
+}
+
+function curvedBoundaryEllipses(
+  partId: string,
+  curved: MateCurvedPlaneRef,
+): MateEllipseRef[] {
+  const out: MateEllipseRef[] = []
+  const a = ellipseFromCurvedArc(partId, curved, 'arcA')
+  if (a) out.push(a)
+  const b = ellipseFromCurvedArc(partId, curved, 'arcB')
+  if (b) out.push(b)
+  return out
+}
+
+/**
+ * Oba łuki curvedPlane w kolorze slotu entity (nie mieszaj arcB do slotu B).
+ */
+export function mateCurvedBoundaryEllipsesForPart(
+  partId: string,
+  highlights: MateEntityHighlights | null | undefined,
+): { ellipsesA: MateEllipseRef[]; ellipsesB: MateEllipseRef[] } {
+  if (!highlights) return { ellipsesA: [], ellipsesB: [] }
+  const curvedA = highlights.entityA ? asMateCurvedPlaneRef(highlights.entityA) : null
+  const curvedB = highlights.entityB ? asMateCurvedPlaneRef(highlights.entityB) : null
   return {
-    ellipseA: ellipseA?.partId === partId ? ellipseA : null,
-    ellipseB: ellipseB?.partId === partId ? ellipseB : null,
+    ellipsesA: curvedA?.partId === partId ? curvedBoundaryEllipses(partId, curvedA) : [],
+    ellipsesB: curvedB?.partId === partId ? curvedBoundaryEllipses(partId, curvedB) : [],
   }
 }
 
@@ -208,6 +284,49 @@ export function mateEllipseCenterHighlightsForPart(
   return {
     centerA: centerA?.partId === partId ? centerA : null,
     centerB: centerB?.partId === partId ? centerB : null,
+  }
+}
+
+export type MateCurvedAxisLocal = {
+  from: [number, number, number]
+  to: [number, number, number]
+}
+
+function curvedAxisFromRef(
+  geometry: BufferGeometry,
+  curved: MateCurvedPlaneRef,
+): MateCurvedAxisLocal | null {
+  const cA = ellipseCenterFromVertexChain(geometry, curved.arcA.vertexIndices)?.center
+  if (!cA) return null
+  if (curved.arcB) {
+    const cB = ellipseCenterFromVertexChain(geometry, curved.arcB.vertexIndices)?.center
+    if (!cB) return null
+    return { from: cA, to: cB }
+  }
+  if (curved.apexVertexIndex !== undefined) {
+    const position = geometry.getAttribute('position')
+    const vi = curved.apexVertexIndex
+    if (!position || vi < 0 || vi >= position.count) return null
+    return {
+      from: cA,
+      to: [position.getX(vi), position.getY(vi), position.getZ(vi)],
+    }
+  }
+  return null
+}
+
+/** Oś walca/stożka: odcinek między środkami łuków (lub środek → apex). */
+export function mateCurvedAxisHighlightsForPart(
+  partId: string,
+  geometry: BufferGeometry,
+  highlights: MateEntityHighlights | null | undefined,
+): { axisA: MateCurvedAxisLocal | null; axisB: MateCurvedAxisLocal | null } {
+  if (!highlights) return { axisA: null, axisB: null }
+  const curvedA = highlights.entityA ? asMateCurvedPlaneRef(highlights.entityA) : null
+  const curvedB = highlights.entityB ? asMateCurvedPlaneRef(highlights.entityB) : null
+  return {
+    axisA: curvedA?.partId === partId ? curvedAxisFromRef(geometry, curvedA) : null,
+    axisB: curvedB?.partId === partId ? curvedAxisFromRef(geometry, curvedB) : null,
   }
 }
 

@@ -115,7 +115,8 @@
       "kindEdge": "Ребро",
       "kindVertex": "Вершина",
       "kindEllipse": "Эллипс / окружность",
-      "kindEllipseCenter": "Центр дуги"
+      "kindEllipseCenter": "Центр дуги",
+      "kindCurvedPlane": "Кривая грань"
     },
     "face": {
       "summary": "{{name}} · {{count}} граней"

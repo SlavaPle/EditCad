@@ -1,4 +1,5 @@
 import type {
+  MateCurvedPlaneRef,
   MateEllipseCenterRef,
   MateEllipseRef,
   MateEntityKind,
@@ -24,12 +25,17 @@ export function isMateEllipseCenterRef(ref: MateEntityRef): ref is MateEllipseCe
   return ref.kind === 'ellipseCenter'
 }
 
+export function isMateCurvedPlaneRef(ref: MateEntityRef): ref is MateCurvedPlaneRef {
+  return ref.kind === 'curvedPlane'
+}
+
 export function isMatePlaneEntityRef(ref: MateEntityRef): ref is MatePlaneRef {
   return (
     ref.kind !== 'line' &&
     ref.kind !== 'vertex' &&
     ref.kind !== 'ellipse' &&
-    ref.kind !== 'ellipseCenter'
+    ref.kind !== 'ellipseCenter' &&
+    ref.kind !== 'curvedPlane'
   )
 }
 
@@ -38,6 +44,7 @@ export function mateEntityKind(ref: MateEntityRef): MateEntityKind {
   if (isMateVertexRef(ref)) return 'vertex'
   if (isMateEllipseRef(ref)) return 'ellipse'
   if (isMateEllipseCenterRef(ref)) return 'ellipseCenter'
+  if (isMateCurvedPlaneRef(ref)) return 'curvedPlane'
   return 'plane'
 }
 
@@ -81,6 +88,25 @@ export function mateEllipseCenterRefsMatch(
   return a.vertexIndices.every((v, i) => v === b.vertexIndices[i])
 }
 
+function curvedPlaneArcMatch(
+  a: MateCurvedPlaneRef['arcA'],
+  b: MateCurvedPlaneRef['arcA'],
+): boolean {
+  if (a.closed !== b.closed || a.vertexIndices.length !== b.vertexIndices.length) return false
+  return a.vertexIndices.every((v, i) => v === b.vertexIndices[i])
+}
+
+export function mateCurvedPlaneRefsMatch(a: MateCurvedPlaneRef, b: MateCurvedPlaneRef): boolean {
+  if (a.partId !== b.partId || a.faceIndex !== b.faceIndex) return false
+  if (a.faceIndices.length !== b.faceIndices.length) return false
+  if (!a.faceIndices.every((f, i) => f === b.faceIndices[i])) return false
+  if (!curvedPlaneArcMatch(a.arcA, b.arcA)) return false
+  if ((a.arcB === undefined) !== (b.arcB === undefined)) return false
+  if (a.arcB && b.arcB && !curvedPlaneArcMatch(a.arcB, b.arcB)) return false
+  if (a.apexVertexIndex !== b.apexVertexIndex) return false
+  return true
+}
+
 export function mateEntityRefsMatch(a: MateEntityRef, b: MateEntityRef): boolean {
   if (mateEntityKind(a) !== mateEntityKind(b)) return false
   if (isMateLineRef(a) && isMateLineRef(b)) {
@@ -94,6 +120,9 @@ export function mateEntityRefsMatch(a: MateEntityRef, b: MateEntityRef): boolean
   }
   if (isMateEllipseCenterRef(a) && isMateEllipseCenterRef(b)) {
     return mateEllipseCenterRefsMatch(a, b)
+  }
+  if (isMateCurvedPlaneRef(a) && isMateCurvedPlaneRef(b)) {
+    return mateCurvedPlaneRefsMatch(a, b)
   }
   if (isMatePlaneEntityRef(a) && isMatePlaneEntityRef(b)) {
     return matePlaneRefsMatch(a, b)
@@ -121,4 +150,6 @@ export function asMateEllipseCenterRef(ref: MateEntityRef): MateEllipseCenterRef
   return isMateEllipseCenterRef(ref) ? ref : null
 }
 
-
+export function asMateCurvedPlaneRef(ref: MateEntityRef): MateCurvedPlaneRef | null {
+  return isMateCurvedPlaneRef(ref) ? ref : null
+}

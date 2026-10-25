@@ -1,6 +1,7 @@
 import { Vector3, type Object3D } from 'three'
 import { resolveProximityPick } from '../model-selection/proximityPick'
 import type { ModelSelectionProximityFilter } from '../model-selection/types'
+import { captureMateCurvedPlane } from './captureMateCurvedPlane'
 import { captureMateEllipse, captureMateEllipseFromVertex } from './captureMateEllipse'
 import { captureMateEllipseCenterAtLocalPoint } from './captureMateEllipseCenter'
 import { captureMateLine } from './captureMateLine'
@@ -63,6 +64,13 @@ export function pickMateEntityAtPointer(
   }
 
   mesh.worldToLocal(scratchLocal.copy(worldPoint))
+
+  // Najpierw pas walca/stożka od trafionego trójkąta — zanim proximity weźmie krawędź/łuk
+  const asCurvedEarly = captureMateCurvedPlane(partId, geometry, faceIndex)
+  if (asCurvedEarly.ok) {
+    return { ok: true, slot: pickSlot, entity: asCurvedEarly.curvedPlane }
+  }
+
   const pick = resolveProximityPick(geometry, faceIndex, scratchLocal, MATE_ENTITY_PICK_FILTER, {
     camera,
     mesh: mesh as Object3D,
@@ -110,7 +118,8 @@ export function pickMateEntityAtPointer(
   }
 
   if (pick.type === 'faces' && pick.indices.length > 0) {
-    const captured = captureMatePlane(partId, geometry, pick.indices[0]!)
+    const seedFace = pick.indices[0]!
+    const captured = captureMatePlane(partId, geometry, seedFace)
     if (!captured.ok) {
       return { ok: false, reason: 'captureFailed' }
     }

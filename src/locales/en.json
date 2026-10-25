@@ -115,7 +115,8 @@
       "kindEdge": "Edge",
       "kindVertex": "Vertex",
       "kindEllipse": "Ellipse / circle",
-      "kindEllipseCenter": "Arc center"
+      "kindEllipseCenter": "Arc center",
+      "kindCurvedPlane": "Curved face"
     },
     "face": {
       "summary": "{{name}} · {{count}} faces"

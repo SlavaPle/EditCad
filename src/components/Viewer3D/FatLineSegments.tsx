@@ -16,6 +16,8 @@ export interface FatLineSegmentsProps {
   renderOrder?: number
   raycastDisabled?: boolean
   depthWrite?: boolean
+  /** false = linia widoczna przez bryłę (oś wewnętrzna). */
+  depthTest?: boolean
 }
 
 // Odcinki z Line2 — grubość niezależna od ograniczeń WebGL linewidth
@@ -26,6 +28,7 @@ export function FatLineSegments({
   renderOrder = 0,
   raycastDisabled = false,
   depthWrite = true,
+  depthTest = true,
 }: FatLineSegmentsProps) {
   const size = useThree((s) => s.size)
 
@@ -39,8 +42,10 @@ export function FatLineSegments({
       color: new Color(color).getHex(),
       linewidth,
       worldUnits: false,
-      depthWrite,
-      depthTest: true,
+      depthWrite: depthTest ? depthWrite : false,
+      depthTest,
+      transparent: !depthTest,
+      opacity: depthTest ? 1 : 0.92,
     })
     mat.resolution.set(size.width, size.height)
 
@@ -50,7 +55,7 @@ export function FatLineSegments({
       line.raycast = () => {}
     }
     return line
-  }, [positions, color, linewidth, renderOrder, raycastDisabled, depthWrite, size.width, size.height])
+  }, [positions, color, linewidth, renderOrder, raycastDisabled, depthWrite, depthTest, size.width, size.height])
 
   useLayoutEffect(() => {
     if (!lineObject) return
