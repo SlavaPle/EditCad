@@ -111,6 +111,11 @@
   color: #f1f5f9;
 }
 
+.typeBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .typeBtn :global(.matesTypeIconSvg) {
   width: 36px;
   height: 36px;
@@ -180,6 +185,21 @@
   background: #0f172a;
   color: #f1f5f9;
   font-size: 0.875rem;
+}
+
+.flipLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8125rem;
+  color: #e2e8f0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.flipLabel input {
+  margin: 0;
+  accent-color: #3b82f6;
 }
 
 .inputWrap {

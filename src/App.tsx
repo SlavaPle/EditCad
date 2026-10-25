@@ -107,7 +107,7 @@ import {
   mateDraftSetEntity,
   mateDraftUpdateDraft,
   executeMateApply,
-  validateParallelMateDraft,
+  validateMateDraft,
   applyAssemblyMateConstraints,
   filterAssemblyMatesForPartIds,
   reapplyAllAssemblyMates,
@@ -227,6 +227,7 @@ function App() {
     setMatesPickSlot(slot)
   }, [])
   const [mateOffsetInput, setMateOffsetInput] = useState('0')
+  const [mateAngleInput, setMateAngleInput] = useState('45')
   const [mateSolverErrorKey, setMateSolverErrorKey] = useState<string | null>(null)
   const [assemblyMates, setAssemblyMates] = useState<AssemblyMate[]>([])
   const [partLockedById, setPartLockedById] = useState<Record<string, boolean>>({})
@@ -1884,20 +1885,45 @@ function App() {
     return Number.isFinite(value) ? value : NaN
   }, [mateOffsetInput])
 
+  const parsedMateAngleDeg = useMemo(() => {
+    const trimmed = mateAngleInput.trim()
+    if (trimmed.length === 0) return NaN
+    const value = Number(trimmed.replace(',', '.'))
+    return Number.isFinite(value) ? value : NaN
+  }, [mateAngleInput])
+
   const mateDraftForApply = useMemo(() => {
-    if (!Number.isFinite(parsedMateOffsetMm)) return mateDraftSession.draft
-    return { ...mateDraftSession.draft, offsetMm: parsedMateOffsetMm }
-  }, [mateDraftSession.draft, parsedMateOffsetMm])
+    const draft = mateDraftSession.draft
+    if (draft.kind === 'parallel') {
+      if (!Number.isFinite(parsedMateOffsetMm)) return draft
+      return { ...draft, offsetMm: parsedMateOffsetMm }
+    }
+    if (draft.kind === 'angular') {
+      if (!Number.isFinite(parsedMateAngleDeg)) return draft
+      return { ...draft, angleDeg: parsedMateAngleDeg }
+    }
+    return draft
+  }, [mateDraftSession.draft, parsedMateOffsetMm, parsedMateAngleDeg])
 
   const mateValidation = useMemo(
-    () => validateParallelMateDraft(mateDraftForApply, assemblyMates),
+    () => validateMateDraft(mateDraftForApply, assemblyMates),
     [mateDraftForApply, assemblyMates],
   )
 
+  const mateParamsFinite = useMemo(() => {
+    const kind = mateDraftSession.draft.kind
+    if (kind === 'parallel') return Number.isFinite(parsedMateOffsetMm) && parsedMateOffsetMm >= 0
+    if (kind === 'angular') return Number.isFinite(parsedMateAngleDeg)
+    return true
+  }, [mateDraftSession.draft.kind, parsedMateOffsetMm, parsedMateAngleDeg])
+
   const mateValidationErrorKey = useMemo(() => {
     if (!mateDraftSession.draft.entityA || !mateDraftSession.draft.entityB) return null
-    if (!Number.isFinite(parsedMateOffsetMm)) {
+    if (mateDraftSession.draft.kind === 'parallel' && !Number.isFinite(parsedMateOffsetMm)) {
       return 'mates.errors.invalidOffset'
+    }
+    if (mateDraftSession.draft.kind === 'angular' && !Number.isFinite(parsedMateAngleDeg)) {
+      return 'mates.errors.invalidAngle'
     }
     if (!mateValidation.ok) {
       if (mateValidation.reason === 'missingEntity') {
@@ -1912,24 +1938,29 @@ function App() {
   }, [
     mateDraftSession.draft.entityA,
     mateDraftSession.draft.entityB,
+    mateDraftSession.draft.kind,
     mateValidation,
     parsedMateOffsetMm,
+    parsedMateAngleDeg,
   ])
 
   const mateDisplayErrorKey = mateSolverErrorKey ?? mateValidationErrorKey
 
   const canSaveMate =
-    mateDraftSession.applyState === 'applied' && mateValidation.ok && Number.isFinite(parsedMateOffsetMm)
+    mateDraftSession.applyState === 'applied' && mateValidation.ok && mateParamsFinite
 
   const syncMateLivePreview = useCallback(() => {
     const session = mateDraftSessionRef.current
     if (!session.draft.entityA || !session.draft.entityB) return
-    if (!mateValidation.ok || !Number.isFinite(parsedMateOffsetMm)) return
+    if (!mateValidation.ok || !mateParamsFinite) return
 
-    const draft = {
-      ...session.draft,
-      offsetMm: parsedMateOffsetMm,
+    let draft = session.draft
+    if (draft.kind === 'parallel') {
+      draft = { ...draft, offsetMm: parsedMateOffsetMm }
+    } else if (draft.kind === 'angular') {
+      draft = { ...draft, angleDeg: parsedMateAngleDeg }
     }
+
     const result = executeMateApply({
       session,
       draft,
@@ -1941,7 +1972,11 @@ function App() {
       if (result.reason === 'invalidDraft' && result.validationReason) {
         setMateSolverErrorKey(`mates.errors.${result.validationReason}`)
       } else if (result.reason === 'solverFailed') {
-        setMateSolverErrorKey('mates.errors.missingGeometry')
+        setMateSolverErrorKey(
+          result.solverReason === 'unsupportedPair'
+            ? 'mates.errors.unsupportedPair'
+            : 'mates.errors.missingGeometry',
+        )
       } else if (result.reason === 'missingGeometry' || result.reason === 'missingPart') {
         setMateSolverErrorKey('mates.errors.missingGeometry')
       }
@@ -1950,7 +1985,14 @@ function App() {
     setProgramPartTransformDirect(result.movingPartId, result.transform)
     commitMateDraftSession(result.nextSession)
     setMateSolverErrorKey(null)
-  }, [commitMateDraftSession, mateValidation.ok, parsedMateOffsetMm, setProgramPartTransformDirect])
+  }, [
+    commitMateDraftSession,
+    mateParamsFinite,
+    mateValidation.ok,
+    parsedMateAngleDeg,
+    parsedMateOffsetMm,
+    setProgramPartTransformDirect,
+  ])
 
   useEffect(() => {
     if (!matesPopupOpen) return
@@ -1959,18 +2001,26 @@ function App() {
     matesPopupOpen,
     mateDraftSession.draft.entityA,
     mateDraftSession.draft.entityB,
-    mateDraftSession.draft.alignment,
+    mateDraftSession.draft.kind,
+    mateDraftSession.draft.flipped,
+    mateDraftSession.draft.kind === 'parallel' ? mateDraftSession.draft.alignment : null,
     parsedMateOffsetMm,
+    parsedMateAngleDeg,
     mateValidation.ok,
     syncMateLivePreview,
   ])
+
+  const resetMateParamInputs = useCallback(() => {
+    setMateOffsetInput('0')
+    setMateAngleInput('45')
+  }, [])
 
   const handleMateSave = useCallback(() => {
     const saved = mateDraftSave(mateDraftSession, assemblyMates)
     if (!saved.ok) return
     commitAssemblyMates(saved.mates)
     commitMateDraftSession(saved.session)
-    setMateOffsetInput('0')
+    resetMateParamInputs()
     applyMatesPickSlot(null)
     setMateSolverErrorKey(null)
   }, [
@@ -1979,6 +2029,7 @@ function App() {
     commitAssemblyMates,
     commitMateDraftSession,
     mateDraftSession,
+    resetMateParamInputs,
   ])
 
   const handleMateSaveAndClose = useCallback(() => {
@@ -1986,7 +2037,7 @@ function App() {
     if (!saved.ok) return
     commitAssemblyMates(saved.mates)
     commitMateDraftSession(saved.session)
-    setMateOffsetInput('0')
+    resetMateParamInputs()
     applyMatesPickSlot(null)
     setMateSolverErrorKey(null)
     setMatesPopupOpen(false)
@@ -1996,6 +2047,7 @@ function App() {
     commitAssemblyMates,
     commitMateDraftSession,
     mateDraftSession,
+    resetMateParamInputs,
   ])
 
   return (
@@ -2175,13 +2227,22 @@ function App() {
             session={mateDraftSession}
             activePickSlot={matesPickSlot}
             offsetInput={mateOffsetInput}
+            angleInput={mateAngleInput}
             partNameById={programPartNameById}
             solverErrorKey={mateDisplayErrorKey}
             canSave={canSaveMate}
+            onKindChange={(kind) => {
+              patchMateDraftSession((session) => mateDraftUpdateDraft(session, { kind }))
+              setMateSolverErrorKey(null)
+            }}
             onAlignmentChange={(alignment) => {
               patchMateDraftSession((session) => mateDraftUpdateDraft(session, { alignment }))
             }}
             onOffsetChange={setMateOffsetInput}
+            onAngleChange={setMateAngleInput}
+            onFlippedChange={(flipped) => {
+              patchMateDraftSession((session) => mateDraftUpdateDraft(session, { flipped }))
+            }}
             onStartPick={(slot) => {
               applyMatesPickSlot(toggleMatesPickSlot(matesPickSlotRef.current, slot))
               setMateSolverErrorKey(null)

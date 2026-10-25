@@ -85,6 +85,8 @@ describe('executeMateApply', () => {
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(result.nextSession.applyState).toBe('applied')
+    expect(result.nextSession.draft.kind).toBe('parallel')
+    if (result.nextSession.draft.kind !== 'parallel') return
     expect(result.nextSession.draft.offsetMm).toBe(5)
     expect(result.nextSession.draft.alignment).toBe('sameDirection')
     expect(result.nextSession.revertTransform).toEqual(applied.session.revertTransform)

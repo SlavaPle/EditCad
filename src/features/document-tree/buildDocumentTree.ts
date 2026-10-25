@@ -132,11 +132,19 @@ export function mateParticipantPartIds(mate: AssemblyMate): string[] {
 }
 
 function mateLabel(mate: AssemblyMate, index: number): string {
+  const n = index + 1
+  if (mate.kind === 'perpendicular') {
+    return `Perpendicular ${n}`
+  }
+  if (mate.kind === 'angular') {
+    const angle = Number.isFinite(mate.angleDeg) ? ` · ${mate.angleDeg}°` : ''
+    return `Angle ${n}${angle}`
+  }
+  const signed =
+    mate.flipped === true && mate.offsetMm !== 0 ? -Math.abs(mate.offsetMm) : mate.offsetMm
   const offset =
-    Number.isFinite(mate.offsetMm) && mate.offsetMm !== 0
-      ? ` · ${formatSizeMm(mate.offsetMm)} mm`
-      : ''
-  return `Parallel ${index + 1}${offset}`
+    Number.isFinite(signed) && signed !== 0 ? ` · ${formatSizeMm(signed)} mm` : ''
+  return `Parallel ${n}${offset}`
 }
 
 function mateNodesForPart(

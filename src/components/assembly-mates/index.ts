@@ -1,3 +1,7 @@
 export { MatesPopup, type MatesPopupProps } from './MatesPopup'
 export { ParallelMateControls } from './ParallelMateControls'
 export { ParallelMateTypeIcon } from './ParallelMateTypeIcon'
+export { PerpendicularMateControls } from './PerpendicularMateControls'
+export { PerpendicularMateTypeIcon } from './PerpendicularMateTypeIcon'
+export { AngularMateControls } from './AngularMateControls'
+export { AngularMateTypeIcon } from './AngularMateTypeIcon'

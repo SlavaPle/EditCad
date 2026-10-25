@@ -3,9 +3,10 @@ import type { PreAssemblyProgramPart } from '../pre-assembly/preAssemblyProgram'
 import { updateProgramPartTransform } from '../pre-assembly/preAssemblyProgram'
 import type { PhantomTransform } from '../pre-assembly/model'
 import type { AssemblyMate } from './model'
-import { isMateSuppressed } from './model'
+import { isMateSuppressed, signedMateOffsetMm } from './model'
 import { applyRigidDeltaToTransform } from './constraint/transformMath'
 import { projectMateConstraint } from './constraint/projectMateConstraint'
+import { projectOrientMateConstraint } from './constraint/projectOrientMateConstraint'
 
 export type ApplyAssemblyMateConstraintsInput = {
   parts: readonly PreAssemblyProgramPart[]
@@ -23,23 +24,36 @@ function projectMateForAssembly(
   geometries: Readonly<Record<string, BufferGeometry | null | undefined>>,
   seedTransformB?: PhantomTransform,
 ): PhantomTransform | null {
-  if (mate.kind !== 'parallel') return null
-
   const partA = partsById.get(mate.entityA.partId)
   const partB = partsById.get(mate.entityB.partId)
   const geometryA = geometries[mate.entityA.partId]
   const geometryB = geometries[mate.entityB.partId]
   if (!partA || !partB || !geometryA || !geometryB) return null
 
-  const projected = projectMateConstraint({
+  if (mate.kind === 'parallel') {
+    const projected = projectMateConstraint({
+      entityA: mate.entityA,
+      entityB: mate.entityB,
+      geometryA,
+      geometryB,
+      transformA: partA.transform,
+      transformB: seedTransformB ?? partB.transform,
+      alignment: mate.alignment,
+      offsetMm: signedMateOffsetMm(mate.offsetMm, mate.flipped),
+    })
+    return projected.ok ? projected.transform : null
+  }
+
+  const projected = projectOrientMateConstraint({
+    kind: mate.kind,
     entityA: mate.entityA,
     entityB: mate.entityB,
     geometryA,
     geometryB,
     transformA: partA.transform,
     transformB: seedTransformB ?? partB.transform,
-    alignment: mate.alignment,
-    offsetMm: mate.offsetMm,
+    flipped: mate.flipped,
+    angleDeg: mate.kind === 'angular' ? mate.angleDeg : undefined,
   })
   return projected.ok ? projected.transform : null
 }
@@ -111,7 +125,6 @@ export type ReapplyAllAssemblyMatesInput = {
 export function reapplyAllAssemblyMates(input: ReapplyAllAssemblyMatesInput): PreAssemblyProgramPart[] {
   let parts = [...input.parts]
   for (const mate of input.mates) {
-    if (mate.kind !== 'parallel') continue
     if (isMateSuppressed(mate)) continue
 
     const partsById = new Map(parts.map((part) => [part.id, part]))

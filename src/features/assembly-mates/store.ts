@@ -1,14 +1,20 @@
-import type { AssemblyMate, MateDraftValidationReason, MateEntityRef, ParallelMate } from './model'
-import {
-  createParallelMateId,
-  isMateSuppressed,
-  matePairKind,
-  validateAssemblyMate,
+import type {
+  AngularMate,
+  AssemblyMate,
+  MateDraftValidationReason,
+  MateEntityRef,
+  MateKind,
+  ParallelMate,
+  PerpendicularMate,
 } from './model'
 import {
-  mateEntityPartId,
-  mateEntityRefsMatch,
-} from './mateEntityRef'
+  createMateId,
+  isMateSuppressed,
+  matePairKind,
+  matePairSupportsOrient,
+  validateAssemblyMate,
+} from './model'
+import { mateEntityPartId, mateEntityRefsMatch } from './mateEntityRef'
 
 export type ParallelMateDraft = {
   kind: 'parallel'
@@ -16,7 +22,25 @@ export type ParallelMateDraft = {
   entityB: MateEntityRef | null
   alignment: ParallelMate['alignment']
   offsetMm: number
+  flipped: boolean
 }
+
+export type PerpendicularMateDraft = {
+  kind: 'perpendicular'
+  entityA: MateEntityRef | null
+  entityB: MateEntityRef | null
+  flipped: boolean
+}
+
+export type AngularMateDraft = {
+  kind: 'angular'
+  entityA: MateEntityRef | null
+  entityB: MateEntityRef | null
+  angleDeg: number
+  flipped: boolean
+}
+
+export type MateDraft = ParallelMateDraft | PerpendicularMateDraft | AngularMateDraft
 
 export function createEmptyParallelMateDraft(): ParallelMateDraft {
   return {
@@ -25,6 +49,62 @@ export function createEmptyParallelMateDraft(): ParallelMateDraft {
     entityB: null,
     alignment: 'faceToFace',
     offsetMm: 0,
+    flipped: false,
+  }
+}
+
+export function createEmptyPerpendicularMateDraft(): PerpendicularMateDraft {
+  return {
+    kind: 'perpendicular',
+    entityA: null,
+    entityB: null,
+    flipped: false,
+  }
+}
+
+export function createEmptyAngularMateDraft(): AngularMateDraft {
+  return {
+    kind: 'angular',
+    entityA: null,
+    entityB: null,
+    angleDeg: 45,
+    flipped: false,
+  }
+}
+
+export function createEmptyMateDraft(kind: MateKind = 'parallel'): MateDraft {
+  if (kind === 'perpendicular') return createEmptyPerpendicularMateDraft()
+  if (kind === 'angular') return createEmptyAngularMateDraft()
+  return createEmptyParallelMateDraft()
+}
+
+/** Zachowuje entityA/B przy zmianie rodzaju przywiązki. */
+export function mateDraftWithKind(draft: MateDraft, kind: MateKind): MateDraft {
+  const entityA = draft.entityA
+  const entityB = draft.entityB
+  const flipped = draft.flipped
+  if (kind === 'parallel') {
+    return {
+      ...createEmptyParallelMateDraft(),
+      entityA,
+      entityB,
+      flipped,
+    }
+  }
+  if (kind === 'perpendicular') {
+    return {
+      ...createEmptyPerpendicularMateDraft(),
+      entityA,
+      entityB,
+      flipped,
+    }
+  }
+  return {
+    ...createEmptyAngularMateDraft(),
+    entityA,
+    entityB,
+    flipped,
+    angleDeg: draft.kind === 'angular' ? draft.angleDeg : 45,
   }
 }
 
@@ -37,7 +117,7 @@ function sameMatePartPair(
   return partIds.has(mate.entityA.partId) && partIds.has(mate.entityB.partId)
 }
 
-function parallelMateEntityRefsOverlap(
+function mateEntityRefsOverlap(
   entityA: MateEntityRef,
   entityB: MateEntityRef,
   mate: AssemblyMate,
@@ -49,22 +129,38 @@ function parallelMateEntityRefsOverlap(
   )
 }
 
-/** Czy nowy parallel mate koliduje z już zapisaną przywiązką tej samej pary detali. */
-export function parallelMateConflictsWithExisting(
+/** Czy nowa przywiązka koliduje z już zapisaną na tej samej parze detali. */
+export function mateConflictsWithExisting(
   entityA: MateEntityRef,
   entityB: MateEntityRef,
   existingMates: readonly AssemblyMate[],
 ): boolean {
   for (const mate of existingMates) {
-    if (mate.kind !== 'parallel') continue
     if (isMateSuppressed(mate)) continue
     if (!sameMatePartPair(entityA, entityB, mate)) continue
-    if (parallelMateEntityRefsOverlap(entityA, entityB, mate)) {
+    if (mateEntityRefsOverlap(entityA, entityB, mate)) {
       return true
     }
   }
-
   return false
+}
+
+/** @deprecated Użyj mateConflictsWithExisting */
+export function parallelMateConflictsWithExisting(
+  entityA: MateEntityRef,
+  entityB: MateEntityRef,
+  existingMates: readonly AssemblyMate[],
+): boolean {
+  return mateConflictsWithExisting(entityA, entityB, existingMates)
+}
+
+function validateOrientEntities(
+  entityA: MateEntityRef,
+  entityB: MateEntityRef,
+): MateDraftValidationReason | null {
+  if (mateEntityPartId(entityA) === mateEntityPartId(entityB)) return 'samePart'
+  if (!matePairSupportsOrient(matePairKind(entityA, entityB))) return 'unsupportedPair'
+  return null
 }
 
 export function validateParallelMateDraft(
@@ -77,13 +173,55 @@ export function validateParallelMateDraft(
   if (mateEntityPartId(draft.entityA) === mateEntityPartId(draft.entityB)) {
     return { ok: false, reason: 'samePart' }
   }
-  if (!Number.isFinite(draft.offsetMm)) {
+  if (!Number.isFinite(draft.offsetMm) || draft.offsetMm < 0) {
     return { ok: false, reason: 'invalidOffset' }
   }
-  if (parallelMateConflictsWithExisting(draft.entityA, draft.entityB, existingMates)) {
+  if (mateConflictsWithExisting(draft.entityA, draft.entityB, existingMates)) {
     return { ok: false, reason: 'conflictsWithExisting' }
   }
   return { ok: true }
+}
+
+export function validatePerpendicularMateDraft(
+  draft: PerpendicularMateDraft,
+  existingMates: readonly AssemblyMate[] = [],
+): { ok: true } | { ok: false; reason: MateDraftValidationReason } {
+  if (!draft.entityA || !draft.entityB) {
+    return { ok: false, reason: 'missingEntity' }
+  }
+  const pairReason = validateOrientEntities(draft.entityA, draft.entityB)
+  if (pairReason) return { ok: false, reason: pairReason }
+  if (mateConflictsWithExisting(draft.entityA, draft.entityB, existingMates)) {
+    return { ok: false, reason: 'conflictsWithExisting' }
+  }
+  return { ok: true }
+}
+
+export function validateAngularMateDraft(
+  draft: AngularMateDraft,
+  existingMates: readonly AssemblyMate[] = [],
+): { ok: true } | { ok: false; reason: MateDraftValidationReason } {
+  if (!draft.entityA || !draft.entityB) {
+    return { ok: false, reason: 'missingEntity' }
+  }
+  const pairReason = validateOrientEntities(draft.entityA, draft.entityB)
+  if (pairReason) return { ok: false, reason: pairReason }
+  if (!Number.isFinite(draft.angleDeg)) {
+    return { ok: false, reason: 'invalidAngle' }
+  }
+  if (mateConflictsWithExisting(draft.entityA, draft.entityB, existingMates)) {
+    return { ok: false, reason: 'conflictsWithExisting' }
+  }
+  return { ok: true }
+}
+
+export function validateMateDraft(
+  draft: MateDraft,
+  existingMates: readonly AssemblyMate[] = [],
+): { ok: true } | { ok: false; reason: MateDraftValidationReason } {
+  if (draft.kind === 'parallel') return validateParallelMateDraft(draft, existingMates)
+  if (draft.kind === 'perpendicular') return validatePerpendicularMateDraft(draft, existingMates)
+  return validateAngularMateDraft(draft, existingMates)
 }
 
 export function parallelMateFromDraft(
@@ -92,14 +230,56 @@ export function parallelMateFromDraft(
 ): ParallelMate | null {
   const valid = validateParallelMateDraft(draft, existingMates)
   if (!valid.ok || !draft.entityA || !draft.entityB) return null
-  return {
-    id: createParallelMateId(),
+  const mate: ParallelMate = {
+    id: createMateId(),
     kind: 'parallel',
     entityA: draft.entityA,
     entityB: draft.entityB,
     alignment: draft.alignment,
-    offsetMm: draft.offsetMm,
+    offsetMm: Math.abs(draft.offsetMm),
   }
+  if (draft.flipped) mate.flipped = true
+  return mate
+}
+
+export function perpendicularMateFromDraft(
+  draft: PerpendicularMateDraft,
+  existingMates: readonly AssemblyMate[] = [],
+): PerpendicularMate | null {
+  const valid = validatePerpendicularMateDraft(draft, existingMates)
+  if (!valid.ok || !draft.entityA || !draft.entityB) return null
+  return {
+    id: createMateId(),
+    kind: 'perpendicular',
+    entityA: draft.entityA,
+    entityB: draft.entityB,
+    flipped: draft.flipped,
+  }
+}
+
+export function angularMateFromDraft(
+  draft: AngularMateDraft,
+  existingMates: readonly AssemblyMate[] = [],
+): AngularMate | null {
+  const valid = validateAngularMateDraft(draft, existingMates)
+  if (!valid.ok || !draft.entityA || !draft.entityB) return null
+  return {
+    id: createMateId(),
+    kind: 'angular',
+    entityA: draft.entityA,
+    entityB: draft.entityB,
+    angleDeg: draft.angleDeg,
+    flipped: draft.flipped,
+  }
+}
+
+export function mateFromDraft(
+  draft: MateDraft,
+  existingMates: readonly AssemblyMate[] = [],
+): AssemblyMate | null {
+  if (draft.kind === 'parallel') return parallelMateFromDraft(draft, existingMates)
+  if (draft.kind === 'perpendicular') return perpendicularMateFromDraft(draft, existingMates)
+  return angularMateFromDraft(draft, existingMates)
 }
 
 export function addAssemblyMate(
@@ -125,7 +305,7 @@ export function setAssemblyMateSuppressed(
       return { ...mate, suppressed: true }
     }
     const { suppressed: _drop, ...rest } = mate
-    return rest
+    return rest as AssemblyMate
   })
 }
 
@@ -143,14 +323,13 @@ export function isDraftEntityReady(ref: MateEntityRef | null): boolean {
 }
 
 /** @deprecated Użyj draft.entityA / entityB */
-export function draftEntityA(draft: ParallelMateDraft): MateEntityRef | null {
+export function draftEntityA(draft: MateDraft): MateEntityRef | null {
   return draft.entityA
 }
 
 /** @deprecated Użyj draft.entityB */
-export function draftEntityB(draft: ParallelMateDraft): MateEntityRef | null {
+export function draftEntityB(draft: MateDraft): MateEntityRef | null {
   return draft.entityB
 }
 
 export { matePairKind }
-

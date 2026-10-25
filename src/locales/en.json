@@ -85,7 +85,17 @@
       "addMate": "Add mate"
     },
     "types": {
-      "parallel": "Parallel"
+      "parallel": "Parallel",
+      "perpendicular": "Perpendicular",
+      "angular": "Angle"
+    },
+    "flip": {
+      "label": "Flip",
+      "toggle": "Flip side"
+    },
+    "angle": {
+      "label": "Angle",
+      "unit": "°"
     },
     "entityMode": {
       "label": "Constraint geometry",
@@ -135,7 +145,8 @@
       "missingEntity": "Select both elements before applying.",
       "missingPlane": "Select both planes before applying.",
       "missingLine": "Select both lines before applying.",
-      "invalidOffset": "Enter a valid distance in millimetres.",
+      "invalidOffset": "Enter a valid non-negative distance in millimetres.",
+      "invalidAngle": "Enter a valid angle in degrees.",
       "conflictsWithExisting": "This constraint reuses an element already constrained for this part pair.",
       "conflictsWithExistingLine": "This constraint reuses a line already constrained for this part pair.",
       "unsupportedPair": "This element pair is not supported yet.",

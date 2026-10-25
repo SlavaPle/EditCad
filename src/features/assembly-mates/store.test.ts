@@ -94,6 +94,44 @@ describe('validateParallelMateDraft', () => {
     }
     expect(validateParallelMateDraft(draft)).toEqual({ ok: true })
   })
+
+  it('rejects negative offset (use flipped instead)', () => {
+    const draft = {
+      ...createEmptyParallelMateDraft(),
+      entityA: planeA,
+      entityB: planeB,
+      offsetMm: -3,
+    }
+    expect(validateParallelMateDraft(draft)).toEqual({ ok: false, reason: 'invalidOffset' })
+  })
+})
+
+describe('validatePerpendicularMateDraft / angular', () => {
+  it('rejects vertex pairs for perpendicular', async () => {
+    const { createEmptyPerpendicularMateDraft, validatePerpendicularMateDraft } = await import(
+      './store'
+    )
+    const draft = {
+      ...createEmptyPerpendicularMateDraft(),
+      entityA: { kind: 'vertex' as const, partId: 'a', vertexIndex: 0 },
+      entityB: planeB,
+    }
+    expect(validatePerpendicularMateDraft(draft)).toEqual({
+      ok: false,
+      reason: 'unsupportedPair',
+    })
+  })
+
+  it('rejects invalid angle', async () => {
+    const { createEmptyAngularMateDraft, validateAngularMateDraft } = await import('./store')
+    const draft = {
+      ...createEmptyAngularMateDraft(),
+      entityA: planeA,
+      entityB: planeB,
+      angleDeg: Number.NaN,
+    }
+    expect(validateAngularMateDraft(draft)).toEqual({ ok: false, reason: 'invalidAngle' })
+  })
 })
 
 describe('parallelMateConflictsWithExisting', () => {

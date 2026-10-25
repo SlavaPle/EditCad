@@ -1,4 +1,5 @@
 export type {
+  AngularMate,
   AssemblyMate,
   MateAlignment,
   MateEntityKind,
@@ -10,34 +11,55 @@ export type {
   MateVertexRef,
   ParallelMate,
   ParallelMateMode,
+  PerpendicularMate,
 } from './model'
 export {
+  createMateId,
   createParallelMateId,
   isMateSuppressed,
   mateEntityKindFromRef,
   matePairKind,
   matePairSupportsAlignment,
+  matePairSupportsOrient,
+  normalizeAssemblyMate,
   normalizeParallelMate,
+  signedMateOffsetMm,
+  validateAngularMate,
   validateAssemblyMate,
   validateMateEntityRef,
   validateMateLineRef,
   validateMatePlaneRef,
   validateMateVertexRef,
   validateParallelMate,
+  validatePerpendicularMate,
 } from './model'
 export { captureMatePlane, type CaptureMatePlaneResult } from './captureMatePlane'
 export { captureMateLine, type CaptureMateLineResult } from './captureMateLine'
 export { captureMateVertex, type CaptureMateVertexResult } from './captureMateVertex'
 export {
   addAssemblyMate,
+  angularMateFromDraft,
+  createEmptyAngularMateDraft,
+  createEmptyMateDraft,
   createEmptyParallelMateDraft,
+  createEmptyPerpendicularMateDraft,
+  mateConflictsWithExisting,
+  mateDraftWithKind,
+  mateFromDraft,
   parallelMateConflictsWithExisting,
   parallelMateFromDraft,
+  perpendicularMateFromDraft,
   removeAssemblyMate,
   setAssemblyMateSuppressed,
   toggleAssemblyMateSuppressed,
+  validateAngularMateDraft,
+  validateMateDraft,
   validateParallelMateDraft,
+  validatePerpendicularMateDraft,
+  type AngularMateDraft,
+  type MateDraft,
   type ParallelMateDraft,
+  type PerpendicularMateDraft,
 } from './store'
 export {
   mateEntityKind,
@@ -72,6 +94,12 @@ export {
   type MateProjectReason,
   type MateProjectResult,
 } from './constraint/projectMateConstraint'
+export {
+  projectOrientMateConstraint,
+  type OrientMateProjectInput,
+  type OrientMateProjectReason,
+  type OrientMateProjectResult,
+} from './constraint/projectOrientMateConstraint'
 export {
   getGeometryCenterOffset,
   matePlaneWorldFrame,
