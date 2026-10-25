@@ -146,9 +146,15 @@ export function LeftPanel({
   // Tymczasowe zwijanie panelu (debug) — do usunięcia później
   const [collapsed, setCollapsed] = useState(true)
 
+  // ModelLoader zawsze zamontowany — Open z paska File woła modelLoaderRef.loadFile.
+  const modelLoader = (
+    <ModelLoader ref={modelLoaderRef} onLoad={onModelLoad} onError={onLoadError} />
+  )
+
   if (collapsed) {
     return (
       <aside className={styles.panelCollapsed} aria-label={t('leftPanel.header')}>
+        {modelLoader}
         <button
           type="button"
           className={styles.collapseToggle}
@@ -216,11 +222,7 @@ export function LeftPanel({
             />
           </>
         ) : null}
-        <ModelLoader
-          ref={modelLoaderRef}
-          onLoad={onModelLoad}
-          onError={onLoadError}
-        />
+        {modelLoader}
         <div
           ref={dropZoneRef}
           className={styles.dropZone}

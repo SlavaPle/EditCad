@@ -1,4 +1,4 @@
-export type ToolbarTabId = 'file' | 'edit' | 'view' | 'preAssembly'
+export type ToolbarTabId = 'file' | 'edit' | 'view'
 
 export type ToolbarActionId =
   | 'open'
@@ -13,11 +13,6 @@ export type ToolbarActionId =
   | 'viewSolid'
   | 'viewSolidTextured'
   | 'viewSolidWithEdges'
-  | 'loadAssembly'
-  | 'saveAssembly'
-  | 'saveAssemblyAs'
-  | 'savePhantom'
-  | 'savePhantomAs'
   | 'createPhantom'
   | 'addPart'
   | 'createAttachment'
@@ -32,32 +27,26 @@ export const TOOLBAR_TABS: ToolbarTabConfig[] = [
   {
     id: 'file',
     labelKey: 'toolbar.tabFile',
-    actions: ['open', 'save', 'saveAs', 'paste']
+    actions: [
+      'open',
+      'save',
+      'saveAs',
+      'paste',
+      'addPart',
+      'createPhantom',
+      'createAttachment',
+    ],
   },
   {
     id: 'edit',
     labelKey: 'toolbar.tabEdit',
-    actions: ['editLimits', 'editAppearance', 'editMates']
+    actions: ['editLimits', 'editAppearance', 'editMates'],
   },
   {
     id: 'view',
     labelKey: 'toolbar.tabView',
-    actions: ['viewEdgesOnly', 'viewSolid', 'viewSolidTextured', 'viewSolidWithEdges']
+    actions: ['viewEdgesOnly', 'viewSolid', 'viewSolidTextured', 'viewSolidWithEdges'],
   },
-  {
-    id: 'preAssembly',
-    labelKey: 'toolbar.tabPreAssembly',
-    actions: [
-      'loadAssembly',
-      'saveAssembly',
-      'saveAssemblyAs',
-      'addPart',
-      'savePhantom',
-      'savePhantomAs',
-      'createPhantom',
-      'createAttachment',
-    ]
-  }
 ]
 
 export const DEFAULT_TOOLBAR_TAB_ID: ToolbarTabId = 'file'

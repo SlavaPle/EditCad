@@ -14,7 +14,7 @@ import {
 } from './ToolbarTabsConfig'
 import { SettingsWindow } from '../features/app-settings'
 import type { PreAssemblyToolbarUi, PreAssemblyWizard } from '../features/pre-assembly'
-import { getPreAssemblySaveTitleKey } from '../features/pre-assembly'
+import type { DocumentSessionToolbarUi } from '../features/document-session'
 interface ToolbarProps {
   activeToolbarTab?: ToolbarTabId
   onActiveToolbarTabChange?: (tabId: ToolbarTabId) => void
@@ -22,6 +22,8 @@ interface ToolbarProps {
   onSaveModelClick?: () => void
   onSaveAsModelClick?: () => void
   hasModel?: boolean
+  /** Open/Save wg rodzaju dokumentu (detal vs montaż). */
+  documentSessionToolbarUi?: DocumentSessionToolbarUi
   /** Tryby VIEW — także przy detalach w montażu bez otwartego pliku detali. */
   canChangeViewMode?: boolean
   limitsInstallActive?: boolean
@@ -36,11 +38,6 @@ interface ToolbarProps {
   onDisplayModeChange?: (mode: ModelDisplayMode) => void
   preAssemblyToolbarUi?: PreAssemblyToolbarUi
   preAssemblyWizard?: PreAssemblyWizard
-  onLoadAssemblyClick?: () => void
-  onSaveAssemblyClick?: () => void
-  onSaveAssemblyAsClick?: () => void
-  onSavePhantomClick?: () => void
-  onSavePhantomAsClick?: () => void
   onCreatePhantom?: () => void
   onAddPart?: () => void
   onCreateAttachment?: () => void
@@ -58,6 +55,7 @@ export function Toolbar({
   onSaveModelClick,
   onSaveAsModelClick,
   hasModel = false,
+  documentSessionToolbarUi,
   canChangeViewMode,
   limitsInstallActive = false,
   limitsAddDisabled = false,
@@ -71,11 +69,6 @@ export function Toolbar({
   onDisplayModeChange,
   preAssemblyToolbarUi,
   preAssemblyWizard = null,
-  onLoadAssemblyClick,
-  onSaveAssemblyClick,
-  onSaveAssemblyAsClick,
-  onSavePhantomClick,
-  onSavePhantomAsClick,
   onCreatePhantom,
   onAddPart,
   onCreateAttachment,
@@ -83,6 +76,10 @@ export function Toolbar({
   const { t, i18n } = useTranslation()
   const activeTabId = activeToolbarTab
   const viewModeEnabled = canChangeViewMode ?? hasModel
+  const canSaveDocument = documentSessionToolbarUi?.canSave ?? hasModel
+  const canAddPart = documentSessionToolbarUi?.canAddPart ?? true
+  const canCreatePhantom = documentSessionToolbarUi?.canCreatePhantom ?? true
+  const canCreateAttachment = documentSessionToolbarUi?.canCreateAttachment ?? false
 
   const handleLoad = () => {
     onLoadModelClick?.()
@@ -124,7 +121,7 @@ export function Toolbar({
             type="button"
             className={styles.iconBtn}
             onClick={handleExport}
-            disabled={!hasModel}
+            disabled={!canSaveDocument}
             title={t('toolbar.save')}
             aria-label={t('toolbar.save')}
           >
@@ -245,7 +242,7 @@ export function Toolbar({
             type="button"
             className={styles.iconBtn}
             onClick={handleSaveAs}
-            disabled={!hasModel}
+            disabled={!canSaveDocument}
             title={t('toolbar.saveAs')}
             aria-label={t('toolbar.saveAs')}
           >
@@ -370,124 +367,6 @@ export function Toolbar({
             </span>
           </button>
         )
-      case 'loadAssembly':
-        return (
-          <button
-            key={actionId}
-            type="button"
-            className={`${styles.iconBtn} ${styles.btnPrimary}`}
-            title={t('preAssembly.loadAssembly.button')}
-            aria-label={t('preAssembly.loadAssembly.button')}
-            onClick={() => onLoadAssemblyClick?.()}
-          >
-            <span className={styles.icon}>
-              <svg viewBox="0 0 20 20" aria-hidden="true">
-                <path
-                  d="M3 5h4l2 2h8v8H3V5zm2 2v6h10V9H8.5L6.5 7H5z"
-                  fill="currentColor"
-                />
-              </svg>
-            </span>
-          </button>
-        )
-      case 'saveAssembly':
-        return (
-          <button
-            key={actionId}
-            type="button"
-            className={styles.iconBtn}
-            disabled={!preAssemblyToolbarUi?.canSaveAssembly}
-            title={t('preAssembly.saveAssembly.button')}
-            aria-label={t('preAssembly.saveAssembly.button')}
-            onClick={() => onSaveAssemblyClick?.()}
-          >
-            <span className={styles.icon}>
-              <svg viewBox="0 0 20 20" aria-hidden="true">
-                <path d="M3 2.5h11l3 3V17.5H3V2.5zM6 4.5V9h7V4.5H6zm0 7V15h8v-3.5H6z" fill="currentColor" />
-              </svg>
-            </span>
-          </button>
-        )
-      case 'saveAssemblyAs':
-        return (
-          <button
-            key={actionId}
-            type="button"
-            className={styles.iconBtn}
-            disabled={!preAssemblyToolbarUi?.canSaveAssembly}
-            title={t('preAssembly.saveAssemblyAs.button')}
-            aria-label={t('preAssembly.saveAssemblyAs.button')}
-            onClick={() => onSaveAssemblyAsClick?.()}
-          >
-            <span className={styles.icon}>
-              <svg viewBox="0 0 20 20" aria-hidden="true">
-                <path
-                  d="M3 2.5h11l3 3V17.5H3V2.5zM6 4.5V9h7V4.5H6zm0 7V15h8v-3.5H6z"
-                  fill="currentColor"
-                />
-                <path
-                  d="M12.5 3v3.5H16"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </span>
-          </button>
-        )
-      case 'savePhantom': {
-        const saveTitleKey = preAssemblyToolbarUi
-          ? getPreAssemblySaveTitleKey(preAssemblyToolbarUi)
-          : 'preAssembly.savePhantom.button'
-        return (
-          <button
-            key={actionId}
-            type="button"
-            className={styles.iconBtn}
-            disabled={!preAssemblyToolbarUi || preAssemblyToolbarUi.saveDisabled}
-            title={t(saveTitleKey)}
-            aria-label={t(saveTitleKey)}
-            onClick={() => onSavePhantomClick?.()}
-          >
-            <span className={styles.icon}>
-              <svg viewBox="0 0 20 20" aria-hidden="true">
-                <path d="M3 2.5h11l3 3V17.5H3V2.5zM6 4.5V9h7V4.5H6zm0 7V15h8v-3.5H6z" fill="currentColor" />
-              </svg>
-            </span>
-          </button>
-        )
-      }
-      case 'savePhantomAs':
-        return (
-          <button
-            key={actionId}
-            type="button"
-            className={styles.iconBtn}
-            disabled={!preAssemblyToolbarUi?.hasPhantom || !!preAssemblyToolbarUi?.saveDisabled}
-            title={t('preAssembly.savePhantomAs.button')}
-            aria-label={t('preAssembly.savePhantomAs.button')}
-            onClick={() => onSavePhantomAsClick?.()}
-          >
-            <span className={styles.icon}>
-              <svg viewBox="0 0 20 20" aria-hidden="true">
-                <path
-                  d="M3 2.5h11l3 3V17.5H3V2.5zM6 4.5V9h7V4.5H6zm0 7V15h8v-3.5H6z"
-                  fill="currentColor"
-                />
-                <path
-                  d="M12.5 3v3.5H16"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </span>
-          </button>
-        )
       case 'createPhantom':
         return (
           <button
@@ -497,6 +376,7 @@ export function Toolbar({
             title={t('preAssembly.createPhantom.button')}
             aria-label={t('preAssembly.createPhantom.button')}
             aria-pressed={!!preAssemblyToolbarUi?.hasPhantom}
+            disabled={!canCreatePhantom}
             onClick={() => onCreatePhantom?.()}
           >
             <span className={styles.icon}>
@@ -516,6 +396,7 @@ export function Toolbar({
             className={`${styles.iconBtn} ${styles.textActionBtn} ${styles.textActionBtnPrimary}`}
             title={t('preAssembly.addPart.button')}
             aria-label={t('preAssembly.addPart.button')}
+            disabled={!canAddPart}
             onClick={() => onAddPart?.()}
           >
             {t('preAssembly.addPart.button')}
@@ -528,7 +409,7 @@ export function Toolbar({
             key={actionId}
             type="button"
             className={`${styles.iconBtn} ${attachmentActive ? styles.iconBtnActive : ''}`}
-            disabled={!preAssemblyToolbarUi || preAssemblyToolbarUi.createAttachmentDisabled}
+            disabled={!canCreateAttachment}
             title={
               attachmentActive
                 ? t('preAssembly.createAttachment.active')
@@ -571,7 +452,9 @@ export function Toolbar({
           <div className={styles.toolbarGroup}>
             {activeTab?.actions.map((actionId) => (
               <Fragment key={actionId}>
-                {actionId === 'paste' && <div className={styles.toolbarDivider} aria-hidden="true" />}
+                {(actionId === 'paste' || actionId === 'addPart') && (
+                  <div className={styles.toolbarDivider} aria-hidden="true" />
+                )}
                 {renderActionButton(actionId)}
               </Fragment>
             ))}

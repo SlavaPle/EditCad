@@ -6,11 +6,22 @@ describe('TOOLBAR_TABS configuration', () => {
     expect(TOOLBAR_TABS.length).toBeGreaterThan(0)
   })
 
-  it('includes file, edit and view tabs', () => {
+  it('includes file, edit and view tabs only', () => {
     const ids = TOOLBAR_TABS.map((tab) => tab.id)
-    expect(ids).toContain('file')
-    expect(ids).toContain('edit')
-    expect(ids).toContain('view')
+    expect(ids).toEqual(['file', 'edit', 'view'])
+  })
+
+  it('file tab hosts open/save and assembly actions', () => {
+    const file = TOOLBAR_TABS.find((t) => t.id === 'file')
+    expect(file?.actions).toEqual([
+      'open',
+      'save',
+      'saveAs',
+      'paste',
+      'addPart',
+      'createPhantom',
+      'createAttachment',
+    ])
   })
 
   it('edit tab includes appearance and mates actions', () => {
@@ -29,5 +40,3 @@ describe('TOOLBAR_TABS configuration', () => {
     expect(ids).toContain(DEFAULT_TOOLBAR_TAB_ID)
   })
 })
-
-

@@ -49,6 +49,7 @@
     "exportStl": "Экспорт STL",
     "reset": "Сбросить",
     "open": "Открыть",
+    "openUnsupported": "Неподдерживаемый файл. Откройте деталь (.ecdprt, .stl, …) или сборку (.ecdasm).",
     "save": "Сохранить",
     "saveAs": "Сохранить как",
     "paste": "Вставить",
@@ -56,7 +57,6 @@
     "tabFile": "Файл",
     "tabEdit": "Правка",
     "tabView": "Вид",
-    "tabPreAssembly": "Предсборка",
     "view": {
       "edgesOnly": "Только рёбра",
       "solid": "Тело без рёбер",

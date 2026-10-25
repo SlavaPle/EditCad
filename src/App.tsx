@@ -67,10 +67,7 @@ import {
   resolveAssemblyRootFromFileHandle,
   saveAssemblyFileAs,
   saveAssemblyToHandle,
-  savePhantomAssemblyFileAs,
-  savePhantomAssemblyToHandle,
   stripEcdasmExtension,
-  stripEcdpreExtension,
   updateProgramPartTransform,
   type AssemblyFile,
   type AssemblyLoaderHandle,
@@ -88,6 +85,11 @@ import { loadGeometriesFromAssembly } from './features/pre-assembly/programParts
 import { buildProgramPartDisplayNameById } from './features/pre-assembly/programParts/programPartDisplayName'
 import { renameProgramPart } from './features/pre-assembly/programParts/renameProgramPart'
 import { isUserCancelError } from './lib/isUserCancelError'
+import {
+  DOCUMENT_OPEN_FILE_ACCEPT,
+  getDocumentSessionToolbarUi,
+  pickOpenDocumentFile,
+} from './features/document-session'
 import { MatesPopup } from './components/assembly-mates'
 import {
   buildViewerContextMenuItems,
@@ -185,7 +187,6 @@ function App() {
   const [modelAppearance, setModelAppearance] = useState<ModelAppearance>(DEFAULT_MODEL_APPEARANCE)
   const [limitsInstallConstraintType, setLimitsInstallConstraintType] = useState<FaceConstraintType>('minmax')
   const [phantomDoc, setPhantomDoc] = useState<PhantomAssemblyFile | null>(null)
-  const [phantomSourceFileHandle, setPhantomSourceFileHandle] = useState<BrowserFileHandle | null>(null)
   const [phantomSourceFileName, setPhantomSourceFileName] = useState<string | null>(null)
   const [phantomLoadError, setPhantomLoadError] = useState<string | null>(null)
   const [activeToolbarTab, setActiveToolbarTab] = useState<ToolbarTabId>(DEFAULT_TOOLBAR_TAB_ID)
@@ -277,7 +278,8 @@ function App() {
   const assemblyLoaderRef = useRef<AssemblyLoaderHandle>(null)
   const programPartPickerRef = useRef<ProgramPartFilePickerHandle>(null)
 
-  const preAssemblyActive = activeToolbarTab === 'preAssembly'
+  /** Montaż w sesji (program / fantom) — niezależnie od zakładki paska. */
+  const preAssemblyActive = programParts.length > 0 || !!phantomDoc
   const matesPickMode: MatesPickMode = matesPopupOpen
     ? { active: true, slot: matesPickSlot }
     : { active: false, slot: null }
@@ -428,7 +430,6 @@ function App() {
     setAssemblyMates([])
     resetMatesSessionUi()
     setPhantomDoc(null)
-    setPhantomSourceFileHandle(null)
     setPhantomSourceFileName(null)
     setProgramLoadError(null)
     setProgramSaveMessage(null)
@@ -746,12 +747,30 @@ function App() {
     ],
   )
 
-  const handleLoadModelClick = () => {
-    setLoadError(null)
-    modelLoaderRef.current?.openFileDialog()
-  }
+  const documentOpenInputRef = useRef<HTMLInputElement>(null)
 
-  const handleSaveModelClick = useCallback(() => {
+  const handleOpenDocumentClick = useCallback(() => {
+    setLoadError(null)
+    setProgramLoadError(null)
+    void (async () => {
+      const picked = await pickOpenDocumentFile({
+        fallbackInput: documentOpenInputRef.current,
+      })
+      if (!picked.ok) {
+        if (picked.reason === 'unsupported') {
+          setLoadError(i18n.t('toolbar.openUnsupported'))
+        }
+        return
+      }
+      if (picked.kind === 'assembly') {
+        await assemblyLoaderRef.current?.loadFile(picked.file, picked.handle)
+        return
+      }
+      await modelLoaderRef.current?.loadFile(picked.file, picked.handle)
+    })()
+  }, [i18n])
+
+  const handleSavePartClick = useCallback(() => {
     if (!model) return
     const baseName = preparedName || stripExtension(sourceFileName ?? 'edited-model')
     const canOverwriteEcdprt = sourceFormat === 'ecdprt' && !!sourceFileHandle
@@ -774,7 +793,7 @@ function App() {
       })
   }, [model, preparedConstraints, preparedName, sourceFileHandle, sourceFileName, sourceFormat, modelAppearance])
 
-  const handleSaveAsModelClick = useCallback(() => {
+  const handleSaveAsPartClick = useCallback(() => {
     if (!model) return
     const baseName = preparedName || stripExtension(sourceFileName ?? 'edited-model')
     void saveGeometryWithFormatAs(model, baseName, sourceFileHandle ?? undefined, preparedConstraints, modelAppearance)
@@ -794,6 +813,12 @@ function App() {
     programPartCount: programParts.length,
   })
 
+  const documentSessionToolbarUi = getDocumentSessionToolbarUi({
+    hasMainModel: !!model,
+    programPartCount: programParts.length,
+    hasPhantom: !!phantomDoc,
+  })
+
   const canChangeViewMode = useMemo(
     () =>
       canChangeViewDisplayMode({
@@ -804,67 +829,26 @@ function App() {
     [model, programPartGeometries, phantomDoc],
   )
 
-  const handleSavePhantomClick = useCallback(() => {
-    if (!phantomDoc || preAssemblyToolbarUi.saveDisabled) return
-    const baseName = phantomDoc.name || stripEcdpreExtension(phantomSourceFileName)
-    const canOverwrite =
-      !!phantomSourceFileHandle &&
-      (phantomSourceFileName?.toLowerCase().endsWith('.ecdpre') ?? false)
-    if (canOverwrite) {
-      void savePhantomAssemblyToHandle(phantomDoc, phantomSourceFileHandle)
-        .then((savedName) => {
-          if (savedName) setPhantomSourceFileName(savedName)
-        })
-        .catch((err: unknown) => {
-          const message = err instanceof Error ? err.message : String(err)
-          console.error('Phantom save failed:', message)
-        })
-      return
-    }
-    void savePhantomAssemblyFileAs(phantomDoc, baseName, phantomSourceFileHandle ?? undefined)
-      .then(({ handle, fileName }) => {
-        setPhantomSourceFileHandle(handle)
-        setPhantomSourceFileName(fileName)
-      })
-      .catch((err: unknown) => {
-        const message = err instanceof Error ? err.message : String(err)
-        console.error('Phantom save failed:', message)
-      })
-  }, [phantomDoc, phantomSourceFileHandle, phantomSourceFileName, preAssemblyToolbarUi.saveDisabled])
-
-  const handleSavePhantomAsClick = useCallback(() => {
-    if (!phantomDoc || preAssemblyToolbarUi.saveDisabled) return
-    const baseName = phantomDoc.name || stripEcdpreExtension(phantomSourceFileName)
-    void savePhantomAssemblyFileAs(phantomDoc, baseName, phantomSourceFileHandle ?? undefined)
-      .then(({ handle, fileName }) => {
-        setPhantomSourceFileHandle(handle)
-        setPhantomSourceFileName(fileName)
-      })
-      .catch((err: unknown) => {
-        const message = err instanceof Error ? err.message : String(err)
-        console.error('Phantom save failed:', message)
-      })
-  }, [phantomDoc, phantomSourceFileHandle, phantomSourceFileName, preAssemblyToolbarUi.saveDisabled])
-
   const handleCreatePhantom = useCallback(() => {
+    if (!documentSessionToolbarUi.canCreatePhantom) return
     setPhantomDoc(
       createEmptyPhantomFile({ name: i18n.t('preAssembly.createPhantom.defaultName') }),
     )
-    setPhantomSourceFileHandle(null)
     setPhantomSourceFileName(null)
     setPhantomLoadError(null)
     setPreAssemblyWizard(null)
     setPreAssemblySelection({ kind: 'envelope' })
     setLimitsInstallActive(false)
     setAppearanceEditActive(false)
-  }, [i18n])
+  }, [documentSessionToolbarUi.canCreatePhantom, i18n])
 
   const handleAddPart = useCallback(() => {
+    if (!documentSessionToolbarUi.canAddPart) return
     setProgramLoadError(null)
     void programPartPickerRef.current?.openFileDialog()
     setLimitsInstallActive(false)
     setAppearanceEditActive(false)
-  }, [])
+  }, [documentSessionToolbarUi.canAddPart])
 
   const disposeProgramPartGeometries = useCallback((geometries: Record<string, BufferGeometry>) => {
     for (const geometry of Object.values(geometries)) {
@@ -920,7 +904,7 @@ function App() {
 
     setProgramPartsFitToken((token) => token + 1)
     setProgramLoadError(null)
-    setActiveToolbarTab('preAssembly')
+    setActiveToolbarTab('file')
 
     const assemblyId = assemblyDocMeta.id
     void (async () => {
@@ -1620,7 +1604,6 @@ function App() {
       setProgramPartsFitToken((token) => token + 1)
       const embeddedPhantom = phantomDocFromAssemblyFile(file)
       setPhantomDoc(embeddedPhantom)
-      setPhantomSourceFileHandle(null)
       setPhantomSourceFileName(null)
       setPhantomLoadError(null)
       setAssemblySourceFileHandle(sourceHandle ?? null)
@@ -1631,7 +1614,7 @@ function App() {
       resetMatesSessionUi()
       setProgramLoadError(null)
       setProgramSaveMessage(null)
-      setActiveToolbarTab('preAssembly')
+      setActiveToolbarTab('file')
 
       void (async () => {
         let root = await resolveAssemblyProjectDirectory({
@@ -1682,12 +1665,6 @@ function App() {
       resetMatesSessionUi,
     ],
   )
-
-  const handleLoadAssemblyClick = useCallback(() => {
-    setProgramLoadError(null)
-    setProgramSaveMessage(null)
-    void assemblyLoaderRef.current?.openFileDialog()
-  }, [])
 
   const buildAssemblyFile = useCallback(() => {
     return createAssemblyFileFromProgram(programParts, {
@@ -1782,6 +1759,34 @@ function App() {
     handleSaveAssemblyAsClick,
     phantomDoc,
     programParts.length,
+  ])
+
+  const handleSaveDocumentClick = useCallback(() => {
+    if (documentSessionToolbarUi.saveTarget === 'assembly') {
+      handleSaveAssemblyClick()
+      return
+    }
+    if (documentSessionToolbarUi.saveTarget === 'part') {
+      handleSavePartClick()
+    }
+  }, [
+    documentSessionToolbarUi.saveTarget,
+    handleSaveAssemblyClick,
+    handleSavePartClick,
+  ])
+
+  const handleSaveAsDocumentClick = useCallback(() => {
+    if (documentSessionToolbarUi.saveTarget === 'assembly') {
+      handleSaveAssemblyAsClick()
+      return
+    }
+    if (documentSessionToolbarUi.saveTarget === 'part') {
+      handleSaveAsPartClick()
+    }
+  }, [
+    documentSessionToolbarUi.saveTarget,
+    handleSaveAssemblyAsClick,
+    handleSaveAsPartClick,
   ])
 
   const revertMatePreviewIfNeeded = useCallback(
@@ -1998,10 +2003,11 @@ function App() {
       <Toolbar
         activeToolbarTab={activeToolbarTab}
         onActiveToolbarTabChange={setActiveToolbarTab}
-        onLoadModelClick={handleLoadModelClick}
-        onSaveModelClick={handleSaveModelClick}
-        onSaveAsModelClick={handleSaveAsModelClick}
+        onLoadModelClick={handleOpenDocumentClick}
+        onSaveModelClick={handleSaveDocumentClick}
+        onSaveAsModelClick={handleSaveAsDocumentClick}
         hasModel={!!model}
+        documentSessionToolbarUi={documentSessionToolbarUi}
         canChangeViewMode={canChangeViewMode}
         limitsInstallActive={limitsInstallActive}
         limitsAddDisabled={limitsAddDisabled}
@@ -2035,14 +2041,16 @@ function App() {
         onDisplayModeChange={setDisplayMode}
         preAssemblyToolbarUi={preAssemblyToolbarUi}
         preAssemblyWizard={preAssemblyWizard}
-        onLoadAssemblyClick={handleLoadAssemblyClick}
-        onSaveAssemblyClick={handleSaveAssemblyClick}
-        onSaveAssemblyAsClick={handleSaveAssemblyAsClick}
-        onSavePhantomClick={handleSavePhantomClick}
-        onSavePhantomAsClick={handleSavePhantomAsClick}
         onCreatePhantom={handleCreatePhantom}
         onAddPart={handleAddPart}
         onCreateAttachment={handleCreateAttachment}
+      />
+      <input
+        ref={documentOpenInputRef}
+        type="file"
+        accept={DOCUMENT_OPEN_FILE_ACCEPT}
+        style={{ display: 'none' }}
+        aria-hidden
       />
       <div className={styles.main}>
         <LeftPanel
@@ -2078,7 +2086,7 @@ function App() {
           preAssemblySelection={preAssemblySelection}
           onPreAssemblySelectionChange={setPreAssemblySelection}
           onPhantomDocChange={setPhantomDoc}
-          onAddPart={handleAddPart}
+          onAddPart={documentSessionToolbarUi.canAddPart ? handleAddPart : undefined}
           onRemoveProgramPart={handleRemoveProgramPart}
         />
         <div className={styles.viewport}>
