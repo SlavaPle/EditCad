@@ -1,36 +1,55 @@
 import { forwardRef, useEffect, useMemo, type ComponentProps } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
-import type { OrbitControls } from 'three-stdlib'
+import { TrackballControls as TrackballControlsImpl } from 'three-stdlib'
+import type { TrackballControls } from 'three-stdlib'
+import { Spherical } from 'three'
+import { configureCadTrackballViewControls } from './configureCadTrackballViewControls'
 import { updateOrbitViewFromMouse } from './orbitViewRotation'
+import { TRACKBALL_VIEW_MOUSE_BUTTONS } from './trackballViewMouseButtons'
 
-type OrbitControlsProps = ComponentProps<'primitive'> & {
+type TrackballControlsProps = ComponentProps<'primitive'> & {
   makeDefault?: boolean
-  camera?: OrbitControls['object']
+  camera?: TrackballControls['object']
   domElement?: HTMLElement
   enableDamping?: boolean
+  dampingFactor?: number
+  enableZoom?: boolean
   keyEvents?: boolean | HTMLElement
   onChange?: () => void
   onStart?: () => void
   onEnd?: () => void
   regress?: boolean
+  /** Ignorowane — Trackball ma odwrócone mouseButtons względem OrbitControls. */
+  mouseButtons?: unknown
+}
+
+/** Przywraca domyślny makeSafe (na wypadek HMR po starym polar unlock). */
+function restoreSphericalMakeSafe(): void {
+  Spherical.prototype.makeSafe = function makeSafe() {
+    const EPS = 0.000001
+    this.phi = Math.max(EPS, Math.min(Math.PI - EPS, this.phi))
+    return this
+  }
 }
 
 /**
- * OrbitControls ze środkowym przyciskiem myszy — aktualizacja przez updateOrbitViewFromMouse.
+ * TrackballControls (ŚKM) — pełny obrót widoku bez limitu 180° OrbitControls.
  */
-export const MouseOrbitViewControls = forwardRef<OrbitControls, OrbitControlsProps>(
+export const MouseOrbitViewControls = forwardRef<TrackballControls, TrackballControlsProps>(
   function MouseOrbitViewControls(
     {
       makeDefault,
       camera,
       regress,
       domElement,
-      enableDamping = true,
+      enableDamping: _unusedDamping,
+      dampingFactor = 0.05,
+      enableZoom = true,
       keyEvents = false,
       onChange,
       onStart,
       onEnd,
+      mouseButtons: _ignoredOrbitStyleButtons,
       ...restProps
     },
     ref,
@@ -45,7 +64,13 @@ export const MouseOrbitViewControls = forwardRef<OrbitControls, OrbitControlsPro
     const explCamera = camera ?? defaultCamera
     const explDomElement = domElement ?? events.connected ?? gl.domElement
 
-    const controls = useMemo(() => new OrbitControlsImpl(explCamera), [explCamera])
+    const controls = useMemo(() => {
+      restoreSphericalMakeSafe()
+      return configureCadTrackballViewControls(new TrackballControlsImpl(explCamera), {
+        enableZoom,
+        dampingFactor,
+      })
+    }, [dampingFactor, enableZoom, explCamera])
 
     useFrame((_, delta) => {
       updateOrbitViewFromMouse(controls, delta)
@@ -90,7 +115,10 @@ export const MouseOrbitViewControls = forwardRef<OrbitControls, OrbitControlsPro
       <primitive
         ref={ref}
         object={controls}
-        enableDamping={enableDamping}
+        staticMoving
+        dynamicDampingFactor={dampingFactor}
+        noZoom={!enableZoom}
+        mouseButtons={TRACKBALL_VIEW_MOUSE_BUTTONS}
         {...restProps}
       />
     )

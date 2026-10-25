@@ -1,5 +1,6 @@
 import { Object3D, Quaternion, Vector3, type Camera } from 'three'
 import { isSceneOrbitSuspended } from './orbitControlsSuspend'
+import { shouldRestoreWorldUpOnViewCommit } from './shouldRestoreWorldUpOnViewCommit'
 
 const scratchLookAt = /* @__PURE__ */ new Vector3()
 const scratchOffset = /* @__PURE__ */ new Vector3()
@@ -20,7 +21,7 @@ export function isOrbitControlsLike(controls: unknown): controls is OrbitControl
   return c.target instanceof Vector3 && typeof c.update === 'function' && c.object != null
 }
 
-/** Kamera sterowana przez OrbitControls (nie kamera HUD). */
+/** Kamera sterowana przez Orbit/Trackball (nie kamera HUD). */
 export function resolveOrbitCamera(controls: unknown, fallbackCamera: Camera): Camera {
   return isOrbitControlsLike(controls) ? controls.object : fallbackCamera
 }
@@ -50,7 +51,7 @@ export function getOrbitViewRadius(
   return computeOrbitRadius(camera.position, focusPoint)
 }
 
-/** Ustawia target OrbitControls — ten sam punkt obrotu co przy myszy (śPM). */
+/** Ustawia target Orbit/Trackball — ten sam punkt obrotu co przy myszy (śPM). */
 export function syncOrbitViewFocus(controls: unknown, focusPoint: Vector3): void {
   if (!isOrbitControlsLike(controls)) return
   controls.target.copy(focusPoint)
@@ -58,7 +59,7 @@ export function syncOrbitViewFocus(controls: unknown, focusPoint: Vector3): void
 }
 
 /**
- * Obrót widoku myszą (OrbitControls.update) — działa przy wciśniętym środkowym przycisku.
+ * Obrót widoku myszą (controls.update) — działa przy wciśniętym środkowym przycisku.
  * Jedyna ścieżka aktualizacji widoku podczas przeciągania myszą.
  */
 export function updateOrbitViewFromMouse(controls: unknown, delta?: number): void {
@@ -116,7 +117,7 @@ export function applyOrbitViewOrientation(
   camera.quaternion.copy(quaternion)
 }
 
-/** Po klatce animacji gizmo: synchronizacja wewnętrznego stanu OrbitControls. */
+/** Po klatce animacji gizmo: synchronizacja wewnętrznego stanu Orbit/Trackball. */
 export function commitOrbitViewToControls(
   camera: { up: Vector3 },
   focusPoint: Vector3,
@@ -125,7 +126,9 @@ export function commitOrbitViewToControls(
   delta?: number,
 ): void {
   if (!isOrbitControlsLike(controls)) return
-  camera.up.copy(defaultUp)
+  if (shouldRestoreWorldUpOnViewCommit(controls)) {
+    camera.up.copy(defaultUp)
+  }
   controls.target.copy(focusPoint)
   updateOrbitViewFromMouse(controls, delta)
 }

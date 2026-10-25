@@ -131,8 +131,11 @@ describe('stepViewCubeTween', () => {
 })
 
 describe('finishViewCubeTween', () => {
-  it('restores camera.up and syncs controls target', () => {
-    const controls = mockOrbitControls(new Vector3(1, 0, 0))
+  it('restores camera.up for OrbitControls (getPolarAngle) and syncs target', () => {
+    const controls = {
+      ...mockOrbitControls(new Vector3(1, 0, 0)),
+      getPolarAngle: () => Math.PI / 2,
+    }
     controls.object.up.set(0, 0, 1)
     const session = beginViewCubeTween(new Vector3(0, 1, 0), controls.object, controls)
     controls.object.up.set(1, 0, 0)
@@ -142,6 +145,19 @@ describe('finishViewCubeTween', () => {
     expect(controls.update).toHaveBeenCalled()
     expect(controls.object.position.distanceTo(session.focusPoint)).toBeCloseTo(session.radius, 5)
     expect(controls.object.up.toArray()).toEqual(session.defaultUp.toArray())
+  })
+
+  it('keeps tween orientation up for Trackball-like controls', () => {
+    const controls = mockOrbitControls(new Vector3(1, 0, 0))
+    controls.object.up.set(0, 0, 1)
+    const session = beginViewCubeTween(new Vector3(0, 0, 1), controls.object, controls)
+    finishViewCubeTween(session, controls.object, controls)
+
+    expect(controls.target.toArray()).toEqual(session.focusPoint.toArray())
+    expect(controls.update).toHaveBeenCalled()
+    // Trackball: nie przywracamy defaultUp — up pochodzi z applyOrbitViewOrientation.
+    expect(controls.object.up.toArray()).not.toEqual(session.defaultUp.toArray())
+    expect(controls.object.up.length()).toBeCloseTo(1, 5)
   })
 })
 

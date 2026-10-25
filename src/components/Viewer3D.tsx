@@ -176,11 +176,10 @@ export function Viewer3D({
           />
           <MouseOrbitViewControls
             makeDefault
-            enableDamping
-            dampingFactor={0.05}
             enableZoom
             mouseButtons={{
               // LKM na scenie: brak orbitu (wybór); na detalu: manipulacja (guard + sesja wskaźnika)
+              // Uwaga: Trackball interpretuje mouseButtons inaczej — realny map w TRACKBALL_VIEW_MOUSE_BUTTONS.
               LEFT: -1 as unknown as (typeof MOUSE)['ROTATE'],
               // ŚKM na pustej scenie: obrót widoku; na detalu: obrót detalu
               MIDDLE: MOUSE.ROTATE,
