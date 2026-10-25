@@ -1,27 +1,49 @@
 import { ECDPRT_EXTENSION } from '../../../lib/saveModel'
+import { isSupportedExtension, MODEL_FILE_ACCEPT } from '../../../lib/loadModel'
 import { parsePreparedElementFile } from '../../../lib/preparedElementFormat'
 import { computeRelativeRefFromRoot } from '../assemblyFile/assemblyRelativePath'
 
-export const PROGRAM_PART_FILE_ACCEPT = '.ecdprt,.ECDPRT'
+/** Te same rozszerzenia co Open modelu — detal programu może być .ecdprt albo mesh. */
+export const PROGRAM_PART_FILE_ACCEPT = MODEL_FILE_ACCEPT
 
 export type ProgramPartDescriptor = {
-  /** Id pliku programu — nazwa pliku .ecdprt w slocie fantomu. */
+  /** Ścieżka / nazwa pliku w programie montażu (ref do geometrii). */
   ref: string
   name: string
 }
 
 export function isProgramPartFileName(fileName: string): boolean {
+  return isSupportedExtension(fileName)
+}
+
+function isEcdprtFileName(fileName: string): boolean {
   return fileName.toLowerCase().endsWith(ECDPRT_EXTENSION)
 }
 
-/** Weryfikuje plik programu (.ecdprt) i zwraca ref + nazwę do drzewa programu. */
+function stripFileExtension(fileName: string): string {
+  const i = fileName.lastIndexOf('.')
+  if (i <= 0) return fileName
+  return fileName.slice(0, i)
+}
+
+/** Weryfikuje plik modelu programu i zwraca ref + nazwę do drzewa. */
 export async function readProgramPartFromFile(
   file: File,
 ): Promise<{ ok: true; part: ProgramPartDescriptor } | { ok: false; error: string }> {
   if (!isProgramPartFileName(file.name)) {
     return {
       ok: false,
-      error: `Only ${ECDPRT_EXTENSION} program files are allowed.`,
+      error: `Unsupported format: ${file.name}. Use .stl, .ecdprt, .stp, .step, .igs, or .iges.`,
+    }
+  }
+
+  if (!isEcdprtFileName(file.name)) {
+    return {
+      ok: true,
+      part: {
+        ref: file.name,
+        name: stripFileExtension(file.name),
+      },
     }
   }
 
@@ -35,7 +57,7 @@ export async function readProgramPartFromFile(
     ok: true,
     part: {
       ref: file.name,
-      name: parsed.file.name?.trim() || stripEcdprtExtension(file.name),
+      name: parsed.file.name?.trim() || stripFileExtension(file.name),
     },
   }
 }
@@ -61,12 +83,4 @@ export async function readProgramPartFromFileWithRoot(
     }
   }
   return meta
-}
-
-function stripEcdprtExtension(fileName: string): string {
-  const lower = fileName.toLowerCase()
-  if (lower.endsWith(ECDPRT_EXTENSION)) {
-    return fileName.slice(0, -ECDPRT_EXTENSION.length)
-  }
-  return fileName
 }

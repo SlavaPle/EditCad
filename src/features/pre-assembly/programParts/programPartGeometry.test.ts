@@ -72,7 +72,7 @@ describe('loadProgramPartGeometryFromFile', () => {
     expect(result.error).toContain('Invalid STL')
   })
 
-  it('rejects non-ecdprt formats', async () => {
+  it('accepts stl load result with default appearance and constraints', async () => {
     const geometry = new BoxGeometry(1, 1, 1)
     mockedLoadModel.mockResolvedValueOnce({
       ok: true,
@@ -81,9 +81,15 @@ describe('loadProgramPartGeometryFromFile', () => {
     })
     const file = new File([''], 'panel.stl', { type: 'application/octet-stream' })
     const result = await loadProgramPartGeometryFromFile(file)
-    expect(result.ok).toBe(false)
-    if (result.ok) return
-    expect(result.error).toContain('ECDPRT')
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.geometry).toBe(geometry)
+    expect(result.appearance).toEqual(DEFAULT_MODEL_APPEARANCE)
+    expect(result.constraints).toEqual({
+      mode: 'fixed',
+      faceConstraints: [],
+      modelElements: [],
+    })
     geometry.dispose()
   })
 })

@@ -60,7 +60,10 @@ export const ProgramPartFilePicker = forwardRef<ProgramPartFilePickerHandle, Pro
               types: [
                 {
                   description: 'EditCad program part',
-                  accept: { 'application/json': ['.ecdprt'] },
+                  accept: {
+                    'model/stl': ['.stl'],
+                    'application/json': ['.ecdprt'],
+                  },
                 },
               ],
             })

@@ -17,7 +17,7 @@ export type ProgramPartPickBatchResult = {
   errors: string[]
 }
 
-/** Wczytuje wybrane pliki .ecdprt (metadane + geometria + wygląd). */
+/** Wczytuje wybrane pliki modelu programu (.ecdprt / .stl / …). */
 export async function pickProgramPartsFromFiles(
   files: FileList | File[],
   assemblyFileDirectory: FileSystemDirectoryHandle | null,

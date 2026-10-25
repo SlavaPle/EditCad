@@ -16,16 +16,16 @@ export type ProgramPartGeometryLoadResult =
     }
   | { ok: false; error: string }
 
-/** Ładuje geometrię mesh, wygląd i constraints z pliku programu .ecdprt. */
+/**
+ * Ładuje geometrię mesh (oraz wygląd / constraints z .ecdprt).
+ * Akceptuje te same formaty co Open modelu (.stl, .ecdprt, …).
+ */
 export async function loadProgramPartGeometryFromFile(
   file: File,
 ): Promise<ProgramPartGeometryLoadResult> {
   const result = await loadModel(file)
   if (!result.ok) {
     return { ok: false, error: result.error }
-  }
-  if (result.format !== 'ecdprt') {
-    return { ok: false, error: 'Expected an ECDPRT program part file.' }
   }
   return {
     ok: true,

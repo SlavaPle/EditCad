@@ -14,12 +14,14 @@ function makeEcdprtFile(name: string, partName: string): File {
 }
 
 describe('programPartFile', () => {
-  it('detects ecdprt extension', () => {
+  it('detects supported model extensions for program parts', () => {
     expect(isProgramPartFileName('panel.ecdprt')).toBe(true)
-    expect(isProgramPartFileName('panel.stl')).toBe(false)
+    expect(isProgramPartFileName('panel.stl')).toBe(true)
+    expect(isProgramPartFileName('panel.step')).toBe(true)
+    expect(isProgramPartFileName('notes.txt')).toBe(false)
   })
 
-  it('reads valid program file', async () => {
+  it('reads valid ecdprt program file', async () => {
     const file = makeEcdprtFile('my-panel.ecdprt', 'My panel')
     const result = await readProgramPartFromFile(file)
     expect(result.ok).toBe(true)
@@ -27,8 +29,18 @@ describe('programPartFile', () => {
     expect(result.part).toEqual({ ref: 'my-panel.ecdprt', name: 'My panel' })
   })
 
-  it('rejects non-ecdprt extension', async () => {
-    const file = makeEcdprtFile('part.stl', 'Part')
+  it('reads stl as program part using file base name', async () => {
+    const file = new File(['solid x\nendsolid x\n'], 'bracket.stl', {
+      type: 'model/stl',
+    })
+    const result = await readProgramPartFromFile(file)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.part).toEqual({ ref: 'bracket.stl', name: 'bracket' })
+  })
+
+  it('rejects unsupported extension', async () => {
+    const file = new File(['x'], 'part.txt', { type: 'text/plain' })
     const result = await readProgramPartFromFile(file)
     expect(result.ok).toBe(false)
   })
