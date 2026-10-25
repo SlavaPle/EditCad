@@ -1,4 +1,4 @@
-/** Blokada pozycji detalu w sesji (bez persystencji .ecdasm). */
+/** Blokada pozycji detalu — w sesji i w pliku .ecdasm (`lockedPartIds`). */
 
 export type PartLockMap = Readonly<Record<string, boolean>>
 
@@ -51,4 +51,23 @@ export function lockedPartIdSet(locks: PartLockMap): ReadonlySet<string> {
     if (locked) ids.add(id)
   }
   return ids
+}
+
+/** Id do zapisu w .ecdasm — posortowane dla stabilnego JSON. */
+export function lockedPartIdsFromMap(locks: PartLockMap): string[] {
+  return [...lockedPartIdSet(locks)].sort()
+}
+
+/** Mapa z listy id (np. po odczycie .ecdasm). */
+export function partLockMapFromIds(
+  ids: readonly string[] | null | undefined,
+): Record<string, boolean> {
+  if (!ids || ids.length === 0) return {}
+  const next: Record<string, boolean> = {}
+  for (const id of ids) {
+    if (typeof id === 'string' && id.trim().length > 0) {
+      next[id.trim()] = true
+    }
+  }
+  return next
 }

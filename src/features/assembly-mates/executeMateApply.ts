@@ -16,6 +16,8 @@ export type ExecuteMateApplyInput = {
   existingMates?: readonly AssemblyMate[]
   programParts: readonly PreAssemblyProgramPart[]
   programPartGeometries: Readonly<Record<string, BufferGeometry>>
+  /** Zablokowany detal B — Apply nie zmienia pozycji. */
+  lockedPartIds?: ReadonlySet<string>
 }
 
 export type ExecuteMateApplyReason =
@@ -23,6 +25,7 @@ export type ExecuteMateApplyReason =
   | 'invalidDraft'
   | 'missingGeometry'
   | 'missingPart'
+  | 'partLocked'
   | 'solverFailed'
   | 'applyFailed'
 
@@ -63,6 +66,10 @@ export function executeMateApply(input: ExecuteMateApplyInput): ExecuteMateApply
   const partB = programParts.find((p) => p.id === entityB.partId)
   if (!partA || !partB) {
     return { ok: false, reason: 'missingPart' }
+  }
+
+  if (input.lockedPartIds?.has(entityB.partId)) {
+    return { ok: false, reason: 'partLocked' }
   }
 
   let projected:

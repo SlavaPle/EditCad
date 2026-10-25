@@ -156,4 +156,91 @@ describe('assemblyCodec', () => {
       },
     ])
   })
+
+  it('round-trips lockedPartIds', () => {
+    const file = createAssemblyFileFromProgram(
+      [
+        partWithTransform('p1', 'left.ecdprt', 'Left'),
+        partWithTransform('p2', 'right.ecdprt', 'Right'),
+      ],
+      { id: 'asm-1', name: 'Cabinet', lockedPartIds: ['p2', 'missing', 'p1'] },
+    )
+    expect(file.lockedPartIds).toEqual(['p1', 'p2'])
+    const parsed = parseAssemblyFile(serializeAssemblyFile(file))
+    expect(parsed.ok).toBe(true)
+    if (!parsed.ok) return
+    expect(parsed.file.lockedPartIds).toEqual(['p1', 'p2'])
+  })
+
+  it('round-trips all mate kinds together with locks', () => {
+    const plane = (partId: string) => ({
+      partId,
+      faceIndex: 0,
+      faceIndices: [0, 1],
+    })
+    const line = (partId: string) => ({
+      kind: 'line' as const,
+      partId,
+      vertexA: 0,
+      vertexB: 1,
+    })
+    const mates = [
+      {
+        id: 'm-par',
+        kind: 'parallel' as const,
+        entityA: plane('p1'),
+        entityB: { kind: 'vertex' as const, partId: 'p2', vertexIndex: 0 },
+        alignment: 'faceToFace' as const,
+        offsetMm: 3,
+        flipped: true,
+      },
+      {
+        id: 'm-perp',
+        kind: 'perpendicular' as const,
+        entityA: plane('p1'),
+        entityB: line('p2'),
+        flipped: false,
+        suppressed: true,
+      },
+      {
+        id: 'm-ang',
+        kind: 'angular' as const,
+        entityA: line('p1'),
+        entityB: line('p2'),
+        angleDeg: 30,
+        alignment: 'sameDirection' as const,
+      },
+    ]
+    const file = createAssemblyFileFromProgram(
+      [
+        partWithTransform('p1', 'left.ecdprt', 'Left'),
+        partWithTransform('p2', 'right.ecdprt', 'Right'),
+      ],
+      { id: 'asm-1', name: 'Cabinet', mates, lockedPartIds: ['p1'] },
+    )
+    const parsed = parseAssemblyFile(serializeAssemblyFile(file))
+    expect(parsed.ok).toBe(true)
+    if (!parsed.ok) return
+    expect(parsed.file.lockedPartIds).toEqual(['p1'])
+    expect(parsed.file.mates).toHaveLength(3)
+    expect(parsed.file.mates?.map((m) => m.kind).sort()).toEqual([
+      'angular',
+      'parallel',
+      'perpendicular',
+    ])
+    expect(parsed.file.mates?.find((m) => m.id === 'm-perp')?.suppressed).toBe(true)
+  })
+
+  it('rejects invalid lockedPartIds', () => {
+    const raw = {
+      format: 'editcad.assembly',
+      version: 1,
+      id: 'a',
+      name: 'A',
+      program: [{ id: 'p1', ref: 'a.ecdprt', name: 'A', transform: defaultProgramPartTransform() }],
+      lockedPartIds: [1],
+    }
+    const parsed = parseAssemblyFile(JSON.stringify(raw))
+    expect(parsed.ok).toBe(false)
+  })
 })

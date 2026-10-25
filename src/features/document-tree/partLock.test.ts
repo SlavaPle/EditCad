@@ -3,6 +3,8 @@ import {
   filterPartLocksForPartIds,
   isPartLocked,
   lockedPartIdSet,
+  lockedPartIdsFromMap,
+  partLockMapFromIds,
   setPartLock,
   togglePartLock,
 } from './partLock'
@@ -35,5 +37,11 @@ describe('partLock', () => {
 
   it('lockedPartIdSet collects locked ids', () => {
     expect([...lockedPartIdSet({ a: true, b: false, c: true })].sort()).toEqual(['a', 'c'])
+  })
+
+  it('round-trips map ↔ id list for .ecdasm', () => {
+    expect(lockedPartIdsFromMap({ c: true, a: true, b: false })).toEqual(['a', 'c'])
+    expect(partLockMapFromIds(['b', 'a', 'b'])).toEqual({ a: true, b: true })
+    expect(partLockMapFromIds(undefined)).toEqual({})
   })
 })

@@ -52,6 +52,8 @@ export {
   filterPartLocksForPartIds,
   isPartLocked,
   lockedPartIdSet,
+  lockedPartIdsFromMap,
+  partLockMapFromIds,
   setPartLock,
   togglePartLock,
   type PartLockMap,

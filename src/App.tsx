@@ -135,7 +135,9 @@ import {
   filterPartLocksForPartIds,
   isPartLocked,
   lockedPartIdSet,
+  lockedPartIdsFromMap,
   mergeMateEntityHighlights,
+  partLockMapFromIds,
   togglePartLock,
 } from './features/document-tree'
 import {
@@ -978,6 +980,7 @@ function App() {
         parts: current,
         mates: nextMates,
         geometries: programPartGeometriesRef.current,
+        lockedPartIds: lockedPartIdSet(partLockedByIdRef.current),
       })
       programPartsRef.current = synced
       return synced
@@ -1436,13 +1439,14 @@ function App() {
   /** Ustaw transform bez re-snap zapisanych mates (preview / revert draft). */
   const setProgramPartTransformDirect = useCallback(
     (partId: string, transform: PhantomTransform) => {
+      if (isProgramPartLocked(partId)) return
       setProgramParts((current) => {
         const next = updateProgramPartTransform(current, partId, transform)
         programPartsRef.current = next
         return next
       })
     },
-    [],
+    [isProgramPartLocked],
   )
 
   const handleActiveProgramPartChange = useCallback((partId: string | null) => {
@@ -1506,6 +1510,7 @@ function App() {
         parts: next,
         mates: nextMates,
         geometries: programPartGeometriesRef.current,
+        lockedPartIds: lockedPartIdSet(partLockedByIdRef.current),
       })
       programPartsRef.current = synced
       return synced
@@ -1567,6 +1572,7 @@ function App() {
             parts: current,
             mates: assemblyMatesRef.current,
             geometries: result.geometries,
+            lockedPartIds: lockedPartIdSet(partLockedByIdRef.current),
           }),
         )
         setProgramPartsFitToken((token) => token + 1)
@@ -1619,6 +1625,7 @@ function App() {
       assemblyMatesRef.current = nextMates
       setAssemblyMates(nextMates)
       resetMatesSessionUi()
+      setPartLockedById(partLockMapFromIds(file.lockedPartIds))
       setProgramLoadError(null)
       setProgramSaveMessage(null)
       setActiveToolbarTab('file')
@@ -1673,18 +1680,39 @@ function App() {
     ],
   )
 
+  /**
+   * Zapis .ecdasm bierze mates/locks z ref (aktualne), nie ze stale closure.
+   * Przed zapisem commituje zastosowany draft mate (Apply bez Save w popupie).
+   */
+  const flushPendingMateDraftForAssemblySave = useCallback(() => {
+    const session = mateDraftSessionRef.current
+    if (!mateDraftHasUnsavedApply(session)) return
+    const saved = mateDraftSave(session, assemblyMatesRef.current)
+    if (!saved.ok) return
+    commitAssemblyMates(saved.mates)
+    commitMateDraftSession(saved.session)
+    setMateOffsetInput('0')
+    setMateAngleInput('45')
+    applyMatesPickSlot(null)
+    setMateSolverErrorKey(null)
+  }, [applyMatesPickSlot, commitAssemblyMates, commitMateDraftSession])
+
   const buildAssemblyFile = useCallback(() => {
-    return createAssemblyFileFromProgram(programParts, {
+    const mates = assemblyMatesRef.current
+    const lockedPartIds = lockedPartIdsFromMap(partLockedByIdRef.current)
+    return createAssemblyFileFromProgram(programPartsRef.current, {
       id: assemblyDocMeta.id,
       name: assemblyDocMeta.name,
       phantomDoc,
-      mates: assemblyMates.length > 0 ? assemblyMates : undefined,
+      mates: mates.length > 0 ? mates : undefined,
+      lockedPartIds: lockedPartIds.length > 0 ? lockedPartIds : undefined,
     })
-  }, [assemblyDocMeta, assemblyMates, phantomDoc, programParts])
+  }, [assemblyDocMeta, phantomDoc])
 
   const handleSaveAssemblyAsClick = useCallback(() => {
-    const canSave = programParts.length > 0 || !!phantomDoc
+    const canSave = programPartsRef.current.length > 0 || !!phantomDoc
     if (!canSave) return
+    flushPendingMateDraftForAssemblySave()
     const baseName = assemblyDocMeta.name || stripEcdasmExtension(assemblySourceFileName)
     const assemblyFile = buildAssemblyFile()
     void (async () => {
@@ -1721,14 +1749,14 @@ function App() {
     assemblySourceFileHandle,
     assemblySourceFileName,
     buildAssemblyFile,
+    flushPendingMateDraftForAssemblySave,
     phantomDoc,
-    programParts.length,
   ])
 
   const handleSaveAssemblyClick = useCallback(() => {
-    const canSave = programParts.length > 0 || !!phantomDoc
+    const canSave = programPartsRef.current.length > 0 || !!phantomDoc
     if (!canSave) return
-    const assemblyFile = buildAssemblyFile()
+    flushPendingMateDraftForAssemblySave()
     const canOverwrite =
       !!assemblySourceFileHandle &&
       (assemblySourceFileName?.toLowerCase().endsWith('.ecdasm') ?? false)
@@ -1736,6 +1764,7 @@ function App() {
       handleSaveAssemblyAsClick()
       return
     }
+    const assemblyFile = buildAssemblyFile()
     void (async () => {
       try {
         const savedName = await saveAssemblyToHandle(assemblyFile, assemblySourceFileHandle)
@@ -1763,9 +1792,9 @@ function App() {
     assemblySourceFileHandle,
     assemblySourceFileName,
     buildAssemblyFile,
+    flushPendingMateDraftForAssemblySave,
     handleSaveAssemblyAsClick,
     phantomDoc,
-    programParts.length,
   ])
 
   const handleSaveDocumentClick = useCallback(() => {
@@ -1979,6 +2008,7 @@ function App() {
       existingMates: assemblyMatesRef.current,
       programParts: programPartsRef.current,
       programPartGeometries: programPartGeometriesRef.current,
+      lockedPartIds: lockedPartIdSet(partLockedByIdRef.current),
     })
     if (!result.ok) {
       if (result.reason === 'invalidDraft' && result.validationReason) {
@@ -1989,6 +2019,8 @@ function App() {
             ? 'mates.errors.unsupportedPair'
             : 'mates.errors.missingGeometry',
         )
+      } else if (result.reason === 'partLocked') {
+        setMateSolverErrorKey('mates.errors.partLocked')
       } else if (result.reason === 'missingGeometry' || result.reason === 'missingPart') {
         setMateSolverErrorKey('mates.errors.missingGeometry')
       }

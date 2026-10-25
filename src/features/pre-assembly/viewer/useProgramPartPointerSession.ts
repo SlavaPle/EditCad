@@ -228,6 +228,8 @@ export function useProgramPartPointerSession(handlers: ProgramPartPointerSession
       }
       const mode = programPartPointerModeFromButton(event.nativeEvent.button)
       if (!mode || !geometry) return
+      // Zablokowany detal: LKM = select; obrót (ŚKM) całkowicie wyłączony.
+      if (handlersRef.current.isPartLocked?.(partId) && mode === 'rotate') return
 
       event.stopPropagation()
       if (mode === 'rotate') {

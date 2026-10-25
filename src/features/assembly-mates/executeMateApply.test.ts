@@ -91,4 +91,28 @@ describe('executeMateApply', () => {
     expect(result.nextSession.draft.alignment).toBe('sameDirection')
     expect(result.nextSession.revertTransform).toEqual(applied.session.revertTransform)
   })
+
+  it('refuses to move locked entity B', () => {
+    const entityA = { partId: 'a', faceIndex: 0, faceIndices: [0, 1] }
+    const entityB = { partId: 'b', faceIndex: 0, faceIndices: [0, 1] }
+    let session = createMateDraftSession()
+    session = mateDraftSetEntity(session, 'entityA', entityA)
+    session = mateDraftSetEntity(session, 'entityB', entityB)
+    const draft = { ...createEmptyParallelMateDraft(), entityA, entityB, offsetMm: 0 }
+
+    const result = executeMateApply({
+      session,
+      draft,
+      programParts: [part('a', [0, 0, 0]), part('b', [199, 0, 0])],
+      programPartGeometries: {
+        a: quadInPlaneZ(0, true),
+        b: quadInPlaneZ(10, false),
+      },
+      lockedPartIds: new Set(['b']),
+    })
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.reason).toBe('partLocked')
+  })
 })

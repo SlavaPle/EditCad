@@ -116,6 +116,8 @@ export type ReapplyAllAssemblyMatesInput = {
   parts: readonly PreAssemblyProgramPart[]
   mates: readonly AssemblyMate[]
   geometries: Readonly<Record<string, BufferGeometry | null | undefined>>
+  /** Zablokowane detale nie zmieniają pozycji przy reapply. */
+  lockedPartIds?: ReadonlySet<string>
 }
 
 /**
@@ -124,12 +126,16 @@ export type ReapplyAllAssemblyMatesInput = {
  * (applyAssemblyMateConstraints przy „ruchu” A na tę samą pose zostawia złe seed B.)
  */
 export function reapplyAllAssemblyMates(input: ReapplyAllAssemblyMatesInput): PreAssemblyProgramPart[] {
+  const locked = input.lockedPartIds
   let parts = [...input.parts]
   for (const mate of input.mates) {
     if (isMateSuppressed(mate)) continue
 
+    const drivenId = mate.entityB.partId
+    if (locked?.has(drivenId)) continue
+
     const partsById = new Map(parts.map((part) => [part.id, part]))
-    const driven = partsById.get(mate.entityB.partId)
+    const driven = partsById.get(drivenId)
     if (!driven) continue
 
     const nextTransformB = projectMateForAssembly(
@@ -139,7 +145,7 @@ export function reapplyAllAssemblyMates(input: ReapplyAllAssemblyMatesInput): Pr
       driven.transform,
     )
     if (!nextTransformB) continue
-    parts = updateProgramPartTransform(parts, mate.entityB.partId, nextTransformB)
+    parts = updateProgramPartTransform(parts, drivenId, nextTransformB)
   }
   return parts
 }

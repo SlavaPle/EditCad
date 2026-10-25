@@ -125,6 +125,17 @@ describe('syncProgramPartsAfterMatesChange (global rule)', () => {
     ).toBeCloseTo(0, 2)
   })
 
+  it('does not move locked driven part on unsuppress sync', () => {
+    const parts = [part('a', [0, 0, 0]), part('b', [200, 0, 0])]
+    const afterOn = syncProgramPartsAfterMatesChange({
+      parts,
+      mates: [mate],
+      geometries,
+      lockedPartIds: new Set(['b']),
+    })
+    expect(afterOn.find((p) => p.id === 'b')?.transform.positionMm).toEqual([200, 0, 0])
+  })
+
   it('after delete of one mate, remaining active mates still sync', () => {
     const mate2: AssemblyMate = {
       ...mate,

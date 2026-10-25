@@ -20,6 +20,8 @@ export type AssemblyDocument = {
   phantom?: PhantomAssembly
   /** Przywiązania geometryczne między detalami programu. */
   mates?: AssemblyMate[]
+  /** Id detali z zablokowaną pozycją (nie przesuwają się dragiem / mates). */
+  lockedPartIds?: string[]
 }
 
 export type AssemblyFile = {
@@ -30,6 +32,7 @@ export type AssemblyFile = {
   program: PreAssemblyProgramPart[]
   phantom?: PhantomAssembly
   mates?: AssemblyMate[]
+  lockedPartIds?: string[]
 }
 
 export type ParseAssemblyFileResult =

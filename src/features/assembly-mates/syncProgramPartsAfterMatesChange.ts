@@ -17,6 +17,8 @@ export type SyncProgramPartsAfterMatesChangeInput = {
   parts: readonly PreAssemblyProgramPart[]
   mates: readonly AssemblyMate[]
   geometries: Readonly<Record<string, BufferGeometry | null | undefined>>
+  /** Zablokowane detale nie ruszają się przy sync mates. */
+  lockedPartIds?: ReadonlySet<string>
 }
 
 /** Jedyny punkt synchronizacji pozycji detali po mutacji mates[]. */
@@ -27,5 +29,6 @@ export function syncProgramPartsAfterMatesChange(
     parts: input.parts,
     mates: input.mates,
     geometries: input.geometries,
+    lockedPartIds: input.lockedPartIds,
   })
 }

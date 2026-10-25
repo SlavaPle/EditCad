@@ -111,6 +111,17 @@ describe('applyAssemblyMateConstraints', () => {
     expect(result.find((p) => p.id === 'b')?.transform.positionMm[0]).toBe(200)
   })
 
+  it('reapplyAllAssemblyMates skips locked driven part', () => {
+    const parts = [part('a', [0, 0, 0]), part('b', [200, 0, 0])]
+    const result = reapplyAllAssemblyMates({
+      parts,
+      mates: [mate],
+      geometries,
+      lockedPartIds: new Set(['b']),
+    })
+    expect(result.find((p) => p.id === 'b')?.transform.positionMm[0]).toBe(200)
+  })
+
   it('moves driven part B when anchor A is translated', () => {
     const result = applyAssemblyMateConstraints({
       parts: [part('a', [0, 0, 0]), part('b', [200, 0, 0])],

@@ -64,6 +64,24 @@ function parseAssemblyMates(value: unknown): AssemblyFile['mates'] | 'invalid' {
   return mates
 }
 
+function parseLockedPartIds(
+  value: unknown,
+  programIds: ReadonlySet<string>,
+): string[] | undefined | 'invalid' {
+  if (value === undefined) return undefined
+  if (!Array.isArray(value)) return 'invalid'
+  const ids: string[] = []
+  const seen = new Set<string>()
+  for (const entry of value) {
+    if (typeof entry !== 'string' || entry.trim().length === 0) return 'invalid'
+    const id = entry.trim()
+    if (seen.has(id)) continue
+    seen.add(id)
+    if (programIds.has(id)) ids.push(id)
+  }
+  return ids.length > 0 ? ids : undefined
+}
+
 function parseAssemblyPhantomField(value: unknown): PhantomAssembly | null | 'invalid' | 'multiple' {
   if (value === undefined) return null
   if (value === null) return null
@@ -119,6 +137,11 @@ export function parseAssemblyFile(content: string): ParseAssemblyFileResult {
   if (matesParsed === 'invalid') {
     return { ok: false, error: 'Invalid mates in assembly file.' }
   }
+  const programIds = new Set(program.map((part) => part.id))
+  const lockedParsed = parseLockedPartIds(raw.lockedPartIds, programIds)
+  if (lockedParsed === 'invalid') {
+    return { ok: false, error: 'Invalid lockedPartIds in assembly file.' }
+  }
   return {
     ok: true,
     file: {
@@ -129,6 +152,7 @@ export function parseAssemblyFile(content: string): ParseAssemblyFileResult {
       program,
       ...(phantomParsed ? { phantom: phantomParsed } : {}),
       ...(matesParsed && matesParsed.length > 0 ? { mates: matesParsed } : {}),
+      ...(lockedParsed ? { lockedPartIds: lockedParsed } : {}),
     },
   }
 }
@@ -147,6 +171,9 @@ export function serializeAssemblyFile(file: AssemblyFile): string {
   if (file.mates && file.mates.length > 0) {
     payload.mates = file.mates
   }
+  if (file.lockedPartIds && file.lockedPartIds.length > 0) {
+    payload.lockedPartIds = file.lockedPartIds
+  }
   return JSON.stringify(payload, null, 2)
 }
 
@@ -157,6 +184,7 @@ export function createAssemblyFileFromProgram(
     name?: string
     phantomDoc?: PhantomAssemblyFile | null
     mates?: AssemblyFile['mates']
+    lockedPartIds?: readonly string[]
   },
 ): AssemblyFile {
   const file: AssemblyFile = {
@@ -171,6 +199,17 @@ export function createAssemblyFileFromProgram(
   }
   if (options?.mates && options.mates.length > 0) {
     file.mates = options.mates.map((mate) => structuredClone(mate))
+  }
+  if (options?.lockedPartIds && options.lockedPartIds.length > 0) {
+    const programIds = new Set(file.program.map((part) => part.id))
+    const lockedPartIds = [
+      ...new Set(
+        options.lockedPartIds.filter((id) => typeof id === 'string' && programIds.has(id)),
+      ),
+    ].sort()
+    if (lockedPartIds.length > 0) {
+      file.lockedPartIds = lockedPartIds
+    }
   }
   return file
 }
