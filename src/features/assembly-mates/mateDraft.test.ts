@@ -68,12 +68,17 @@ describe('mateDraft', () => {
     expect(updated.applyState).toBe('applied')
     expect(updated.revertTransform).toEqual(applied.session.revertTransform)
 
-    const blocked = mateDraftSetEntity(updated, 'entityA', {
+    const redefined = mateDraftSetEntity(updated, 'entityA', {
       partId: 'c',
       faceIndex: 0,
       faceIndices: [0],
     })
-    expect(blocked).toBe(updated)
+    expect(redefined.applyState).toBe('applied')
+    expect(redefined.draft.entityA).toEqual({
+      partId: 'c',
+      faceIndex: 0,
+      faceIndices: [0],
+    })
   })
 
   it('accepts mixed entity kinds in draft', () => {
@@ -87,5 +92,28 @@ describe('mateDraft', () => {
     expect(session.draft.entityA).toEqual({ kind: 'vertex', partId: 'a', vertexIndex: 0 })
     expect(session.draft.entityB).toEqual(planeB)
   })
+
+  it('coerces to parallel when vertex is picked on perpendicular', () => {
+    let session = createMateDraftSession('perpendicular')
+    expect(session.draft.kind).toBe('perpendicular')
+    session = mateDraftSetEntity(session, 'entityA', {
+      kind: 'vertex',
+      partId: 'a',
+      vertexIndex: 0,
+    })
+    expect(session.draft.kind).toBe('parallel')
+    expect(session.draft.entityA).toEqual({ kind: 'vertex', partId: 'a', vertexIndex: 0 })
+  })
+
+  it('ignores kind change to perpendicular when draft has a vertex', () => {
+    let session = createMateDraftSession()
+    session = mateDraftSetEntity(session, 'entityA', {
+      kind: 'vertex',
+      partId: 'a',
+      vertexIndex: 0,
+    })
+    session = mateDraftUpdateDraft(session, { kind: 'perpendicular' })
+    expect(session.draft.kind).toBe('parallel')
+  })
 })
-
+

@@ -144,10 +144,14 @@ interface SelectableModelProps {
   onProbableFacesChange?: (faces: readonly number[]) => void
   /** Gdy false — LKM nie wybiera elementów (np. drag detalu w montażu). */
   pickOnPointerDown?: boolean
+  /** Gdy true — mesh nie bierze udziału w raycast (brak hover / pick). */
+  raycastDisabled?: boolean
   onMeshPointerDown?: (event: ThreeEvent<PointerEvent>) => void
   /** PPM — menu kontekstowe (np. Add mate w montażu). */
   onMeshContextMenu?: (event: ThreeEvent<MouseEvent>) => void
 }
+
+function noopRaycast() {}
 
 export function SelectableModel({
   model,
@@ -159,6 +163,7 @@ export function SelectableModel({
   selectionProximityFilter,
   onProbableFacesChange,
   pickOnPointerDown = true,
+  raycastDisabled = false,
   onMeshPointerDown,
   onMeshContextMenu,
 }: SelectableModelProps) {
@@ -504,10 +509,13 @@ export function SelectableModel({
       <mesh
         ref={meshRef}
         geometry={model}
-        onPointerMove={handlePointerMove}
-        onPointerOut={handlePointerOut}
-        onPointerDown={handlePointerDown}
-        onContextMenu={onMeshContextMenu ? handleContextMenu : undefined}
+        raycast={raycastDisabled ? noopRaycast : undefined}
+        onPointerMove={raycastDisabled ? undefined : handlePointerMove}
+        onPointerOut={raycastDisabled ? undefined : handlePointerOut}
+        onPointerDown={raycastDisabled ? undefined : handlePointerDown}
+        onContextMenu={
+          raycastDisabled || !onMeshContextMenu ? undefined : handleContextMenu
+        }
       >
         {showSolidBody ? (
           showTextured ? (

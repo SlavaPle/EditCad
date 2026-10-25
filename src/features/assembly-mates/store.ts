@@ -1,6 +1,7 @@
 import type {
   AngularMate,
   AssemblyMate,
+  MateAlignment,
   MateDraftValidationReason,
   MateEntityRef,
   MateKind,
@@ -37,7 +38,7 @@ export type AngularMateDraft = {
   entityA: MateEntityRef | null
   entityB: MateEntityRef | null
   angleDeg: number
-  flipped: boolean
+  alignment: MateAlignment
 }
 
 export type MateDraft = ParallelMateDraft | PerpendicularMateDraft | AngularMateDraft
@@ -68,7 +69,7 @@ export function createEmptyAngularMateDraft(): AngularMateDraft {
     entityA: null,
     entityB: null,
     angleDeg: 45,
-    flipped: false,
+    alignment: 'faceToFace',
   }
 }
 
@@ -82,13 +83,23 @@ export function createEmptyMateDraft(kind: MateKind = 'parallel'): MateDraft {
 export function mateDraftWithKind(draft: MateDraft, kind: MateKind): MateDraft {
   const entityA = draft.entityA
   const entityB = draft.entityB
-  const flipped = draft.flipped
+  const flipped =
+    draft.kind === 'angular' ? draft.alignment === 'sameDirection' : draft.flipped
+  const alignment: MateAlignment =
+    draft.kind === 'angular'
+      ? draft.alignment
+      : draft.kind === 'parallel'
+        ? draft.alignment
+        : flipped
+          ? 'sameDirection'
+          : 'faceToFace'
   if (kind === 'parallel') {
     return {
       ...createEmptyParallelMateDraft(),
       entityA,
       entityB,
       flipped,
+      alignment,
     }
   }
   if (kind === 'perpendicular') {
@@ -103,7 +114,7 @@ export function mateDraftWithKind(draft: MateDraft, kind: MateKind): MateDraft {
     ...createEmptyAngularMateDraft(),
     entityA,
     entityB,
-    flipped,
+    alignment,
     angleDeg: draft.kind === 'angular' ? draft.angleDeg : 45,
   }
 }
@@ -269,7 +280,7 @@ export function angularMateFromDraft(
     entityA: draft.entityA,
     entityB: draft.entityB,
     angleDeg: draft.angleDeg,
-    flipped: draft.flipped,
+    alignment: draft.alignment,
   }
 }
 

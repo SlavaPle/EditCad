@@ -59,7 +59,7 @@ export function ParallelMateControls({
 }: ParallelMateControlsProps) {
   const { t } = useTranslation()
   const canEditMateParams = entityA !== null && entityB !== null
-  const showAlignment =
+  const showOrientationFlip =
     entityA !== null && entityB !== null && matePairSupportsAlignment(matePairKind(entityA, entityB))
 
   return (
@@ -73,32 +73,12 @@ export function ParallelMateControls({
         onStartPick={onStartPick}
       />
 
-      {showAlignment && (
-        <div className={styles.fieldRow}>
-          <label className={styles.planeLabel} htmlFor="mate-alignment">
-            {matePairKind(entityA!, entityB!) === 'line-line'
-              ? t('mates.alignment.lineLabel')
-              : t('mates.alignment.label')}
-          </label>
-          <select
-            id="mate-alignment"
-            className={styles.select}
-            value={alignment}
-            disabled={!canEditMateParams}
-            onChange={(e) => onAlignmentChange(e.target.value as MateAlignment)}
-          >
-            <option value="faceToFace">
-              {matePairKind(entityA!, entityB!) === 'line-line'
-                ? t('mates.alignment.oppositeDirection')
-                : t('mates.alignment.faceToFace')}
-            </option>
-            <option value="sameDirection">
-              {matePairKind(entityA!, entityB!) === 'line-line'
-                ? t('mates.alignment.sameDirectionLine')
-                : t('mates.alignment.sameDirection')}
-            </option>
-          </select>
-        </div>
+      {showOrientationFlip && (
+        <MateFlipSelect
+          flipped={alignment === 'sameDirection'}
+          disabled={!canEditMateParams}
+          onChange={(next) => onAlignmentChange(next ? 'sameDirection' : 'faceToFace')}
+        />
       )}
 
       <div className={styles.fieldRow}>
@@ -116,14 +96,17 @@ export function ParallelMateControls({
             onChange={(e) => onOffsetChange(e.target.value)}
           />
           <span className={styles.unit}>mm</span>
+          <label className={styles.flipLabel}>
+            <input
+              type="checkbox"
+              checked={flipped}
+              disabled={!canEditMateParams}
+              onChange={(e) => onFlippedChange(e.target.checked)}
+            />
+            {t('mates.distance.reflect')}
+          </label>
         </div>
       </div>
-
-      <MateFlipSelect
-        flipped={flipped}
-        disabled={!canEditMateParams}
-        onChange={onFlippedChange}
-      />
 
       {activePickSlot && <p className={styles.hint}>{t('mates.pickHint')}</p>}
 

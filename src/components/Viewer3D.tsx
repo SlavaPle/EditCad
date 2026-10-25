@@ -63,6 +63,8 @@ export interface Viewer3DProps {
   ) => readonly PreAssemblyProgramPart[]
   isProgramPartLocked?: (partId: string) => boolean
   matesPickMode?: MatesPickMode
+  /** Detal zajęty drugim slotem mate — bez hover/pick. */
+  matesPickExcludePartId?: string | null
   mateEntityHighlights?: MateEntityHighlights | null
   matesPickSlotRef?: RefObject<MatesPickSlot | null>
   onMateEntityPicked?: (slot: NonNullable<MatesPickMode['slot']>, entity: MateEntityRef) => void
@@ -102,6 +104,7 @@ export function Viewer3D({
   resolveMateFollowers,
   isProgramPartLocked,
   matesPickMode = { active: false, slot: null },
+  matesPickExcludePartId = null,
   mateEntityHighlights = null,
   matesPickSlotRef,
   onMateEntityPicked,
@@ -169,6 +172,7 @@ export function Viewer3D({
             resolveMateFollowers={resolveMateFollowers}
             isProgramPartLocked={isProgramPartLocked}
             matesPickMode={matesPickMode}
+            matesPickExcludePartId={matesPickExcludePartId}
             mateEntityHighlights={mateEntityHighlights}
             matesPickSlotRef={matesPickSlotRef}
             onMateEntityPicked={onMateEntityPicked}

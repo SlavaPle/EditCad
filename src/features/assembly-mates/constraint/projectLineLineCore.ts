@@ -7,6 +7,7 @@ import {
   parallelLinesPerpendicular,
 } from '../lineWorldFrame'
 import type { MateAlignment, MateLineRef } from '../model'
+import { parallelAlignedTarget } from './parallelOrientationTargets'
 import {
   quaternionAlignDirections,
   rotateTransformAroundPivot,
@@ -28,7 +29,7 @@ export type ProjectLineLineInput = {
   offsetMm: number
 }
 
-/** Równoległe linie — zachowuje kąt wokół osi po wyrównaniu kierunku. */
+/** Równoległe linie — absolutny Flip 0/1 względem kierunku A. */
 export function projectLineLine(input: ProjectLineLineInput): ProjectResult {
   const frameA = mateLineWorldFrame(input.geometryA, input.transformA, input.lineA)
   const frameB = mateLineWorldFrame(input.geometryB, input.transformB, input.lineB)
@@ -38,8 +39,7 @@ export function projectLineLine(input: ProjectLineLineInput): ProjectResult {
 
   const dirA = frameA.direction
   const dirB = frameB.direction
-  const targetDirection =
-    input.alignment === 'faceToFace' ? dirA.clone().negate().normalize() : dirA.clone().normalize()
+  const targetDirection = parallelAlignedTarget(dirA, input.alignment)
 
   const pivot = frameB.point.clone()
   let transformB = input.transformB

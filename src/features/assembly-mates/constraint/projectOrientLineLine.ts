@@ -15,6 +15,7 @@ export type ProjectOrientLineLineInput = {
   transformB: PhantomTransform
   angleRad: number
   flipped: boolean
+  invertReference?: boolean
 }
 
 /** Orientacja kierunków linii pod zadanym kątem (bez offsetu). */
@@ -25,9 +26,12 @@ export function projectOrientLineLine(input: ProjectOrientLineLineInput): Projec
     return { ok: false, reason: 'invalidGeometry' }
   }
 
+  const reference = input.invertReference
+    ? frameA.direction.clone().negate()
+    : frameA.direction
   const qAlign = quaternionOrientDirections(
     frameB.direction,
-    frameA.direction,
+    reference,
     input.angleRad,
     input.flipped,
   )

@@ -2,6 +2,7 @@ import type { BufferGeometry } from 'three'
 import type { PhantomTransform } from '../../pre-assembly/model'
 import type { MateAlignment, MatePlaneRef } from '../model'
 import { matePlaneWorldFrame } from '../planeWorldFrame'
+import { parallelAlignedTarget } from './parallelOrientationTargets'
 import {
   quaternionAlignDirections,
   rotateTransformAroundPivot,
@@ -23,7 +24,7 @@ export type ProjectResult =
   | { ok: true; transform: PhantomTransform }
   | { ok: false; reason: 'invalidGeometry' }
 
-/** Równoległe płaszczyzny — minimalna korekta normalnej i odległości. */
+/** Równoległe płaszczyzny — absolutny Flip 0/1 względem normalnej A. */
 export function projectPlanePlane(input: ProjectPlanePlaneInput): ProjectResult {
   const frameA = matePlaneWorldFrame(input.geometryA, input.transformA, input.planeA.faceIndices)
   const frameB = matePlaneWorldFrame(input.geometryB, input.transformB, input.planeB.faceIndices)
@@ -33,14 +34,12 @@ export function projectPlanePlane(input: ProjectPlanePlaneInput): ProjectResult 
 
   const nA = frameA.normal
   const nB = frameB.normal
-  const targetNormal =
-    input.alignment === 'faceToFace' ? nA.clone().negate().normalize() : nA.clone().normalize()
+  const targetNormal = parallelAlignedTarget(nA, input.alignment)
 
   const pivot = frameB.point.clone()
   let transformB = input.transformB
 
-  const dot = nB.dot(targetNormal)
-  if (dot < 1 - 1e-4) {
+  if (nB.dot(targetNormal) < 1 - 1e-4) {
     const qAlign = quaternionAlignDirections(nB, targetNormal)
     transformB = rotateTransformAroundPivot(transformB, pivot, qAlign)
   }

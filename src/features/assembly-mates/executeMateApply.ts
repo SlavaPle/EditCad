@@ -89,7 +89,8 @@ export function executeMateApply(input: ExecuteMateApplyInput): ExecuteMateApply
       geometryB,
       transformA: partA.transform,
       transformB: partB.transform,
-      flipped: draft.flipped,
+      flipped: draft.kind === 'perpendicular' ? draft.flipped : false,
+      alignment: draft.kind === 'angular' ? draft.alignment : undefined,
       angleDeg: draft.kind === 'angular' ? draft.angleDeg : undefined,
     })
   }

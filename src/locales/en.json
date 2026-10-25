@@ -103,11 +103,17 @@
       "line": "Lines"
     },
     "entity": {
+      "selection": "Geometry",
       "first": "First element",
       "second": "Second element",
       "pick": "Pick",
       "redefine": "Redefine",
-      "notSelected": "Not selected"
+      "notSelected": "Not selected",
+      "pickHintShort": "Click in the viewport",
+      "kindEmpty": "Empty",
+      "kindFace": "Face",
+      "kindEdge": "Edge",
+      "kindVertex": "Vertex"
     },
     "face": {
       "summary": "{{name}} · {{count}} faces"
@@ -130,7 +136,10 @@
       "label": "Distance",
       "planeplane": "Distance between planes",
       "lineline": "Distance between lines",
-      "vertexvertex": "Distance between vertices"
+      "planeline": "Distance between plane and line",
+      "lineplane": "Distance between line and plane",
+      "vertexvertex": "Distance between vertices",
+      "reflect": "Reflect size"
     },
     "pickHint": "Click a vertex, edge, or face on a program part in the viewport.",
     "actions": {

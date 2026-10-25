@@ -60,6 +60,7 @@ interface SceneContentProps {
   ) => readonly PreAssemblyProgramPart[]
   isProgramPartLocked?: (partId: string) => boolean
   matesPickMode?: MatesPickMode
+  matesPickExcludePartId?: string | null
   mateEntityHighlights?: MateEntityHighlights | null
   matesPickSlotRef?: RefObject<MatesPickSlot | null>
   onMateEntityPicked?: (slot: NonNullable<MatesPickMode['slot']>, entity: MateEntityRef) => void
@@ -97,6 +98,7 @@ export function SceneContent({
   resolveMateFollowers,
   isProgramPartLocked,
   matesPickMode = { active: false, slot: null },
+  matesPickExcludePartId = null,
   mateEntityHighlights = null,
   matesPickSlotRef,
   onMateEntityPicked,
@@ -126,6 +128,7 @@ export function SceneContent({
           resolveMateFollowers={resolveMateFollowers}
           isPartLocked={isProgramPartLocked}
           matesPickMode={matesPickMode}
+          matesPickExcludePartId={matesPickExcludePartId}
           mateEntityHighlights={mateEntityHighlights}
           matesPickSlotRef={matesPickSlotRef}
           onMateEntityPicked={onMateEntityPicked}

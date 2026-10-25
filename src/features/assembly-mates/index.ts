@@ -18,6 +18,7 @@ export {
   createParallelMateId,
   isMateSuppressed,
   mateEntityKindFromRef,
+  mateKindAvailableForEntities,
   matePairKind,
   matePairSupportsAlignment,
   matePairSupportsOrient,
@@ -139,6 +140,7 @@ export {
   type ExecuteMateApplyReason,
   type ExecuteMateApplyResult,
 } from './executeMateApply'
+export { matePickExcludedPartId, rejectMatePickSamePart } from './rejectMatePickSamePart'
 export {
   applyAssemblyMateConstraints,
   filterAssemblyMatesForPartIds,

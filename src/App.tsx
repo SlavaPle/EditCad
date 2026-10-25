@@ -107,6 +107,8 @@ import {
   mateDraftSetEntity,
   mateDraftUpdateDraft,
   executeMateApply,
+  matePickExcludedPartId,
+  rejectMatePickSamePart,
   validateMateDraft,
   applyAssemblyMateConstraints,
   filterAssemblyMatesForPartIds,
@@ -284,6 +286,10 @@ function App() {
   const matesPickMode: MatesPickMode = matesPopupOpen
     ? { active: true, slot: matesPickSlot }
     : { active: false, slot: null }
+  const matesPickExcludePartId =
+    matesPopupOpen && matesPickSlot
+      ? matePickExcludedPartId(mateDraftSession.draft, matesPickSlot)
+      : null
 
   const mateEntityHighlights = useMemo(() => {
     const popupHighlights = buildMateEntityHighlightsForPopup(
@@ -1870,7 +1876,13 @@ function App() {
 
   const handleMateEntityPicked = useCallback(
     (slot: MatesPickSlot, entity: NonNullable<MateDraftSession['draft']['entityA']>) => {
-      patchMateDraftSession((session) => mateDraftSetEntity(session, slot, entity))
+      const session = mateDraftSessionRef.current
+      const samePart = rejectMatePickSamePart(session.draft, slot, entity)
+      if (samePart) {
+        setMateSolverErrorKey('mates.errors.samePart')
+        return
+      }
+      patchMateDraftSession((s) => mateDraftSetEntity(s, slot, entity))
       setMateSolverErrorKey(null)
       const next = nextMatesPickFlowStep(slot)
       applyMatesPickSlot(next === 'apply' ? null : next)
@@ -2002,8 +2014,10 @@ function App() {
     mateDraftSession.draft.entityA,
     mateDraftSession.draft.entityB,
     mateDraftSession.draft.kind,
-    mateDraftSession.draft.flipped,
-    mateDraftSession.draft.kind === 'parallel' ? mateDraftSession.draft.alignment : null,
+    mateDraftSession.draft.kind === 'perpendicular' ? mateDraftSession.draft.flipped : null,
+    mateDraftSession.draft.kind === 'parallel' || mateDraftSession.draft.kind === 'angular'
+      ? mateDraftSession.draft.alignment
+      : null,
     parsedMateOffsetMm,
     parsedMateAngleDeg,
     mateValidation.ok,
@@ -2170,6 +2184,7 @@ function App() {
             }
             isProgramPartLocked={isProgramPartLocked}
             matesPickMode={matesPickMode}
+            matesPickExcludePartId={matesPickExcludePartId}
             mateEntityHighlights={mateEntityHighlights}
             matesPickSlotRef={matesPickSlotRef}
             onMateEntityPicked={handleMateEntityPicked}

@@ -69,6 +69,8 @@ interface InteractiveProgramPartsLayerProps {
   ) => readonly PreAssemblyProgramPart[]
   isPartLocked?: (partId: string) => boolean
   matesPickMode?: MatesPickMode
+  /** Detal zajęty drugim slotem — bez hover/pick podczas wyboru mate. */
+  matesPickExcludePartId?: string | null
   mateEntityHighlights?: MateEntityHighlights | null
   matesPickSlotRef?: RefObject<MatesPickSlot | null>
   onMateEntityPicked?: (slot: NonNullable<MatesPickMode['slot']>, entity: MateEntityRef) => void
@@ -97,6 +99,7 @@ export function InteractiveProgramPartsLayer({
   resolveMateFollowers,
   isPartLocked,
   matesPickMode = { active: false, slot: null },
+  matesPickExcludePartId = null,
   mateEntityHighlights = null,
   matesPickSlotRef,
   onMateEntityPicked,
@@ -105,7 +108,14 @@ export function InteractiveProgramPartsLayer({
   const { invalidate } = useThree()
   useEffect(() => {
     invalidate()
-  }, [invalidate, matesPickMode.active, matesPickMode.slot, mateEntityHighlights, activePartId])
+  }, [
+    invalidate,
+    matesPickMode.active,
+    matesPickMode.slot,
+    matesPickExcludePartId,
+    mateEntityHighlights,
+    activePartId,
+  ])
 
   const [probableFaces, setProbableFaces] = useState<readonly number[]>([])
   const [transformPreviewTick, setTransformPreviewTick] = useState(0)
@@ -161,6 +171,7 @@ export function InteractiveProgramPartsLayer({
       geometry: BufferGeometry,
       event: ThreeEvent<PointerEvent>,
     ) => {
+      if (matesPickExcludePartId && partId === matesPickExcludePartId) return
       const slot = resolveActiveMatesPickSlot(matesPickSlotRef?.current, matesPickMode.slot)
       const result = pickMateEntityAtPointer({
         partId,
@@ -182,7 +193,7 @@ export function InteractiveProgramPartsLayer({
       event.stopPropagation()
       onMateEntityPicked?.(result.slot, result.entity)
     },
-    [matesPickMode.slot, matesPickSlotRef, onMateEntityPicked],
+    [matesPickExcludePartId, matesPickMode.slot, matesPickSlotRef, onMateEntityPicked],
   )
 
   const partsRootRef = useRef<Group>(null)
@@ -238,6 +249,9 @@ export function InteractiveProgramPartsLayer({
             preAssemblyActive={assemblyInteractionActive}
             matesPickContextActive={matesPickMode.active}
             matesPickActive={matesPickMode.active && matesPickMode.slot !== null}
+            matesPickExcluded={
+              matesPickMode.active && matesPickExcludePartId === part.id
+            }
             isActive={isActive}
             selection={partSelection}
             onSelectionChange={onSelectionChange}
@@ -267,6 +281,7 @@ function InteractiveProgramPart({
   preAssemblyActive,
   matesPickContextActive,
   matesPickActive,
+  matesPickExcluded,
   isActive,
   selection,
   onSelectionChange,
@@ -286,6 +301,7 @@ function InteractiveProgramPart({
   preAssemblyActive: boolean
   matesPickContextActive: boolean
   matesPickActive: boolean
+  matesPickExcluded: boolean
   isActive: boolean
   selection: SelectionState
   onSelectionChange: Dispatch<SetStateAction<SelectionState>>
@@ -317,13 +333,15 @@ function InteractiveProgramPart({
   const position = programPartGroupPosition(displayTransform)
   const rotation = programPartGroupRotation(displayTransform)
   const allowFacePick =
-    (preAssemblyActive && isActive && !matesPickActive) || matesPickActive
+    !matesPickExcluded &&
+    ((preAssemblyActive && isActive && !matesPickActive) || matesPickActive)
   const meshPickOnPointerDown = meshBuiltinFacePickOnPointerDown(allowFacePick, matesPickContextActive)
   const mateFaces = matePlaneHighlightsForPart(part.id, mateEntityHighlights)
   const mateLines = mateLineHighlightsForPart(part.id, mateEntityHighlights)
   const mateVertices = mateVertexHighlightsForPart(part.id, mateEntityHighlights)
 
   const handlePointerDown = (event: ThreeEvent<PointerEvent>) => {
+    if (matesPickExcluded) return
     if (geometry && shouldBeginMatePlanePick(matesPickSlotRef?.current, true)) {
       event.stopPropagation()
       onMatePartPointerDown(part.id, geometry, event)
@@ -348,10 +366,15 @@ function InteractiveProgramPart({
             selectionProximityFilter={selectionProximityFilter}
             onProbableFacesChange={allowFacePick ? onProbableFacesChange : undefined}
             pickOnPointerDown={meshPickOnPointerDown}
+            raycastDisabled={matesPickExcluded}
             onMeshPointerDown={
-              preAssemblyActive || matesPickContextActive ? handlePointerDown : undefined
+              matesPickExcluded
+                ? undefined
+                : preAssemblyActive || matesPickContextActive
+                  ? handlePointerDown
+                  : undefined
             }
-            onMeshContextMenu={onMeshContextMenu}
+            onMeshContextMenu={matesPickExcluded ? undefined : onMeshContextMenu}
           />
           <ActiveProgramPartOutline geometry={geometry} visible={isActive} />
           {mateFaces.planeA && (
@@ -391,8 +414,9 @@ function InteractiveProgramPart({
     <mesh
       position={position}
       rotation={rotation}
-      onPointerDown={handlePointerDown}
-      onContextMenu={onMeshContextMenu}
+      raycast={matesPickExcluded ? () => null : undefined}
+      onPointerDown={matesPickExcluded ? undefined : handlePointerDown}
+      onContextMenu={matesPickExcluded ? undefined : onMeshContextMenu}
     >
       <boxGeometry args={[placeholderSize, placeholderSize, placeholderSize]} />
       <meshStandardMaterial color={placeholderColor} wireframe />

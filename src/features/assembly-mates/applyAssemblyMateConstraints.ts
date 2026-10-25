@@ -52,7 +52,8 @@ function projectMateForAssembly(
     geometryB,
     transformA: partA.transform,
     transformB: seedTransformB ?? partB.transform,
-    flipped: mate.flipped,
+    flipped: mate.kind === 'perpendicular' ? mate.flipped : false,
+    alignment: mate.kind === 'angular' ? mate.alignment : undefined,
     angleDeg: mate.kind === 'angular' ? mate.angleDeg : undefined,
   })
   return projected.ok ? projected.transform : null

@@ -17,6 +17,7 @@ export type ProjectOrientPlaneLineInput = {
   /** Kąt między kierunkiem linii a normalną płaszczyzny. */
   angleRad: number
   flipped: boolean
+  invertReference?: boolean
 }
 
 /** Linia względem płaszczyzny: kąt(dir, normal). */
@@ -27,9 +28,12 @@ export function projectOrientPlaneLine(input: ProjectOrientPlaneLineInput): Proj
     return { ok: false, reason: 'invalidGeometry' }
   }
 
+  const reference = input.invertReference
+    ? planeFrame.normal.clone().negate()
+    : planeFrame.normal
   const qAlign = quaternionOrientDirections(
     lineFrame.direction,
-    planeFrame.normal,
+    reference,
     input.angleRad,
     input.flipped,
   )
@@ -46,6 +50,7 @@ export type ProjectOrientLinePlaneInput = {
   transformB: PhantomTransform
   angleRad: number
   flipped: boolean
+  invertReference?: boolean
 }
 
 /** Płaszczyzna względem linii: kąt(normal, dir). */
@@ -56,9 +61,12 @@ export function projectOrientLinePlane(input: ProjectOrientLinePlaneInput): Proj
     return { ok: false, reason: 'invalidGeometry' }
   }
 
+  const reference = input.invertReference
+    ? lineFrame.direction.clone().negate()
+    : lineFrame.direction
   const qAlign = quaternionOrientDirections(
     planeFrame.normal,
-    lineFrame.direction,
+    reference,
     input.angleRad,
     input.flipped,
   )

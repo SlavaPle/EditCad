@@ -1,6 +1,6 @@
 import type { BufferGeometry } from 'three'
 import type { PhantomTransform } from '../../pre-assembly/model'
-import type { MateEntityRef, MateKind } from '../model'
+import type { MateAlignment, MateEntityRef, MateKind } from '../model'
 import { matePairKind, matePairSupportsOrient } from '../model'
 import { asMateLineRef, asMatePlaneRef } from '../mateEntityRef'
 import { projectOrientPlanePlane } from './projectOrientPlanePlane'
@@ -17,7 +17,10 @@ export type OrientMateProjectInput = {
   geometryB: BufferGeometry
   transformA: PhantomTransform
   transformB: PhantomTransform
+  /** Perpendicular: rozwiązanie 0/1. Angular: ignorowane (używa alignment). */
   flipped: boolean
+  /** Angular: faceToFace = odniesienie −dirA; sameDirection = +dirA. */
+  alignment?: MateAlignment
   /** Wymagane dla angular; dla perpendicular pomijane (90° / 0° plane-line). */
   angleDeg?: number
 }
@@ -55,13 +58,20 @@ export function projectOrientMateConstraint(input: OrientMateProjectInput): Orie
     return { ok: false, reason: 'unsupportedPair' }
   }
 
+  // Angular: alignment jak parallel (faceToFace = względem przeciwnego kierunku A).
+  // Perpendicular: absolutne flipped 0/1.
+  const invertReference =
+    input.kind === 'angular' && (input.alignment ?? 'faceToFace') === 'faceToFace'
+  const flipped = input.kind === 'angular' ? false : input.flipped
+
   const common = {
     geometryA: input.geometryA,
     geometryB: input.geometryB,
     transformA: input.transformA,
     transformB: input.transformB,
     angleRad,
-    flipped: input.flipped,
+    flipped,
+    invertReference,
   }
 
   switch (pair) {

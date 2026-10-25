@@ -1,6 +1,10 @@
 import { useTranslation } from 'react-i18next'
 import type { MateDraftSession } from '../../features/assembly-mates/mateDraft'
-import type { MateAlignment, MateKind } from '../../features/assembly-mates/model'
+import {
+  mateKindAvailableForEntities,
+  type MateAlignment,
+  type MateKind,
+} from '../../features/assembly-mates/model'
 import type { MatesPickSlot } from '../../features/assembly-mates/matesPickMode'
 import { AngularMateControls } from './AngularMateControls'
 import { AngularMateTypeIcon } from './AngularMateTypeIcon'
@@ -53,7 +57,6 @@ export function MatesPopup({
   const { t } = useTranslation()
   const { draft, applyState } = session
   const { position, dragging, onHeaderPointerDown } = useMatesPopupDrag()
-  const kindLocked = applyState === 'applied'
 
   return (
     <div className={styles.overlay} role="presentation">
@@ -81,23 +84,34 @@ export function MatesPopup({
         </div>
         <div className={styles.body}>
           <div className={styles.typeList} role="listbox" aria-label={t('mates.popup.title')}>
-            {MATE_KINDS.map((kind) => (
-              <button
-                key={kind}
-                type="button"
-                role="option"
-                className={`${styles.typeBtn} ${draft.kind === kind ? styles.typeBtnActive : ''}`}
-                aria-selected={draft.kind === kind}
-                aria-pressed={draft.kind === kind}
-                disabled={kindLocked && draft.kind !== kind}
-                onClick={() => onKindChange(kind)}
-              >
-                {kind === 'parallel' && <ParallelMateTypeIcon />}
-                {kind === 'perpendicular' && <PerpendicularMateTypeIcon />}
-                {kind === 'angular' && <AngularMateTypeIcon />}
-                {t(`mates.types.${kind}`)}
-              </button>
-            ))}
+            {MATE_KINDS.map((kind) => {
+              const kindAvailable = mateKindAvailableForEntities(
+                kind,
+                draft.entityA,
+                draft.entityB,
+              )
+              return (
+                <button
+                  key={kind}
+                  type="button"
+                  role="option"
+                  disabled={!kindAvailable}
+                  className={`${styles.typeBtn} ${draft.kind === kind ? styles.typeBtnActive : ''} ${!kindAvailable ? styles.typeBtnDisabled : ''}`}
+                  aria-selected={draft.kind === kind}
+                  aria-pressed={draft.kind === kind}
+                  aria-disabled={!kindAvailable}
+                  onClick={() => {
+                    if (!kindAvailable) return
+                    onKindChange(kind)
+                  }}
+                >
+                  {kind === 'parallel' && <ParallelMateTypeIcon />}
+                  {kind === 'perpendicular' && <PerpendicularMateTypeIcon />}
+                  {kind === 'angular' && <AngularMateTypeIcon />}
+                  {t(`mates.types.${kind}`)}
+                </button>
+              )
+            })}
           </div>
           {draft.kind === 'parallel' && (
             <ParallelMateControls
@@ -140,14 +154,14 @@ export function MatesPopup({
               entityA={draft.entityA}
               entityB={draft.entityB}
               angleDeg={angleInput}
-              flipped={draft.flipped}
+              alignment={draft.alignment}
               applyState={applyState}
               activePickSlot={activePickSlot}
               partNameById={partNameById}
               solverErrorKey={solverErrorKey}
               canSave={canSave}
               onAngleChange={onAngleChange}
-              onFlippedChange={onFlippedChange}
+              onAlignmentChange={onAlignmentChange}
               onStartPick={onStartPick}
               onSave={onSave}
               onSaveAndClose={onSaveAndClose}

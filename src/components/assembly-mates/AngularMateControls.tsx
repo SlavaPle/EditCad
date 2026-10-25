@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import type { MateEntityRef } from '../../features/assembly-mates/model'
+import type { MateAlignment, MateEntityRef } from '../../features/assembly-mates/model'
 import type { MatesPickSlot } from '../../features/assembly-mates/matesPickMode'
 import type { MateDraftApplyState } from '../../features/assembly-mates/mateDraft'
 import { MateEntityPickRows } from './MateEntityPickRows'
@@ -10,14 +10,14 @@ export type AngularMateControlsProps = {
   entityA: MateEntityRef | null
   entityB: MateEntityRef | null
   angleDeg: string
-  flipped: boolean
+  alignment: MateAlignment
   applyState: MateDraftApplyState
   activePickSlot: MatesPickSlot | null
   partNameById: Readonly<Record<string, string>>
   solverErrorKey: string | null
   canSave: boolean
   onAngleChange: (value: string) => void
-  onFlippedChange: (flipped: boolean) => void
+  onAlignmentChange: (alignment: MateAlignment) => void
   onStartPick: (slot: MatesPickSlot) => void
   onSave: () => void
   onSaveAndClose: () => void
@@ -27,14 +27,14 @@ export function AngularMateControls({
   entityA,
   entityB,
   angleDeg,
-  flipped,
+  alignment,
   applyState,
   activePickSlot,
   partNameById,
   solverErrorKey,
   canSave,
   onAngleChange,
-  onFlippedChange,
+  onAlignmentChange,
   onStartPick,
   onSave,
   onSaveAndClose,
@@ -72,9 +72,11 @@ export function AngularMateControls({
       </div>
 
       <MateFlipSelect
-        flipped={flipped}
+        flipped={alignment === 'sameDirection'}
         disabled={!canEditMateParams}
-        onChange={onFlippedChange}
+        onChange={(flipped) =>
+          onAlignmentChange(flipped ? 'sameDirection' : 'faceToFace')
+        }
       />
 
       {activePickSlot && <p className={styles.hint}>{t('mates.pickHint')}</p>}

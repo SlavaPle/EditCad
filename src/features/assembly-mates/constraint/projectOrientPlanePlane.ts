@@ -14,6 +14,8 @@ export type ProjectOrientPlanePlaneInput = {
   transformB: PhantomTransform
   angleRad: number
   flipped: boolean
+  /** faceToFace dla angular — odniesienie −normalA. */
+  invertReference?: boolean
 }
 
 export type ProjectOrientResult =
@@ -28,9 +30,10 @@ export function projectOrientPlanePlane(input: ProjectOrientPlanePlaneInput): Pr
     return { ok: false, reason: 'invalidGeometry' }
   }
 
+  const reference = input.invertReference ? frameA.normal.clone().negate() : frameA.normal
   const qAlign = quaternionOrientDirections(
     frameB.normal,
-    frameA.normal,
+    reference,
     input.angleRad,
     input.flipped,
   )

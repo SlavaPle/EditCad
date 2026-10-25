@@ -65,7 +65,8 @@ export type AngularMate = {
   entityA: MateEntityRef
   entityB: MateEntityRef
   angleDeg: number
-  flipped: boolean
+  /** Jak parallel: faceToFace mierzy względem −nA / −dirA. */
+  alignment: MateAlignment
   suppressed?: boolean
 }
 
@@ -97,6 +98,22 @@ export function matePairSupportsOrient(pair: MatePairKind): boolean {
     pair === 'plane-line' ||
     pair === 'line-plane'
   )
+}
+
+/**
+ * Czy dany kind jest dostępny przy wybranych encjach.
+ * Wierzchołek — tylko parallel (orientacja nie ma sensu).
+ */
+export function mateKindAvailableForEntities(
+  kind: MateKind,
+  entityA: MateEntityRef | null | undefined,
+  entityB: MateEntityRef | null | undefined,
+): boolean {
+  if (kind === 'parallel') return true
+  const hasVertex =
+    (entityA != null && mateEntityKindFromRef(entityA) === 'vertex') ||
+    (entityB != null && mateEntityKindFromRef(entityB) === 'vertex')
+  return !hasVertex
 }
 
 /** Znakowany offset: flipped odwraca stronę przy nieujemnym offsetMm. */
@@ -182,7 +199,11 @@ export function validateAngularMate(value: unknown): value is AngularMate {
   const v = value as Record<string, unknown>
   if (v.kind !== 'angular') return false
   if (typeof v.id !== 'string' || v.id.trim().length === 0) return false
-  if (typeof v.flipped !== 'boolean') return false
+  // Legacy: flipped boolean → alignment; nowe pliki mają alignment
+  const hasAlignment = v.alignment === 'faceToFace' || v.alignment === 'sameDirection'
+  const hasLegacyFlip = typeof v.flipped === 'boolean'
+  if (!hasAlignment && !hasLegacyFlip) return false
+  if (hasAlignment === false && v.alignment !== undefined) return false
   if (typeof v.angleDeg !== 'number' || !Number.isFinite(v.angleDeg)) return false
   if (!validateMateEntityRef(v.entityA) || !validateMateEntityRef(v.entityB)) return false
   if (v.suppressed !== undefined && typeof v.suppressed !== 'boolean') return false
@@ -248,13 +269,19 @@ export function normalizePerpendicularMate(
 
 export function normalizeAngularMate(value: AngularMate | Record<string, unknown>): AngularMate {
   const v = value as Record<string, unknown>
+  let alignment: MateAlignment =
+    v.alignment === 'sameDirection' ? 'sameDirection' : 'faceToFace'
+  // Migracja krótkiego okresu z flipped na alignment
+  if (v.alignment !== 'faceToFace' && v.alignment !== 'sameDirection' && v.flipped === true) {
+    alignment = 'sameDirection'
+  }
   const mate: AngularMate = {
     id: String(v.id),
     kind: 'angular',
     entityA: v.entityA as MateEntityRef,
     entityB: v.entityB as MateEntityRef,
     angleDeg: Number(v.angleDeg),
-    flipped: v.flipped === true,
+    alignment,
   }
   if (v.suppressed === true) mate.suppressed = true
   return mate
@@ -267,7 +294,12 @@ export function normalizeAssemblyMate(value: AssemblyMate | Record<string, unkno
   return normalizeParallelMate(v)
 }
 
-/** Czy para obsługuje wybór alignment (normale / kierunki). */
+/** Czy para obsługuje Flip orientacji (normale / kierunki). */
 export function matePairSupportsAlignment(pair: MatePairKind): boolean {
-  return pair === 'plane-plane' || pair === 'line-line'
+  return (
+    pair === 'plane-plane' ||
+    pair === 'line-line' ||
+    pair === 'plane-line' ||
+    pair === 'line-plane'
+  )
 }

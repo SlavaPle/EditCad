@@ -8,7 +8,7 @@ import {
   type MateDraft,
   type ParallelMateDraft,
 } from './store'
-import type { MateEntityRef, MateKind } from './model'
+import { mateKindAvailableForEntities, type MateEntityRef, type MateKind } from './model'
 
 export type MateDraftApplyState = 'idle' | 'applied'
 
@@ -110,12 +110,34 @@ export type MateDraftPatch = {
   angleDeg?: number
 }
 
+function coerceMateDraftKindForEntities(session: MateDraftSession): MateDraftSession {
+  if (
+    mateKindAvailableForEntities(
+      session.draft.kind,
+      session.draft.entityA,
+      session.draft.entityB,
+    )
+  ) {
+    return session
+  }
+  return {
+    ...session,
+    draft: mateDraftWithKind(session.draft, 'parallel'),
+  }
+}
+
 export function mateDraftUpdateDraft(
   session: MateDraftSession,
   patch: MateDraftPatch,
 ): MateDraftSession {
   if (patch.kind !== undefined && patch.kind !== session.draft.kind) {
-    if (session.applyState === 'applied') return session
+    // Wierzchołek: tylko parallel — ignoruj niedozwolony kind
+    if (
+      !mateKindAvailableForEntities(patch.kind, session.draft.entityA, session.draft.entityB)
+    ) {
+      return session
+    }
+    // Pozwalaj zmieniać typ także w trakcie pick / live preview
     return {
       ...session,
       draft: mateDraftWithKind(session.draft, patch.kind),
@@ -123,33 +145,40 @@ export function mateDraftUpdateDraft(
   }
 
   if (session.applyState === 'applied') {
-    const livePatch: Partial<Record<LivePatchKeys, unknown>> = {}
-    if (patch.alignment !== undefined && session.draft.kind === 'parallel') {
+    const livePatch: Partial<Record<LivePatchKeys | 'entityA' | 'entityB', unknown>> = {}
+    if (patch.entityA !== undefined) livePatch.entityA = patch.entityA
+    if (patch.entityB !== undefined) livePatch.entityB = patch.entityB
+    if (
+      patch.alignment !== undefined &&
+      (session.draft.kind === 'parallel' || session.draft.kind === 'angular')
+    ) {
       livePatch.alignment = patch.alignment
     }
     if (patch.offsetMm !== undefined && session.draft.kind === 'parallel') {
       livePatch.offsetMm = patch.offsetMm
     }
-    if (patch.flipped !== undefined) livePatch.flipped = patch.flipped
+    if (patch.flipped !== undefined && session.draft.kind !== 'angular') {
+      livePatch.flipped = patch.flipped
+    }
     if (patch.angleDeg !== undefined && session.draft.kind === 'angular') {
       livePatch.angleDeg = patch.angleDeg
     }
     if (Object.keys(livePatch).length === 0) return session
-    return {
+    return coerceMateDraftKindForEntities({
       ...session,
       draft: {
         ...session.draft,
         ...livePatch,
       } as MateDraft,
-    }
+    })
   }
-  return {
+  return coerceMateDraftKindForEntities({
     ...session,
     draft: {
       ...session.draft,
       ...patch,
     } as MateDraft,
-  }
+  })
 }
 
 export function mateDraftSetEntity(
@@ -157,7 +186,7 @@ export function mateDraftSetEntity(
   slot: 'entityA' | 'entityB',
   entity: MateEntityRef | null,
 ): MateDraftSession {
-  if (session.applyState === 'applied') return session
+  // Przewybór geometrii dozwolony także po live preview
   return mateDraftUpdateDraft(session, { [slot]: entity })
 }
 

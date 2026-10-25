@@ -111,9 +111,17 @@
   color: #f1f5f9;
 }
 
+.typeBtnDisabled,
 .typeBtn:disabled {
-  opacity: 0.4;
+  opacity: 0.35;
   cursor: not-allowed;
+  pointer-events: none;
+}
+
+.typeBtnDisabled:hover,
+.typeBtn:disabled:hover {
+  background: transparent;
+  border-color: transparent;
 }
 
 .typeBtn :global(.matesTypeIconSvg) {
@@ -128,47 +136,149 @@
   gap: 12px;
 }
 
-.planeRow {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
 .planeLabel {
   font-size: 0.75rem;
   color: #94a3b8;
 }
 
-.planeSummary {
-  font-size: 0.8125rem;
-  color: #e2e8f0;
-  min-height: 1.25rem;
+.entitySlots {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.planeSummaryMuted {
+.entitySlotsHeader {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: #64748b;
+}
+
+.entitySlot {
+  display: grid;
+  grid-template-columns: 22px 28px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #334155;
+  background: #0f172a;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+
+.entitySlotEmpty {
+  border-style: dashed;
+  border-color: #475569;
+  background: transparent;
+}
+
+.entitySlotActive {
+  border-color: #3b82f6;
+  border-style: solid;
+  background: #172554;
+  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.35);
+}
+
+.entitySlotIndex {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  background: #1e293b;
+  color: #94a3b8;
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.entitySlotActive .entitySlotIndex {
+  background: #1d4ed8;
+  color: #eff6ff;
+}
+
+.entitySlotIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+}
+
+.entitySlotActive .entitySlotIcon,
+.entitySlot:not(.entitySlotEmpty) .entitySlotIcon {
+  color: #93c5fd;
+}
+
+.entityGlyph {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.entitySlotBody {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.entitySlotKind {
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.entitySlotTitle {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #f1f5f9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.entitySlotTitleMuted {
+  color: #64748b;
+  font-weight: 400;
   font-style: italic;
 }
 
-.pickBtn {
-  align-self: flex-start;
-  padding: 5px 10px;
+.entitySlotMeta {
+  font-size: 0.6875rem;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.entitySlotPick {
+  padding: 5px 9px;
   border-radius: 4px;
   border: 1px solid #475569;
-  background: #0f172a;
+  background: #1e293b;
   color: #e2e8f0;
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   cursor: pointer;
+  white-space: nowrap;
 }
 
-.pickBtn:hover {
+.entitySlotPick:hover:not(:disabled) {
   border-color: #64748b;
+  background: #334155;
 }
 
-.pickBtnActive {
-  border-color: #3b82f6;
-  background: #172554;
-  color: #bfdbfe;
+.entitySlotPickActive {
+  border-color: #60a5fa;
+  background: #1e3a8a;
+  color: #dbeafe;
+}
+
+.entitySlotPick:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .fieldRow {
@@ -206,6 +316,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .unit {
