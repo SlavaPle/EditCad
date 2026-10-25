@@ -5,6 +5,7 @@ export type {
   MateEntityKind,
   MateEntityRef,
   MateKind,
+  MateEllipseCenterRef,
   MateEllipseRef,
   MateLineRef,
   MatePairKind,
@@ -28,8 +29,11 @@ export {
   signedMateOffsetMm,
   validateAngularMate,
   validateAssemblyMate,
+  validateMateEllipseCenterRef,
   validateMateEllipseRef,
   validateMateEntityRef,
+  mateEntityIsPointLike,
+  matePairKindForConstraint,
   validateMateLineRef,
   validateMatePlaneRef,
   validateMateVertexRef,
@@ -44,6 +48,11 @@ export {
   captureMateEllipseFromVertex,
   type CaptureMateEllipseResult,
 } from './captureMateEllipse'
+export {
+  captureMateEllipseCenterAtLocalPoint,
+  type CaptureMateEllipseCenterResult,
+} from './captureMateEllipseCenter'
+export { mateEllipseCenterWorldFrame } from './ellipseCenterWorldFrame'
 export {
   addAssemblyMate,
   angularMateFromDraft,
@@ -73,10 +82,12 @@ export {
   mateEntityKind,
   mateEntityPartId,
   mateEntityRefsMatch,
+  isMateEllipseCenterRef,
   isMateEllipseRef,
   isMateLineRef,
   isMatePlaneEntityRef,
   isMateVertexRef,
+  asMateEllipseCenterRef,
   asMateEllipseRef,
   asMateVertexRef,
 } from './mateEntityRef'

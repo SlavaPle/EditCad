@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import type { MateEntityRef } from '../../features/assembly-mates/model'
 import {
+  isMateEllipseCenterRef,
   isMateEllipseRef,
   isMateLineRef,
   isMatePlaneEntityRef,
@@ -97,6 +98,7 @@ function EmptyGlyph() {
 
 function entityGlyph(entity: MateEntityRef | null) {
   if (!entity) return <EmptyGlyph />
+  if (isMateEllipseCenterRef(entity)) return <VertexGlyph />
   if (isMateVertexRef(entity)) return <VertexGlyph />
   if (isMateEllipseRef(entity)) return <EllipseGlyph />
   if (isMateLineRef(entity)) return <EdgeGlyph />
@@ -106,6 +108,7 @@ function entityGlyph(entity: MateEntityRef | null) {
 
 function entityKindLabel(entity: MateEntityRef | null, t: (key: string) => string): string {
   if (!entity) return t('mates.entity.kindEmpty')
+  if (isMateEllipseCenterRef(entity)) return t('mates.entity.kindEllipseCenter')
   if (isMateVertexRef(entity)) return t('mates.entity.kindVertex')
   if (isMateEllipseRef(entity)) return t('mates.entity.kindEllipse')
   if (isMateLineRef(entity)) return t('mates.entity.kindEdge')

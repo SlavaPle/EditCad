@@ -3,8 +3,21 @@ import {
   BufferGeometry,
   type InterleavedBufferAttribute,
 } from 'three'
-import type { MateEllipseRef, MateEntityRef, MateLineRef, MatePlaneRef, MateVertexRef } from './model'
-import { asMateEllipseRef, asMateLineRef, asMatePlaneRef, asMateVertexRef } from './mateEntityRef'
+import type {
+  MateEllipseCenterRef,
+  MateEllipseRef,
+  MateEntityRef,
+  MateLineRef,
+  MatePlaneRef,
+  MateVertexRef,
+} from './model'
+import {
+  asMateEllipseCenterRef,
+  asMateEllipseRef,
+  asMateLineRef,
+  asMatePlaneRef,
+  asMateVertexRef,
+} from './mateEntityRef'
 
 export type MatePlaneHighlights = {
   planeA: MatePlaneRef | null
@@ -180,6 +193,21 @@ export function mateEllipseHighlightsForPart(
   return {
     ellipseA: ellipseA?.partId === partId ? ellipseA : null,
     ellipseB: ellipseB?.partId === partId ? ellipseB : null,
+  }
+}
+
+export function mateEllipseCenterHighlightsForPart(
+  partId: string,
+  highlights: MateEntityHighlights | null | undefined,
+): { centerA: MateEllipseCenterRef | null; centerB: MateEllipseCenterRef | null } {
+  if (!highlights) {
+    return { centerA: null, centerB: null }
+  }
+  const centerA = highlights.entityA ? asMateEllipseCenterRef(highlights.entityA) : null
+  const centerB = highlights.entityB ? asMateEllipseCenterRef(highlights.entityB) : null
+  return {
+    centerA: centerA?.partId === partId ? centerA : null,
+    centerB: centerB?.partId === partId ? centerB : null,
   }
 }
 

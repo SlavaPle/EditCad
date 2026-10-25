@@ -29,8 +29,10 @@ import type { MateEntityHighlights } from '../../assembly-mates/matePlaneFaceOve
 import { MatePlaneFaceOverlay } from '../../assembly-mates/matePlaneFaceOverlayView'
 import { MateLineOverlay } from '../../assembly-mates/mateLineOverlayView'
 import { MateEllipseOverlay } from '../../assembly-mates/mateEllipseOverlayView'
+import { MateEllipseCenterOverlay } from '../../assembly-mates/mateEllipseCenterOverlayView'
 import { MateVertexOverlay } from '../../assembly-mates/mateVertexOverlayView'
 import {
+  mateEllipseCenterHighlightsForPart,
   mateEllipseHighlightsForPart,
   mateLineHighlightsForPart,
   matePlaneHighlightsForPart,
@@ -341,6 +343,7 @@ function InteractiveProgramPart({
   const mateLines = mateLineHighlightsForPart(part.id, mateEntityHighlights)
   const mateVertices = mateVertexHighlightsForPart(part.id, mateEntityHighlights)
   const mateEllipses = mateEllipseHighlightsForPart(part.id, mateEntityHighlights)
+  const mateEllipseCenters = mateEllipseCenterHighlightsForPart(part.id, mateEntityHighlights)
 
   const handlePointerDown = (event: ThreeEvent<PointerEvent>) => {
     if (matesPickExcluded) return
@@ -419,6 +422,20 @@ function InteractiveProgramPart({
             <MateEllipseOverlay
               geometry={geometry}
               ellipse={mateEllipses.ellipseB}
+              variant="planeB"
+            />
+          )}
+          {mateEllipseCenters.centerA && (
+            <MateEllipseCenterOverlay
+              geometry={geometry}
+              center={mateEllipseCenters.centerA}
+              variant="planeA"
+            />
+          )}
+          {mateEllipseCenters.centerB && (
+            <MateEllipseCenterOverlay
+              geometry={geometry}
+              center={mateEllipseCenters.centerB}
               variant="planeB"
             />
           )}

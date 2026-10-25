@@ -969,3 +969,47 @@ export function ellipseChainToSegmentPositions(
 export function ellipseCenterToVector3(center: [number, number, number], target = new Vector3()): Vector3 {
   return target.set(center[0], center[1], center[2])
 }
+
+export type EllipseCenterLocal = {
+  center: [number, number, number]
+  radiusA: number
+  radiusB: number
+  isCircle: boolean
+}
+
+/** Fit środka z już wybranego łańcucha (overlay / pick centrum). */
+export function ellipseCenterFromVertexChain(
+  geometry: BufferGeometry,
+  vertexIndices: readonly number[],
+): EllipseCenterLocal | null {
+  const position = geometry.getAttribute('position')
+  if (!position || vertexIndices.length < MIN_ELLIPSE_POINTS) return null
+  for (const i of vertexIndices) {
+    if (i < 0 || i >= position.count) return null
+  }
+  const fitted = fitChainEllipse(vertexIndices, position)
+  if (!fitted) return null
+  return {
+    center: fitted.center,
+    radiusA: fitted.radiusA,
+    radiusB: fitted.radiusB,
+    isCircle: fitted.isCircle,
+  }
+}
+
+/**
+ * Czy lokalny punkt kliknięcia jest bliżej środka łuku niż typowy „promień” picka.
+ * Używane zanim zdecydujemy: elipsa vs centrum.
+ */
+export function isLocalPointNearEllipseCenter(
+  localPoint: { x: number; y: number; z: number },
+  center: EllipseCenterLocal,
+  factor = 0.22,
+): boolean {
+  const meanR = (center.radiusA + center.radiusB) * 0.5
+  const tol = Math.max(meanR * factor, 1e-4)
+  const dx = localPoint.x - center.center[0]
+  const dy = localPoint.y - center.center[1]
+  const dz = localPoint.z - center.center[2]
+  return Math.hypot(dx, dy, dz) <= tol
+}

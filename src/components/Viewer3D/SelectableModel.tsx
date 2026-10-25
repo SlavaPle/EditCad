@@ -17,6 +17,7 @@ import {
   pickMeshElementAtPointer,
 } from '../../features/model-selection/pickMeshElement'
 import {
+  ellipseCenterFromVertexChain,
   ellipseChainToSegmentPositions,
   trySelectEllipseFromEdge,
   trySelectEllipseFromVertex,
@@ -59,6 +60,8 @@ type HoverState =
       /** Podgląd łuku/elipsy (na żywo przy mates pick). */
       polyline?: readonly number[]
       closed?: boolean
+      /** Środek dopasowanej elipsy (lokalnie). */
+      center?: readonly [number, number, number]
     }
   | { type: 'vertex'; index: number }
 
@@ -73,7 +76,12 @@ function sameHover(a: HoverState, b: HoverState): boolean {
     if (!pa && !pb) return true
     if (!pa || !pb || pa.length !== pb.length) return false
     if ((a.closed ?? false) !== (b.closed ?? false)) return false
-    return pa.every((v, i) => v === pb[i])
+    if (!pa.every((v, i) => v === pb[i])) return false
+    const ca = a.center
+    const cb = b.center
+    if (!ca && !cb) return true
+    if (!ca || !cb) return false
+    return ca[0] === cb[0] && ca[1] === cb[1] && ca[2] === cb[2]
   }
   if (a.type === 'faces' && b.type === 'faces') {
     if (a.indices.length !== b.indices.length) return false
@@ -272,12 +280,14 @@ export function SelectableModel({
               ? trySelectEllipseFromVertex(model, pick.index)
               : trySelectEllipseNearFace(model, fi)
         if (arc && arc.vertexIndices.length >= 2) {
+          const fitted = ellipseCenterFromVertexChain(model, arc.vertexIndices)
           return {
             type: 'edge',
             a: arc.vertexIndices[0]!,
             b: arc.vertexIndices[1]!,
             polyline: arc.vertexIndices,
             closed: arc.closed,
+            center: fitted?.center,
           }
         }
       }
@@ -456,6 +466,12 @@ export function SelectableModel({
   }, [model, geometryRevision, hover])
 
   const hoverVertexGeometry = useMemo(() => {
+    if (hover.type === 'edge' && hover.center) {
+      const arr = new Float32Array([hover.center[0], hover.center[1], hover.center[2]])
+      const geo = new BufferGeometry()
+      geo.setAttribute('position', new BufferAttribute(arr, 3))
+      return geo
+    }
     if (hover.type !== 'vertex') return null
     const position = model.getAttribute('position')
     if (!position) return null

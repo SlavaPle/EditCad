@@ -1,6 +1,8 @@
 import { BufferGeometry, Float32BufferAttribute } from 'three'
 import { describe, expect, it } from 'vitest'
 import {
+  ellipseCenterFromVertexChain,
+  isLocalPointNearEllipseCenter,
   trySelectEllipseFromEdge,
   trySelectEllipseFromVertex,
   trySelectEllipseNearFace,
@@ -196,5 +198,17 @@ describe('trySelectEllipseFromEdge', () => {
       expect(Math.abs(x - farX)).toBeGreaterThan(1)
       expect(Math.abs(x - midX)).toBeGreaterThan(1)
     }
+  })
+
+  it('ellipseCenterFromVertexChain returns near-origin center for regular polygon', () => {
+    const geo = regularPolygonGeometry(20, 5)
+    const selected = trySelectEllipseFromEdge(geo, 1, 2)
+    expect(selected).not.toBeNull()
+    const fitted = ellipseCenterFromVertexChain(geo, selected!.vertexIndices)
+    expect(fitted).not.toBeNull()
+    expect(fitted!.center[0]).toBeCloseTo(0, 0)
+    expect(fitted!.center[1]).toBeCloseTo(0, 0)
+    expect(isLocalPointNearEllipseCenter({ x: 0, y: 0, z: 0 }, fitted!)).toBe(true)
+    expect(isLocalPointNearEllipseCenter({ x: 5, y: 0, z: 0 }, fitted!)).toBe(false)
   })
 })

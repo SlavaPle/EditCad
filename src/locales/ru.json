@@ -114,7 +114,8 @@
       "kindFace": "Грань",
       "kindEdge": "Ребро",
       "kindVertex": "Вершина",
-      "kindEllipse": "Эллипс / окружность"
+      "kindEllipse": "Эллипс / окружность",
+      "kindEllipseCenter": "Центр дуги"
     },
     "face": {
       "summary": "{{name}} · {{count}} граней"
@@ -127,6 +128,9 @@
     },
     "ellipse": {
       "summary": "{{name}} · эллипс"
+    },
+    "ellipseCenter": {
+      "summary": "{{name}} · центр дуги"
     },
     "alignment": {
       "label": "Способ совмещения",

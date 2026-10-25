@@ -4,7 +4,7 @@ export type MateKind = 'parallel' | 'perpendicular' | 'angular'
 /** Sposób zorientowania równoległych płaszczyzn / linii. */
 export type MateAlignment = 'faceToFace' | 'sameDirection'
 
-export type MateEntityKind = 'plane' | 'line' | 'vertex' | 'ellipse'
+export type MateEntityKind = 'plane' | 'line' | 'vertex' | 'ellipse' | 'ellipseCenter'
 
 export type MatePairKind = `${MateEntityKind}-${MateEntityKind}`
 
@@ -46,7 +46,23 @@ export type MateEllipseRef = {
   closed: boolean
 }
 
-export type MateEntityRef = MatePlaneRef | MateLineRef | MateVertexRef | MateEllipseRef
+/**
+ * Środek łuku/okręgu/elipsy — punkt wyliczany z tego samego łańcucha co ellipse.
+ * Po stretch fit jest ponawiany z vertexIndices.
+ */
+export type MateEllipseCenterRef = {
+  kind: 'ellipseCenter'
+  partId: string
+  vertexIndices: number[]
+  closed: boolean
+}
+
+export type MateEntityRef =
+  | MatePlaneRef
+  | MateLineRef
+  | MateVertexRef
+  | MateEllipseRef
+  | MateEllipseCenterRef
 
 export type ParallelMate = {
   id: string
@@ -96,7 +112,23 @@ export function mateEntityKindFromRef(ref: MateEntityRef): MateEntityKind {
   if (ref.kind === 'line') return 'line'
   if (ref.kind === 'vertex') return 'vertex'
   if (ref.kind === 'ellipse') return 'ellipse'
+  if (ref.kind === 'ellipseCenter') return 'ellipseCenter'
   return 'plane'
+}
+
+/** Punktowa encja (wierzchołek siatki lub środek łuku) — do par constraint jak vertex. */
+export function mateEntityIsPointLike(ref: MateEntityRef): boolean {
+  const k = mateEntityKindFromRef(ref)
+  return k === 'vertex' || k === 'ellipseCenter'
+}
+
+/** Kind pary z mapowaniem ellipseCenter → vertex (te same solvery odległości). */
+export function matePairKindForConstraint(entityA: MateEntityRef, entityB: MateEntityRef): MatePairKind {
+  const map = (ref: MateEntityRef): MateEntityKind => {
+    const k = mateEntityKindFromRef(ref)
+    return k === 'ellipseCenter' ? 'vertex' : k
+  }
+  return `${map(entityA)}-${map(entityB)}`
 }
 
 export function matePairKind(entityA: MateEntityRef, entityB: MateEntityRef): MatePairKind {
@@ -126,7 +158,7 @@ export function mateKindAvailableForEntities(
   const restrictOrient = (ref: MateEntityRef | null | undefined) => {
     if (!ref) return false
     const k = mateEntityKindFromRef(ref)
-    return k === 'vertex' || k === 'ellipse'
+    return k === 'vertex' || k === 'ellipse' || k === 'ellipseCenter'
   }
   return !restrictOrient(entityA) && !restrictOrient(entityB)
 }
@@ -140,7 +172,14 @@ export function signedMateOffsetMm(offsetMm: number, flipped: boolean | undefine
 export function validateMatePlaneRef(value: unknown): value is MatePlaneRef {
   if (typeof value !== 'object' || value === null) return false
   const v = value as Record<string, unknown>
-  if (v.kind === 'line' || v.kind === 'vertex' || v.kind === 'ellipse') return false
+  if (
+    v.kind === 'line' ||
+    v.kind === 'vertex' ||
+    v.kind === 'ellipse' ||
+    v.kind === 'ellipseCenter'
+  ) {
+    return false
+  }
   if (typeof v.partId !== 'string' || v.partId.trim().length === 0) return false
   if (typeof v.faceIndex !== 'number' || !Number.isInteger(v.faceIndex) || v.faceIndex < 0) return false
   if (!Array.isArray(v.faceIndices) || v.faceIndices.length === 0) return false
@@ -178,12 +217,23 @@ export function validateMateEllipseRef(value: unknown): value is MateEllipseRef 
   return v.vertexIndices.every((i) => typeof i === 'number' && Number.isInteger(i) && i >= 0)
 }
 
+export function validateMateEllipseCenterRef(value: unknown): value is MateEllipseCenterRef {
+  if (typeof value !== 'object' || value === null) return false
+  const v = value as Record<string, unknown>
+  if (v.kind !== 'ellipseCenter') return false
+  if (typeof v.partId !== 'string' || v.partId.trim().length === 0) return false
+  if (typeof v.closed !== 'boolean') return false
+  if (!Array.isArray(v.vertexIndices) || v.vertexIndices.length < 5) return false
+  return v.vertexIndices.every((i) => typeof i === 'number' && Number.isInteger(i) && i >= 0)
+}
+
 export function validateMateEntityRef(value: unknown): value is MateEntityRef {
   return (
     validateMatePlaneRef(value) ||
     validateMateLineRef(value) ||
     validateMateVertexRef(value) ||
-    validateMateEllipseRef(value)
+    validateMateEllipseRef(value) ||
+    validateMateEllipseCenterRef(value)
   )
 }
 

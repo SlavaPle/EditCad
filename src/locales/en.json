@@ -114,7 +114,8 @@
       "kindFace": "Face",
       "kindEdge": "Edge",
       "kindVertex": "Vertex",
-      "kindEllipse": "Ellipse / circle"
+      "kindEllipse": "Ellipse / circle",
+      "kindEllipseCenter": "Arc center"
     },
     "face": {
       "summary": "{{name}} · {{count}} faces"
@@ -127,6 +128,9 @@
     },
     "ellipse": {
       "summary": "{{name}} · ellipse"
+    },
+    "ellipseCenter": {
+      "summary": "{{name}} · arc center"
     },
     "alignment": {
       "label": "Plane alignment",
