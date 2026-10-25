@@ -28,8 +28,10 @@ import type { MateEntityRef } from '../../assembly-mates/model'
 import type { MateEntityHighlights } from '../../assembly-mates/matePlaneFaceOverlay'
 import { MatePlaneFaceOverlay } from '../../assembly-mates/matePlaneFaceOverlayView'
 import { MateLineOverlay } from '../../assembly-mates/mateLineOverlayView'
+import { MateEllipseOverlay } from '../../assembly-mates/mateEllipseOverlayView'
 import { MateVertexOverlay } from '../../assembly-mates/mateVertexOverlayView'
 import {
+  mateEllipseHighlightsForPart,
   mateLineHighlightsForPart,
   matePlaneHighlightsForPart,
   mateVertexHighlightsForPart,
@@ -39,7 +41,6 @@ import {
   meshBuiltinFacePickOnPointerDown,
   pickMateEntityAtPointer,
   resolveActiveMatesPickSlot,
-  shouldBeginMatePlanePick,
 } from '../../assembly-mates/pickMateEntityAtPointer'
 import { useProgramPartPointerSession } from './useProgramPartPointerSession'
 import { useManipulableSceneOrbitGuard } from '../../viewer-camera/useManipulableSceneOrbitGuard'
@@ -339,10 +340,13 @@ function InteractiveProgramPart({
   const mateFaces = matePlaneHighlightsForPart(part.id, mateEntityHighlights)
   const mateLines = mateLineHighlightsForPart(part.id, mateEntityHighlights)
   const mateVertices = mateVertexHighlightsForPart(part.id, mateEntityHighlights)
+  const mateEllipses = mateEllipseHighlightsForPart(part.id, mateEntityHighlights)
 
   const handlePointerDown = (event: ThreeEvent<PointerEvent>) => {
     if (matesPickExcluded) return
-    if (geometry && shouldBeginMatePlanePick(matesPickSlotRef?.current, true)) {
+    // Ref ma pierwszeństwo; props (matesPickActive) jako fallback przy opóźnionym Canvas
+    const slotFromRef = matesPickSlotRef?.current
+    if (geometry && (slotFromRef != null || matesPickActive)) {
       event.stopPropagation()
       onMatePartPointerDown(part.id, geometry, event)
       return
@@ -366,6 +370,7 @@ function InteractiveProgramPart({
             selectionProximityFilter={selectionProximityFilter}
             onProbableFacesChange={allowFacePick ? onProbableFacesChange : undefined}
             pickOnPointerDown={meshPickOnPointerDown}
+            expandEdgeHoverToEllipse={matesPickContextActive || matesPickActive}
             raycastDisabled={matesPickExcluded}
             onMeshPointerDown={
               matesPickExcluded
@@ -402,6 +407,20 @@ function InteractiveProgramPart({
           )}
           {mateVertices.vertexB && (
             <MateVertexOverlay geometry={geometry} vertex={mateVertices.vertexB} variant="planeB" />
+          )}
+          {mateEllipses.ellipseA && (
+            <MateEllipseOverlay
+              geometry={geometry}
+              ellipse={mateEllipses.ellipseA}
+              variant="planeA"
+            />
+          )}
+          {mateEllipses.ellipseB && (
+            <MateEllipseOverlay
+              geometry={geometry}
+              ellipse={mateEllipses.ellipseB}
+              variant="planeB"
+            />
           )}
         </group>
       </group>

@@ -4,6 +4,8 @@ import { resolveProximityPick } from '../model-selection/proximityPick'
 
 import type { ModelSelectionProximityFilter } from '../model-selection/types'
 
+import { captureMateEllipse, captureMateEllipseFromVertex } from './captureMateEllipse'
+
 import { captureMateLine } from './captureMateLine'
 
 import { captureMatePlane } from './captureMatePlane'
@@ -134,9 +136,11 @@ export function pickMateEntityAtPointer(
 
   })
 
-
-
   if (pick.type === 'vertex') {
+    const asEllipse = captureMateEllipseFromVertex(partId, geometry, pick.index)
+    if (asEllipse.ok) {
+      return { ok: true, slot: pickSlot, entity: asEllipse.ellipse }
+    }
 
     const captured = captureMateVertex(partId, geometry, pick.index)
 
@@ -153,6 +157,14 @@ export function pickMateEntityAtPointer(
 
 
   if (pick.type === 'edge') {
+
+    const asEllipse = captureMateEllipse(partId, geometry, pick.a, pick.b)
+
+    if (asEllipse.ok) {
+
+      return { ok: true, slot: pickSlot, entity: asEllipse.ellipse }
+
+    }
 
     const captured = captureMateLine(partId, geometry, pick.a, pick.b)
 

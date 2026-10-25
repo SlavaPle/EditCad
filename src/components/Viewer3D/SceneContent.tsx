@@ -161,6 +161,7 @@ export function SceneContent({
             onSelectionChange={onSelectionChange}
             selectionProximityFilter={selectionProximityFilter}
             onProbableFacesChange={onProbableFacesChange}
+            expandEdgeHoverToEllipse
           />
           <ModelOrbitFocusSync model={model} geometryRevision={geometryRevision} />
           <FitModelOnLoad model={model} loadToken={modelLoadToken} />

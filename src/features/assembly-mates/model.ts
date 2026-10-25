@@ -4,7 +4,7 @@ export type MateKind = 'parallel' | 'perpendicular' | 'angular'
 /** Sposób zorientowania równoległych płaszczyzn / linii. */
 export type MateAlignment = 'faceToFace' | 'sameDirection'
 
-export type MateEntityKind = 'plane' | 'line' | 'vertex'
+export type MateEntityKind = 'plane' | 'line' | 'vertex' | 'ellipse'
 
 export type MatePairKind = `${MateEntityKind}-${MateEntityKind}`
 
@@ -34,7 +34,19 @@ export type MateVertexRef = {
   vertexIndex: number
 }
 
-export type MateEntityRef = MatePlaneRef | MateLineRef | MateVertexRef
+/**
+ * Łuk / okrąg / elipsa z łańcucha krawędzi siatki (także częściowy).
+ * Frame (środek, osie) wyliczany z geometrii — nie persystujemy fit.
+ */
+export type MateEllipseRef = {
+  kind: 'ellipse'
+  partId: string
+  /** Uporządkowane wierzchołki polilinii (bez powtórzenia startu). */
+  vertexIndices: number[]
+  closed: boolean
+}
+
+export type MateEntityRef = MatePlaneRef | MateLineRef | MateVertexRef | MateEllipseRef
 
 export type ParallelMate = {
   id: string
@@ -83,6 +95,7 @@ export type MateDraftValidationReason =
 export function mateEntityKindFromRef(ref: MateEntityRef): MateEntityKind {
   if (ref.kind === 'line') return 'line'
   if (ref.kind === 'vertex') return 'vertex'
+  if (ref.kind === 'ellipse') return 'ellipse'
   return 'plane'
 }
 
@@ -102,7 +115,7 @@ export function matePairSupportsOrient(pair: MatePairKind): boolean {
 
 /**
  * Czy dany kind jest dostępny przy wybranych encjach.
- * Wierzchołek — tylko parallel (orientacja nie ma sensu).
+ * Wierzchołek / elipsa — na razie tylko parallel (brak orientacji / coaxial później).
  */
 export function mateKindAvailableForEntities(
   kind: MateKind,
@@ -110,10 +123,12 @@ export function mateKindAvailableForEntities(
   entityB: MateEntityRef | null | undefined,
 ): boolean {
   if (kind === 'parallel') return true
-  const hasVertex =
-    (entityA != null && mateEntityKindFromRef(entityA) === 'vertex') ||
-    (entityB != null && mateEntityKindFromRef(entityB) === 'vertex')
-  return !hasVertex
+  const restrictOrient = (ref: MateEntityRef | null | undefined) => {
+    if (!ref) return false
+    const k = mateEntityKindFromRef(ref)
+    return k === 'vertex' || k === 'ellipse'
+  }
+  return !restrictOrient(entityA) && !restrictOrient(entityB)
 }
 
 /** Znakowany offset: flipped odwraca stronę przy nieujemnym offsetMm. */
@@ -125,7 +140,7 @@ export function signedMateOffsetMm(offsetMm: number, flipped: boolean | undefine
 export function validateMatePlaneRef(value: unknown): value is MatePlaneRef {
   if (typeof value !== 'object' || value === null) return false
   const v = value as Record<string, unknown>
-  if (v.kind === 'line' || v.kind === 'vertex') return false
+  if (v.kind === 'line' || v.kind === 'vertex' || v.kind === 'ellipse') return false
   if (typeof v.partId !== 'string' || v.partId.trim().length === 0) return false
   if (typeof v.faceIndex !== 'number' || !Number.isInteger(v.faceIndex) || v.faceIndex < 0) return false
   if (!Array.isArray(v.faceIndices) || v.faceIndices.length === 0) return false
@@ -153,8 +168,23 @@ export function validateMateVertexRef(value: unknown): value is MateVertexRef {
   return true
 }
 
+export function validateMateEllipseRef(value: unknown): value is MateEllipseRef {
+  if (typeof value !== 'object' || value === null) return false
+  const v = value as Record<string, unknown>
+  if (v.kind !== 'ellipse') return false
+  if (typeof v.partId !== 'string' || v.partId.trim().length === 0) return false
+  if (typeof v.closed !== 'boolean') return false
+  if (!Array.isArray(v.vertexIndices) || v.vertexIndices.length < 5) return false
+  return v.vertexIndices.every((i) => typeof i === 'number' && Number.isInteger(i) && i >= 0)
+}
+
 export function validateMateEntityRef(value: unknown): value is MateEntityRef {
-  return validateMatePlaneRef(value) || validateMateLineRef(value) || validateMateVertexRef(value)
+  return (
+    validateMatePlaneRef(value) ||
+    validateMateLineRef(value) ||
+    validateMateVertexRef(value) ||
+    validateMateEllipseRef(value)
+  )
 }
 
 function readLegacyEntity(value: unknown, parallelMode: ParallelMateMode): MateEntityRef | null {

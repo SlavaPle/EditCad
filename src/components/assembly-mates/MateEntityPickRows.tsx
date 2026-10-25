@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import type { MateEntityRef } from '../../features/assembly-mates/model'
 import {
+  isMateEllipseRef,
   isMateLineRef,
   isMatePlaneEntityRef,
   isMateVertexRef,
@@ -60,6 +61,22 @@ function VertexGlyph() {
   )
 }
 
+function EllipseGlyph() {
+  return (
+    <svg viewBox="0 0 16 16" className={styles.entityGlyph} aria-hidden>
+      <ellipse
+        cx="8"
+        cy="8"
+        rx="6"
+        ry="3.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+      />
+    </svg>
+  )
+}
+
 function EmptyGlyph() {
   return (
     <svg viewBox="0 0 16 16" className={styles.entityGlyph} aria-hidden>
@@ -81,6 +98,7 @@ function EmptyGlyph() {
 function entityGlyph(entity: MateEntityRef | null) {
   if (!entity) return <EmptyGlyph />
   if (isMateVertexRef(entity)) return <VertexGlyph />
+  if (isMateEllipseRef(entity)) return <EllipseGlyph />
   if (isMateLineRef(entity)) return <EdgeGlyph />
   if (isMatePlaneEntityRef(entity)) return <FaceGlyph />
   return <EmptyGlyph />
@@ -89,6 +107,7 @@ function entityGlyph(entity: MateEntityRef | null) {
 function entityKindLabel(entity: MateEntityRef | null, t: (key: string) => string): string {
   if (!entity) return t('mates.entity.kindEmpty')
   if (isMateVertexRef(entity)) return t('mates.entity.kindVertex')
+  if (isMateEllipseRef(entity)) return t('mates.entity.kindEllipse')
   if (isMateLineRef(entity)) return t('mates.entity.kindEdge')
   return t('mates.entity.kindFace')
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { Dispatch, SetStateAction } from 'react'
+import type { Dispatch, RefObject, SetStateAction } from 'react'
 import {
   BufferAttribute,
   BufferGeometry,
@@ -16,6 +16,12 @@ import {
   applyPickMeshElementResult,
   pickMeshElementAtPointer,
 } from '../../features/model-selection/pickMeshElement'
+import {
+  ellipseChainToSegmentPositions,
+  trySelectEllipseFromEdge,
+  trySelectEllipseFromVertex,
+  trySelectEllipseNearFace,
+} from '../../features/model-selection/edgeEllipseSelection'
 import type { ModelSelectionProximityFilter } from '../../features/model-selection/types'
 import {
   buildMeshEdgeLinePositions,
@@ -46,14 +52,29 @@ const FACE_OVERLAY_OFFSET = {
 type HoverState =
   | { type: 'none' }
   | { type: 'faces'; indices: readonly number[] }
-  | { type: 'edge'; a: number; b: number }
+  | {
+      type: 'edge'
+      a: number
+      b: number
+      /** Podgląd łuku/elipsy (na żywo przy mates pick). */
+      polyline?: readonly number[]
+      closed?: boolean
+    }
   | { type: 'vertex'; index: number }
 
 function sameHover(a: HoverState, b: HoverState): boolean {
   if (a.type !== b.type) return false
   if (a.type === 'none') return true
   if (a.type === 'vertex' && b.type === 'vertex') return a.index === b.index
-  if (a.type === 'edge' && b.type === 'edge') return a.a === b.a && a.b === b.b
+  if (a.type === 'edge' && b.type === 'edge') {
+    if (a.a !== b.a || a.b !== b.b) return false
+    const pa = a.polyline
+    const pb = b.polyline
+    if (!pa && !pb) return true
+    if (!pa || !pb || pa.length !== pb.length) return false
+    if ((a.closed ?? false) !== (b.closed ?? false)) return false
+    return pa.every((v, i) => v === pb[i])
+  }
   if (a.type === 'faces' && b.type === 'faces') {
     if (a.indices.length !== b.indices.length) return false
     const sa = [...a.indices].sort((x, y) => x - y)
@@ -146,6 +167,8 @@ interface SelectableModelProps {
   pickOnPointerDown?: boolean
   /** Gdy true — mesh nie bierze udziału w raycast (brak hover / pick). */
   raycastDisabled?: boolean
+  /** Przy hover na krawędzi — podświetl cały łuk/elipsę (tryb mates). */
+  expandEdgeHoverToEllipse?: boolean
   onMeshPointerDown?: (event: ThreeEvent<PointerEvent>) => void
   /** PPM — menu kontekstowe (np. Add mate w montażu). */
   onMeshContextMenu?: (event: ThreeEvent<MouseEvent>) => void
@@ -164,6 +187,7 @@ export function SelectableModel({
   onProbableFacesChange,
   pickOnPointerDown = true,
   raycastDisabled = false,
+  expandEdgeHoverToEllipse = false,
   onMeshPointerDown,
   onMeshContextMenu,
 }: SelectableModelProps) {
@@ -233,14 +257,36 @@ export function SelectableModel({
       const target = event.nativeEvent.target as HTMLElement | null
       const viewportWidth = target?.clientWidth ?? 0
       const viewportHeight = target?.clientHeight ?? 0
-      return resolveProximityPick(model, fi, scratchLocal, selectionProximityFilter, {
+      const pick = resolveProximityPick(model, fi, scratchLocal, selectionProximityFilter, {
         camera: event.camera,
         mesh,
         pointer: { x: event.nativeEvent.offsetX, y: event.nativeEvent.offsetY },
         viewport: { width: viewportWidth, height: viewportHeight },
       })
+      // Najpierw łuk — zanim pokażemy ścianę/wierzchołek (inaczej widać flash)
+      if (expandEdgeHoverToEllipse) {
+        const arc =
+          pick.type === 'edge'
+            ? trySelectEllipseFromEdge(model, pick.a, pick.b)
+            : pick.type === 'vertex'
+              ? trySelectEllipseFromVertex(model, pick.index)
+              : trySelectEllipseNearFace(model, fi)
+        if (arc && arc.vertexIndices.length >= 2) {
+          return {
+            type: 'edge',
+            a: arc.vertexIndices[0]!,
+            b: arc.vertexIndices[1]!,
+            polyline: arc.vertexIndices,
+            closed: arc.closed,
+          }
+        }
+      }
+      if (pick.type === 'faces') return { type: 'faces', indices: pick.indices }
+      if (pick.type === 'edge') return { type: 'edge', a: pick.a, b: pick.b }
+      if (pick.type === 'vertex') return { type: 'vertex', index: pick.index }
+      return { type: 'none' }
     },
-    [model, scratchLocal, selectionProximityFilter],
+    [expandEdgeHoverToEllipse, model, scratchLocal, selectionProximityFilter],
   )
 
   const handlePointerMove = useCallback(
@@ -391,6 +437,9 @@ export function SelectableModel({
 
   const hoverEdgeLinePositions = useMemo(() => {
     if (hover.type !== 'edge') return null
+    if (hover.polyline && hover.polyline.length >= 2) {
+      return ellipseChainToSegmentPositions(model, hover.polyline, hover.closed === true)
+    }
     const position = model.getAttribute('position')
     if (!position) return null
     const { a, b } = hover

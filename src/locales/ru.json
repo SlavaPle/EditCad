@@ -113,7 +113,8 @@
       "kindEmpty": "Пусто",
       "kindFace": "Грань",
       "kindEdge": "Ребро",
-      "kindVertex": "Вершина"
+      "kindVertex": "Вершина",
+      "kindEllipse": "Эллипс / окружность"
     },
     "face": {
       "summary": "{{name}} · {{count}} граней"
@@ -123,6 +124,9 @@
     },
     "vertex": {
       "summary": "{{name}} · вершина"
+    },
+    "ellipse": {
+      "summary": "{{name}} · эллипс"
     },
     "alignment": {
       "label": "Способ совмещения",

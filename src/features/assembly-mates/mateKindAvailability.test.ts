@@ -20,4 +20,16 @@ describe('mateKindAvailableForEntities', () => {
     expect(mateKindAvailableForEntities('perpendicular', plane, vertex)).toBe(false)
     expect(mateKindAvailableForEntities('parallel', vertex, plane)).toBe(true)
   })
+
+  it('allows only parallel when either entity is an ellipse', () => {
+    const ellipse = {
+      kind: 'ellipse' as const,
+      partId: 'a',
+      vertexIndices: [0, 1, 2, 3, 4],
+      closed: false,
+    }
+    expect(mateKindAvailableForEntities('parallel', ellipse, plane)).toBe(true)
+    expect(mateKindAvailableForEntities('perpendicular', ellipse, plane)).toBe(false)
+    expect(mateKindAvailableForEntities('angular', plane, ellipse)).toBe(false)
+  })
 })

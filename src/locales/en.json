@@ -113,7 +113,8 @@
       "kindEmpty": "Empty",
       "kindFace": "Face",
       "kindEdge": "Edge",
-      "kindVertex": "Vertex"
+      "kindVertex": "Vertex",
+      "kindEllipse": "Ellipse / circle"
     },
     "face": {
       "summary": "{{name}} · {{count}} faces"
@@ -123,6 +124,9 @@
     },
     "vertex": {
       "summary": "{{name}} · vertex"
+    },
+    "ellipse": {
+      "summary": "{{name}} · ellipse"
     },
     "alignment": {
       "label": "Plane alignment",

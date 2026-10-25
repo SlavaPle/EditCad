@@ -1,4 +1,5 @@
 import type {
+  MateEllipseRef,
   MateEntityKind,
   MateEntityRef,
   MateLineRef,
@@ -14,13 +15,18 @@ export function isMateVertexRef(ref: MateEntityRef): ref is MateVertexRef {
   return ref.kind === 'vertex'
 }
 
+export function isMateEllipseRef(ref: MateEntityRef): ref is MateEllipseRef {
+  return ref.kind === 'ellipse'
+}
+
 export function isMatePlaneEntityRef(ref: MateEntityRef): ref is MatePlaneRef {
-  return ref.kind !== 'line' && ref.kind !== 'vertex'
+  return ref.kind !== 'line' && ref.kind !== 'vertex' && ref.kind !== 'ellipse'
 }
 
 export function mateEntityKind(ref: MateEntityRef): MateEntityKind {
   if (isMateLineRef(ref)) return 'line'
   if (isMateVertexRef(ref)) return 'vertex'
+  if (isMateEllipseRef(ref)) return 'ellipse'
   return 'plane'
 }
 
@@ -49,6 +55,12 @@ export function mateVertexRefsMatch(a: MateVertexRef, b: MateVertexRef): boolean
   return a.partId === b.partId && a.vertexIndex === b.vertexIndex
 }
 
+export function mateEllipseRefsMatch(a: MateEllipseRef, b: MateEllipseRef): boolean {
+  if (a.partId !== b.partId || a.closed !== b.closed) return false
+  if (a.vertexIndices.length !== b.vertexIndices.length) return false
+  return a.vertexIndices.every((v, i) => v === b.vertexIndices[i])
+}
+
 export function mateEntityRefsMatch(a: MateEntityRef, b: MateEntityRef): boolean {
   if (mateEntityKind(a) !== mateEntityKind(b)) return false
   if (isMateLineRef(a) && isMateLineRef(b)) {
@@ -56,6 +68,9 @@ export function mateEntityRefsMatch(a: MateEntityRef, b: MateEntityRef): boolean
   }
   if (isMateVertexRef(a) && isMateVertexRef(b)) {
     return mateVertexRefsMatch(a, b)
+  }
+  if (isMateEllipseRef(a) && isMateEllipseRef(b)) {
+    return mateEllipseRefsMatch(a, b)
   }
   if (isMatePlaneEntityRef(a) && isMatePlaneEntityRef(b)) {
     return matePlaneRefsMatch(a, b)
@@ -73,5 +88,9 @@ export function asMateLineRef(ref: MateEntityRef): MateLineRef | null {
 
 export function asMateVertexRef(ref: MateEntityRef): MateVertexRef | null {
   return isMateVertexRef(ref) ? ref : null
+}
+
+export function asMateEllipseRef(ref: MateEntityRef): MateEllipseRef | null {
+  return isMateEllipseRef(ref) ? ref : null
 }
 

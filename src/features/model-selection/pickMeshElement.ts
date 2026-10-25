@@ -9,6 +9,11 @@ import {
   selectionIsOnlyVertex,
   type SelectionState,
 } from '../../lib/selection'
+import {
+  trySelectEllipseFromEdge,
+  trySelectEllipseFromVertex,
+  type EllipseChainResult,
+} from './edgeEllipseSelection'
 import { resolveFaceSelectionFlow } from './faceSelectionFlow'
 import { resolveProximityPick } from './proximityPick'
 import type { ModelSelectionProximityFilter } from './types'
@@ -89,10 +94,31 @@ export function pickMeshElementAtPointer(input: {
   }
 
   if (pick.type === 'vertex') {
+    // Krótkie cięciwy: proximity często trafia w wierzchołek — spróbuj łuku
+    const arcFromVtx = trySelectEllipseFromVertex(model, pick.index)
+    if (arcFromVtx && arcFromVtx.vertexIndices.length >= 2) {
+      return {
+        kind: 'picked',
+        selection: selectionFromEllipseChain(currentSelection, arcFromVtx, mode),
+        probableFaces: [],
+        primaryFaces: [],
+      }
+    }
     return {
       kind: 'picked',
       selection: selectVertex(currentSelection, pick.index, mode),
       probableFaces: [],
+      primaryFaces: [],
+    }
+  }
+
+  // Łuk / elipsa z łańcucha krawędzi — zaznacz cały polilinowy łańcuch
+  const arc = trySelectEllipseFromEdge(model, pick.a, pick.b)
+  if (arc && arc.vertexIndices.length >= 2) {
+    return {
+      kind: 'picked',
+      selection: selectionFromEllipseChain(currentSelection, arc, mode),
+      probableFaces: shiftHeld ? (pick.probableFaceIndices ?? []) : [],
       primaryFaces: [],
     }
   }
@@ -103,6 +129,23 @@ export function pickMeshElementAtPointer(input: {
     probableFaces: shiftHeld ? (pick.probableFaceIndices ?? []) : [],
     primaryFaces: [],
   }
+}
+
+function selectionFromEllipseChain(
+  currentSelection: SelectionState,
+  arc: EllipseChainResult,
+  mode: 'replace' | 'toggle',
+): SelectionState {
+  const idxs = arc.vertexIndices
+  let next =
+    mode === 'replace' ? createEmptySelection() : { ...currentSelection, faces: [], vertices: [] }
+  for (let i = 0; i + 1 < idxs.length; i++) {
+    next = selectEdge(next, idxs[i]!, idxs[i + 1]!, i === 0 && mode === 'replace' ? 'replace' : 'add')
+  }
+  if (arc.closed && idxs.length >= 2) {
+    next = selectEdge(next, idxs[idxs.length - 1]!, idxs[0]!, 'add')
+  }
+  return next
 }
 
 export function applyPickMeshElementResult(
