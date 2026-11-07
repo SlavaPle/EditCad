@@ -66,35 +66,24 @@ export function dashDotAxisPositions(
   if (segs.length < 6) {
     return new Float32Array([from[0], from[1], from[2], to[0], to[1], to[2]])
   }
-  // #region agent log
-  fetch('http://127.0.0.1:7882/ingest/cc58a8d9-c779-4012-82fb-05fda4bfad8c', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '334439' },
-    body: JSON.stringify({
-      sessionId: '334439',
-      runId: 'scale-fix',
-      hypothesisId: 'H1-H4',
-      location: 'dashDotAxisPositions.ts',
-      message: 'dash pattern vs axis',
-      data: {
-        len,
-        modelScale: modelScale ?? null,
-        pattern,
-        dash,
-        cycle,
-        segCount: segs.length / 6,
-        dashVsLen: dash / len,
-      },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {})
-  // #endregion
-  return new Float32Array(segs)
-}
 
-/** Promień markera środka osi — względem długości osi i modelu. */
-export function curvedAxisMarkerRadius(axisLen: number, modelScale?: number): number {
-  const ms = modelScale && modelScale > 1e-9 ? modelScale : axisLen
-  const r = Math.min(axisLen * 0.055, ms * 0.006, axisLen * 0.12)
-  return Math.max(r, Math.min(axisLen * 0.03, 1e-3))
+  // Krótkie „czapki” na końcach osi (zamiast Points/Sphere — bez raycast)
+  const tip = Math.min(dash * 0.45, len * 0.06)
+  if (tip > 1e-9) {
+    segs.push(
+      from[0],
+      from[1],
+      from[2],
+      from[0] + ux * tip,
+      from[1] + uy * tip,
+      from[2] + uz * tip,
+      to[0] - ux * tip,
+      to[1] - uy * tip,
+      to[2] - uz * tip,
+      to[0],
+      to[1],
+      to[2],
+    )
+  }
+  return new Float32Array(segs)
 }

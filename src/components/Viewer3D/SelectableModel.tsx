@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { Dispatch, RefObject, SetStateAction } from 'react'
+import type { Dispatch, SetStateAction } from 'react'
 import {
   BufferAttribute,
   BufferGeometry,
   DoubleSide,
+  Group,
   Mesh,
   Points,
   Vector3,
   type InterleavedBufferAttribute,
 } from 'three'
 import type { ThreeEvent } from '@react-three/fiber'
-import { Sphere } from '@react-three/drei'
 import type { SelectionState } from '../../lib/selection'
 import { resolveProximityPick } from '../../features/model-selection/proximityPick'
 import {
@@ -22,13 +22,10 @@ import {
   ellipseChainToSegmentPositions,
   trySelectEllipseFromEdge,
   trySelectEllipseFromVertex,
-  trySelectEllipseNearFace,
 } from '../../features/model-selection/edgeEllipseSelection'
 import { trySelectCurvedPlaneFromFace } from '../../features/model-selection/curvedPlaneSelection'
-import {
-  curvedAxisMarkerRadius,
-  dashDotAxisPositions,
-} from '../../features/assembly-mates/dashDotAxisPositions'
+import { getCoplanarConnectedFaces } from '../../features/model-selection/facePlaneSelection'
+import { dashDotAxisPositions } from '../../features/assembly-mates/dashDotAxisPositions'
 import type { ModelSelectionProximityFilter } from '../../features/model-selection/types'
 import {
   buildMeshEdgeLinePositions,
@@ -254,9 +251,9 @@ export function SelectableModel({
   const vertexPointsRef = useRef<Points>(null)
   const vertexHoverPointsRef = useRef<Points>(null)
   const hoverFaceOverlayRef = useRef<Mesh>(null)
+  const overlaysRootRef = useRef<Group>(null)
   const selectedFaceOverlayRef = useRef<Mesh>(null)
   const probableFaceOverlayRef = useRef<Mesh>(null)
-
   const [hover, setHover] = useState<HoverState>({ type: 'none' })
   const [probableFaces, setProbableFaces] = useState<readonly number[]>([])
   const [primaryFaces, setPrimaryFaces] = useState<readonly number[]>([])
@@ -322,10 +319,10 @@ export function SelectableModel({
         pointer: { x: event.nativeEvent.offsetX, y: event.nativeEvent.offsetY },
         viewport: { width: viewportWidth, height: viewportHeight },
       })
-      // Najpierw pas walca/stożka: łuki + oś (bez wypełnienia ścian — mniej artefaktów)
+      // Walec → duża płaszczyzna → elipsa (pierścień: proximity często = edge na obrzeżu)
       if (expandEdgeHoverToEllipse) {
         const curved = trySelectCurvedPlaneFromFace(model, fi)
-        if (curved && curved.faceIndices.length > 0) {
+        if (curved && curved.faceIndices.length > 0 && curved.faceIndices.includes(fi)) {
           const arcs: CurvedHoverArc[] = []
           const cA = ellipseCenterFromVertexChain(model, curved.arcA.vertexIndices)
           arcs.push({
@@ -357,24 +354,18 @@ export function SelectableModel({
             axisTo,
           }
         }
+
+        const flatFaces =
+          pick.type === 'faces' ? pick.indices : getCoplanarConnectedFaces(model, fi)
+        if (flatFaces.length >= 3) {
+          return { type: 'faces', indices: flatFaces }
+        }
+
         if (pick.type === 'edge' || pick.type === 'vertex') {
           const arc =
             pick.type === 'edge'
               ? trySelectEllipseFromEdge(model, pick.a, pick.b)
               : trySelectEllipseFromVertex(model, pick.index)
-          if (arc && arc.vertexIndices.length >= 2) {
-            const fitted = ellipseCenterFromVertexChain(model, arc.vertexIndices)
-            return {
-              type: 'edge',
-              a: arc.vertexIndices[0]!,
-              b: arc.vertexIndices[1]!,
-              polyline: arc.vertexIndices,
-              closed: arc.closed,
-              center: fitted?.center,
-            }
-          }
-        } else {
-          const arc = trySelectEllipseNearFace(model, fi)
           if (arc && arc.vertexIndices.length >= 2) {
             const fitted = ellipseCenterFromVertexChain(model, arc.vertexIndices)
             return {
@@ -399,9 +390,12 @@ export function SelectableModel({
   const handlePointerMove = useCallback(
     (event: ThreeEvent<PointerEvent>) => {
       const next = resolveHover(event)
-      setHover((prev) => (sameHover(prev, next) ? prev : next))
+      setHover((prev) => {
+        if (sameHover(prev, next)) return prev
+        return next
+      })
     },
-    [resolveHover],
+    [expandEdgeHoverToEllipse, resolveHover],
   )
 
   const handlePointerOut = useCallback(() => {
@@ -592,39 +586,6 @@ export function SelectableModel({
     return dashDotAxisPositions(hover.axisFrom, hover.axisTo, model.boundingSphere?.radius)
   }, [model, geometryRevision, hover])
 
-  const hoverCurvedAxisMarkers = useMemo(() => {
-    if (hover.type !== 'curvedPlane' || !hover.axisFrom || !hover.axisTo) return null
-    if (!model.boundingSphere) model.computeBoundingSphere()
-    const modelScale = model.boundingSphere?.radius
-    const axisLen = Math.hypot(
-      hover.axisTo[0] - hover.axisFrom[0],
-      hover.axisTo[1] - hover.axisFrom[1],
-      hover.axisTo[2] - hover.axisFrom[2],
-    )
-    const radius = curvedAxisMarkerRadius(axisLen, modelScale)
-    // #region agent log
-    fetch('http://127.0.0.1:7882/ingest/cc58a8d9-c779-4012-82fb-05fda4bfad8c', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '334439' },
-      body: JSON.stringify({
-        sessionId: '334439',
-        runId: 'pre-fix',
-        hypothesisId: 'H2-H4',
-        location: 'SelectableModel.tsx:hoverCurvedAxisMarkers',
-        message: 'curved hover axis scale',
-        data: {
-          axisLen,
-          modelScale: modelScale ?? null,
-          markerRadius: radius,
-          segCount: hoverCurvedAxisPositions ? hoverCurvedAxisPositions.length / 6 : 0,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {})
-    // #endregion
-    return { from: hover.axisFrom, to: hover.axisTo, radius }
-  }, [model, geometryRevision, hover, hoverCurvedAxisPositions])
-
   const hoverVertexGeometry = useMemo(() => {
     if (hover.type === 'curvedPlane') return null
     if (hover.type === 'edge' && hover.center) {
@@ -670,6 +631,25 @@ export function SelectableModel({
     m.raycast = () => {}
   }, [hoverFaceOverlayGeometry])
 
+  // Wszystkie owerlaye (linie, punkty, fill) — nigdy nie przejmują picka
+  useLayoutEffect(() => {
+    const root = overlaysRootRef.current
+    if (!root) return
+    root.traverse((obj) => {
+      if (obj === root) return
+      obj.raycast = noopRaycast
+    })
+  }, [
+    hover,
+    hoverFaceOverlayGeometry,
+    hoverCurvedAxisPositions,
+    hoverEdgeLinePositions,
+    hoverVertexGeometry,
+    vertexPointsGeometry,
+    selectedFaceOverlayGeometry,
+    probableFaceOverlayGeometry,
+  ])
+
   useLayoutEffect(() => {
     const m = selectedFaceOverlayRef.current
     if (!m) return
@@ -696,7 +676,8 @@ export function SelectableModel({
 
     event.stopPropagation()
     onMeshPointerDown?.(event)
-    if (!pickOnPointerDown) return
+    // Rodzic (mate pick) może preventDefault — wtedy bez wbudowanego face pick
+    if (!pickOnPointerDown || event.nativeEvent.defaultPrevented) return
 
     const mesh = meshRef.current
     if (!mesh) return
@@ -768,127 +749,104 @@ export function SelectableModel({
           <meshBasicMaterial colorWrite={false} depthWrite={false} />
         )}
       </mesh>
-      <FatLineSegments
-        positions={modelEdgeLinePositions}
-        color={MODEL_EDGE_COLOR_HEX}
-        linewidth={MODEL_EDGE_LINE_WIDTH_PX}
-        renderOrder={2}
-        raycastDisabled
-      />
-      {showSolidBody && selectedFaceOverlayGeometry && (
-        <mesh ref={selectedFaceOverlayRef} geometry={selectedFaceOverlayGeometry} renderOrder={6}>
-          <meshBasicMaterial
-            color={SELECTION_FACE_OVERLAY_SOLID}
-            side={DoubleSide}
-            depthWrite={false}
-            {...FACE_OVERLAY_OFFSET}
-          />
-        </mesh>
-      )}
-      {showSolidBody && probableFaceOverlayGeometry && (
-        <mesh ref={probableFaceOverlayRef} geometry={probableFaceOverlayGeometry} renderOrder={7}>
-          <meshBasicMaterial
-            color={PROBABLE_FACE_OVERLAY_SOLID}
-            side={DoubleSide}
-            depthTest={false}
-            depthWrite={false}
-            transparent
-            opacity={0.28}
-            {...FACE_OVERLAY_OFFSET}
-          />
-        </mesh>
-      )}
-      {showSolidBody && hoverFaceOverlayGeometry && (
-        <mesh ref={hoverFaceOverlayRef} geometry={hoverFaceOverlayGeometry} renderOrder={8}>
-          <meshBasicMaterial
-            color={PREVIEW_FACE_OVERLAY_SOLID}
-            side={DoubleSide}
-            depthWrite={false}
-            {...FACE_OVERLAY_OFFSET}
-          />
-        </mesh>
-      )}
-      <FatLineSegments
-        positions={edgeHighlightLinePositions}
-        color={SELECTION_FACE_OVERLAY_HEX}
-        linewidth={EDGE_LINE_WIDTH_PX}
-        renderOrder={7}
-        raycastDisabled
-      />
-      <FatLineSegments
-        positions={hoverEdgeLinePositions}
-        color={PREVIEW_COLOR_HEX}
-        linewidth={EDGE_LINE_WIDTH_PX}
-        renderOrder={9}
-        raycastDisabled
-        depthWrite={false}
-        depthTest={hover.type !== 'curvedPlane'}
-      />
-      <FatLineSegments
-        positions={hoverCurvedAxisPositions}
-        color={PREVIEW_COLOR_HEX}
-        linewidth={1.5}
-        renderOrder={12}
-        raycastDisabled
-        depthWrite={false}
-        depthTest={false}
-      />
-      {hoverCurvedAxisMarkers && (
-        <>
-          <Sphere
-            args={[hoverCurvedAxisMarkers.radius, 10, 10]}
-            position={hoverCurvedAxisMarkers.from}
-            renderOrder={13}
-          >
+      <group ref={overlaysRootRef}>
+        <FatLineSegments
+          positions={modelEdgeLinePositions}
+          color={MODEL_EDGE_COLOR_HEX}
+          linewidth={MODEL_EDGE_LINE_WIDTH_PX}
+          renderOrder={2}
+          raycastDisabled
+        />
+        {showSolidBody && selectedFaceOverlayGeometry && (
+          <mesh ref={selectedFaceOverlayRef} geometry={selectedFaceOverlayGeometry} renderOrder={6}>
             <meshBasicMaterial
-              color={PREVIEW_COLOR_HEX}
-              transparent
-              opacity={0.95}
+              color={SELECTION_FACE_OVERLAY_SOLID}
+              side={DoubleSide}
+              depthWrite={false}
+              {...FACE_OVERLAY_OFFSET}
+            />
+          </mesh>
+        )}
+        {showSolidBody && probableFaceOverlayGeometry && (
+          <mesh ref={probableFaceOverlayRef} geometry={probableFaceOverlayGeometry} renderOrder={7}>
+            <meshBasicMaterial
+              color={PROBABLE_FACE_OVERLAY_SOLID}
+              side={DoubleSide}
               depthTest={false}
               depthWrite={false}
+              transparent
+              opacity={0.28}
+              {...FACE_OVERLAY_OFFSET}
             />
-          </Sphere>
-          <Sphere
-            args={[hoverCurvedAxisMarkers.radius, 10, 10]}
-            position={hoverCurvedAxisMarkers.to}
-            renderOrder={13}
+          </mesh>
+        )}
+        {showSolidBody && hoverFaceOverlayGeometry && (
+          <mesh
+            ref={hoverFaceOverlayRef}
+            geometry={hoverFaceOverlayGeometry}
+            renderOrder={8}
+            raycast={noopRaycast}
           >
             <meshBasicMaterial
-              color={PREVIEW_COLOR_HEX}
-              transparent
-              opacity={0.95}
-              depthTest={false}
+              color={PREVIEW_FACE_OVERLAY_SOLID}
+              side={DoubleSide}
               depthWrite={false}
+              {...FACE_OVERLAY_OFFSET}
             />
-          </Sphere>
-        </>
-      )}
-      {vertexPointsGeometry && (
-        <points ref={vertexPointsRef} geometry={vertexPointsGeometry} renderOrder={10}>
-          <pointsMaterial
-            color="#f97316"
-            size={10}
-            sizeAttenuation={false}
-            depthTest
-            depthWrite={false}
-            transparent
-            opacity={1}
-          />
-        </points>
-      )}
-      {hoverVertexGeometry && (
-        <points ref={vertexHoverPointsRef} geometry={hoverVertexGeometry} renderOrder={11}>
-          <pointsMaterial
-            color={PREVIEW_COLOR_HEX}
-            size={10}
-            sizeAttenuation={false}
-            depthTest
-            depthWrite={false}
-            transparent
-            opacity={1}
-          />
-        </points>
-      )}
+          </mesh>
+        )}
+        <FatLineSegments
+          positions={edgeHighlightLinePositions}
+          color={SELECTION_FACE_OVERLAY_HEX}
+          linewidth={EDGE_LINE_WIDTH_PX}
+          renderOrder={7}
+          raycastDisabled
+        />
+        <FatLineSegments
+          positions={hoverEdgeLinePositions}
+          color={PREVIEW_COLOR_HEX}
+          linewidth={EDGE_LINE_WIDTH_PX}
+          renderOrder={9}
+          raycastDisabled
+          depthWrite={false}
+          depthTest={hover.type !== 'curvedPlane'}
+        />
+        <FatLineSegments
+          positions={hoverCurvedAxisPositions}
+          color={PREVIEW_COLOR_HEX}
+          linewidth={1.5}
+          renderOrder={12}
+          raycastDisabled
+          depthWrite={false}
+          depthTest={false}
+        />
+        {vertexPointsGeometry && (
+          <points ref={vertexPointsRef} geometry={vertexPointsGeometry} renderOrder={10}>
+            <pointsMaterial
+              color="#f97316"
+              size={10}
+              sizeAttenuation={false}
+              depthTest
+              depthWrite={false}
+              transparent
+              opacity={1}
+            />
+          </points>
+        )}
+        {hoverVertexGeometry && (
+          <points ref={vertexHoverPointsRef} geometry={hoverVertexGeometry} renderOrder={11}>
+            <pointsMaterial
+              color={PREVIEW_COLOR_HEX}
+              size={10}
+              sizeAttenuation={false}
+              depthTest
+              depthWrite={false}
+              transparent
+              opacity={1}
+            />
+          </points>
+        )}
+      </group>
     </group>
   )
 }

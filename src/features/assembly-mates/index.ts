@@ -161,6 +161,8 @@ export {
 export {
   initialMatesPickSlot,
   nextMatesPickFlowStep,
+  matesPickSlotAfterEntitySet,
+  inferMatesReselectSlot,
   type MatesPickFlowStep,
 } from './matesPickFlow'
 export {

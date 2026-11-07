@@ -9,14 +9,19 @@ import {
   selectionIsOnlyVertex,
   type SelectionState,
 } from '../../lib/selection'
+import { trySelectCurvedPlaneFromFace } from './curvedPlaneSelection'
 import {
   trySelectEllipseFromEdge,
   trySelectEllipseFromVertex,
   type EllipseChainResult,
 } from './edgeEllipseSelection'
+import { getCoplanarConnectedFaces } from './facePlaneSelection'
 import { resolveFaceSelectionFlow } from './faceSelectionFlow'
 import { resolveProximityPick } from './proximityPick'
 import type { ModelSelectionProximityFilter } from './types'
+
+/** Min trójkątów koplanarnych = „duża” płaszczyzna (pierścień / pokrywa), nie pojedyncza ścianka. */
+const SUBSTANTIAL_FLAT_FACES = 3
 
 export type PickMeshElementResult =
   | { kind: 'none' }
@@ -73,12 +78,83 @@ export function pickMeshElementAtPointer(input: {
     }
   }
 
-  if (pick.type === 'faces') {
+  const flatFaces =
+    pick.type === 'faces' ? [...pick.indices] : getCoplanarConnectedFaces(model, faceIndex)
+  const substantialFlat = flatFaces.length >= SUBSTANTIAL_FLAT_FACES
+
+  // 1) Pas walca — tylko gdy seed jest w paśmie (nie redirect z pokrywy)
+  const curved = trySelectCurvedPlaneFromFace(model, faceIndex)
+  if (curved && curved.faceIndices.length > 0 && curved.faceIndices.includes(faceIndex)) {
     const flow = resolveFaceSelectionFlow({
       currentSelection,
       primaryFaces: currentPrimaryFaces,
-      pickedFaces: pick.indices,
-      probableFromPick: pick.probableIndices ?? [],
+      pickedFaces: curved.faceIndices,
+      probableFromPick: [],
+      probableFaces,
+      shiftHeld,
+    })
+    if (!flow.ignored) {
+      return {
+        kind: 'picked',
+        selection: flow.nextSelection,
+        probableFaces: flow.nextProbableFaces,
+        primaryFaces: flow.nextPrimaryFaces,
+      }
+    }
+  }
+
+  // 2) Duża płaszczyzna przed elipsą (cienki pierścień: proximity ≈ zawsze edge)
+  if (substantialFlat) {
+    const flow = resolveFaceSelectionFlow({
+      currentSelection,
+      primaryFaces: currentPrimaryFaces,
+      pickedFaces: flatFaces,
+      probableFromPick: pick.type === 'faces' ? (pick.probableIndices ?? []) : [],
+      probableFaces,
+      shiftHeld,
+    })
+    if (!flow.ignored) {
+      return {
+        kind: 'picked',
+        selection: flow.nextSelection,
+        probableFaces: flow.nextProbableFaces,
+        primaryFaces: flow.nextPrimaryFaces,
+      }
+    }
+  }
+
+  // 3) Łuk / elipsa
+  if (pick.type === 'vertex') {
+    const arcFromVtx = trySelectEllipseFromVertex(model, pick.index)
+    if (arcFromVtx && arcFromVtx.vertexIndices.length >= 2) {
+      return {
+        kind: 'picked',
+        selection: selectionFromEllipseChain(currentSelection, arcFromVtx, mode),
+        probableFaces: [],
+        primaryFaces: [],
+      }
+    }
+  }
+
+  if (pick.type === 'edge') {
+    const arc = trySelectEllipseFromEdge(model, pick.a, pick.b)
+    if (arc && arc.vertexIndices.length >= 2) {
+      return {
+        kind: 'picked',
+        selection: selectionFromEllipseChain(currentSelection, arc, mode),
+        probableFaces: shiftHeld ? (pick.probableFaceIndices ?? []) : [],
+        primaryFaces: [],
+      }
+    }
+  }
+
+  // 4) Mała płaska łata
+  if (flatFaces.length > 0) {
+    const flow = resolveFaceSelectionFlow({
+      currentSelection,
+      primaryFaces: currentPrimaryFaces,
+      pickedFaces: flatFaces,
+      probableFromPick: pick.type === 'faces' ? (pick.probableIndices ?? []) : [],
       probableFaces,
       shiftHeld,
     })
@@ -94,16 +170,6 @@ export function pickMeshElementAtPointer(input: {
   }
 
   if (pick.type === 'vertex') {
-    // Krótkie cięciwy: proximity często trafia w wierzchołek — spróbuj łuku
-    const arcFromVtx = trySelectEllipseFromVertex(model, pick.index)
-    if (arcFromVtx && arcFromVtx.vertexIndices.length >= 2) {
-      return {
-        kind: 'picked',
-        selection: selectionFromEllipseChain(currentSelection, arcFromVtx, mode),
-        probableFaces: [],
-        primaryFaces: [],
-      }
-    }
     return {
       kind: 'picked',
       selection: selectVertex(currentSelection, pick.index, mode),
@@ -112,15 +178,8 @@ export function pickMeshElementAtPointer(input: {
     }
   }
 
-  // Łuk / elipsa z łańcucha krawędzi — zaznacz cały polilinowy łańcuch
-  const arc = trySelectEllipseFromEdge(model, pick.a, pick.b)
-  if (arc && arc.vertexIndices.length >= 2) {
-    return {
-      kind: 'picked',
-      selection: selectionFromEllipseChain(currentSelection, arc, mode),
-      probableFaces: shiftHeld ? (pick.probableFaceIndices ?? []) : [],
-      primaryFaces: [],
-    }
+  if (pick.type !== 'edge') {
+    return { kind: 'none' }
   }
 
   return {

@@ -1,4 +1,5 @@
 import { Vector3, type Object3D } from 'three'
+import { getCoplanarConnectedFaces } from '../model-selection/facePlaneSelection'
 import { resolveProximityPick } from '../model-selection/proximityPick'
 import type { ModelSelectionProximityFilter } from '../model-selection/types'
 import { captureMateCurvedPlane } from './captureMateCurvedPlane'
@@ -33,6 +34,9 @@ export const MATE_ENTITY_PICK_FILTER: ModelSelectionProximityFilter = {
   vertex: true,
 }
 
+/** Jak w pickMeshElement — duża płaszczyzna przed elipsą obrzeża. */
+const SUBSTANTIAL_FLAT_FACES = 3
+
 export type PickMateEntityAtPointerInput = PickMatePlaneAtPointerInput
 
 export type PickMateEntityAtPointerReason =
@@ -65,12 +69,6 @@ export function pickMateEntityAtPointer(
 
   mesh.worldToLocal(scratchLocal.copy(worldPoint))
 
-  // Najpierw pas walca/stożka od trafionego trójkąta — zanim proximity weźmie krawędź/łuk
-  const asCurvedEarly = captureMateCurvedPlane(partId, geometry, faceIndex)
-  if (asCurvedEarly.ok) {
-    return { ok: true, slot: pickSlot, entity: asCurvedEarly.curvedPlane }
-  }
-
   const pick = resolveProximityPick(geometry, faceIndex, scratchLocal, MATE_ENTITY_PICK_FILTER, {
     camera,
     mesh: mesh as Object3D,
@@ -78,6 +76,25 @@ export function pickMateEntityAtPointer(
     viewport,
   })
 
+  const flatPatch =
+    pick.type === 'faces' ? [...pick.indices] : getCoplanarConnectedFaces(geometry, faceIndex)
+  const substantialFlat = flatPatch.length >= SUBSTANTIAL_FLAT_FACES
+
+  // 1) Pas walca (seed w paśmie)
+  const asCurved = captureMateCurvedPlane(partId, geometry, faceIndex)
+  if (asCurved.ok) {
+    return { ok: true, slot: pickSlot, entity: asCurved.curvedPlane }
+  }
+
+  // 2) Duża płaszczyzna przed elipsą
+  if (substantialFlat) {
+    const captured = captureMatePlane(partId, geometry, faceIndex)
+    if (captured.ok) {
+      return { ok: true, slot: pickSlot, entity: captured.plane }
+    }
+  }
+
+  // 3) Elipsa / środek
   if (pick.type === 'vertex') {
     const asCenter = captureMateEllipseCenterAtLocalPoint(partId, geometry, scratchLocal, {
       type: 'vertex',
@@ -90,11 +107,6 @@ export function pickMateEntityAtPointer(
     if (asEllipse.ok) {
       return { ok: true, slot: pickSlot, entity: asEllipse.ellipse }
     }
-    const captured = captureMateVertex(partId, geometry, pick.index)
-    if (!captured.ok) {
-      return { ok: false, reason: 'captureVertexFailed' }
-    }
-    return { ok: true, slot: pickSlot, entity: captured.vertex }
   }
 
   if (pick.type === 'edge') {
@@ -110,20 +122,30 @@ export function pickMateEntityAtPointer(
     if (asEllipse.ok) {
       return { ok: true, slot: pickSlot, entity: asEllipse.ellipse }
     }
+  }
+
+  // 4) Mała płaska / vertex / line
+  if (flatPatch.length > 0) {
+    const captured = captureMatePlane(partId, geometry, faceIndex)
+    if (captured.ok) {
+      return { ok: true, slot: pickSlot, entity: captured.plane }
+    }
+  }
+
+  if (pick.type === 'vertex') {
+    const captured = captureMateVertex(partId, geometry, pick.index)
+    if (!captured.ok) {
+      return { ok: false, reason: 'captureVertexFailed' }
+    }
+    return { ok: true, slot: pickSlot, entity: captured.vertex }
+  }
+
+  if (pick.type === 'edge') {
     const captured = captureMateLine(partId, geometry, pick.a, pick.b)
     if (!captured.ok) {
       return { ok: false, reason: 'captureLineFailed' }
     }
     return { ok: true, slot: pickSlot, entity: captured.line }
-  }
-
-  if (pick.type === 'faces' && pick.indices.length > 0) {
-    const seedFace = pick.indices[0]!
-    const captured = captureMatePlane(partId, geometry, seedFace)
-    if (!captured.ok) {
-      return { ok: false, reason: 'captureFailed' }
-    }
-    return { ok: true, slot: pickSlot, entity: captured.plane }
   }
 
   return { ok: false, reason: 'noPick' }

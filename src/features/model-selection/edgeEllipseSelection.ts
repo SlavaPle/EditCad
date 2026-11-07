@@ -446,7 +446,6 @@ function fitEllipsePca2D(
   const det = sxx * syy - sxy * sxy
   const disc = Math.sqrt(Math.max(0, (trace * trace) / 4 - det))
   const l1 = trace / 2 + disc
-  const l2 = trace / 2 - disc
   // Osie PCA
   let ax = 1
   let ay = 0

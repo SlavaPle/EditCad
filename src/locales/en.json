@@ -165,11 +165,12 @@
       "missingLine": "Select both lines before applying.",
       "invalidOffset": "Enter a valid non-negative distance in millimetres.",
       "invalidAngle": "Enter a valid angle in degrees.",
-      "conflictsWithExisting": "This constraint reuses an element already constrained for this part pair.",
-      "conflictsWithExistingLine": "This constraint reuses a line already constrained for this part pair.",
+      "conflictsWithExisting": "This constraint duplicates an existing mate between these parts.",
+      "conflictsWithExistingLine": "This constraint duplicates an existing line mate between these parts.",
       "unsupportedPair": "This element pair is not supported yet.",
       "missingGeometry": "Part geometry is not loaded.",
-      "partLocked": "The moving part is locked. Unlock it to apply this constraint."
+      "partLocked": "The moving part is locked. Unlock it to apply this constraint.",
+      "inconsistentWithExisting": "This constraint conflicts with existing mates and cannot be applied."
     }
   },
   "documentTree": {

@@ -64,9 +64,13 @@ export function mateLineRefsMatch(a: MateLineRef, b: MateLineRef): boolean {
 }
 
 export function matePlaneRefsMatch(a: MatePlaneRef, b: MatePlaneRef): boolean {
-  if (a.partId !== b.partId || a.faceIndex !== b.faceIndex) return false
+  if (a.partId !== b.partId) return false
+  // Porównuj łaty po zbiorze ścian (faceIndex bywa seedem ze starych zapisów)
   if (a.faceIndices.length !== b.faceIndices.length) return false
-  return a.faceIndices.every((face, index) => face === b.faceIndices[index])
+  if (a.faceIndices.length === 0) return false
+  const sa = [...a.faceIndices].sort((x, y) => x - y)
+  const sb = [...b.faceIndices].sort((x, y) => x - y)
+  return sa.every((face, index) => face === sb[index])
 }
 
 export function mateVertexRefsMatch(a: MateVertexRef, b: MateVertexRef): boolean {

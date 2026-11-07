@@ -16,7 +16,7 @@ function toMateEllipse(
   return {
     kind: 'ellipse',
     partId,
-    vertexIndices: selected.vertexIndices,
+    vertexIndices: [...selected.vertexIndices],
     closed: selected.closed,
   }
 }

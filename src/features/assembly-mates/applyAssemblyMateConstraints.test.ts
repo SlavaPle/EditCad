@@ -8,6 +8,8 @@ import type { ParallelMate } from './model'
 import {
   applyAssemblyMateConstraints,
   filterAssemblyMatesForPartIds,
+  mateDriveRoles,
+  mateWithSwappedDrive,
   reapplyAllAssemblyMates,
 } from './applyAssemblyMateConstraints'
 import { syncProgramPartsAfterMatesChange } from './syncProgramPartsAfterMatesChange'
@@ -65,6 +67,39 @@ function mateGapMm(
   return frameB.point.clone().sub(frameA.point).dot(frameA.normal)
 }
 
+describe('mateDriveRoles', () => {
+  const mate = makeMate()
+
+  it('drives B when neither part is locked', () => {
+    expect(mateDriveRoles(mate)).toEqual({
+      anchorId: 'a',
+      drivenId: 'b',
+      swapped: false,
+    })
+  })
+
+  it('swaps to drive A when B is locked', () => {
+    expect(mateDriveRoles(mate, new Set(['b']))).toEqual({
+      anchorId: 'b',
+      drivenId: 'a',
+      swapped: true,
+    })
+  })
+
+  it('returns null when both parts are locked', () => {
+    expect(mateDriveRoles(mate, new Set(['a', 'b']))).toBeNull()
+  })
+
+  it('mateWithSwappedDrive toggles parallel flipped', () => {
+    const swapped = mateWithSwappedDrive(mate)
+    expect(swapped.entityA.partId).toBe('b')
+    expect(swapped.entityB.partId).toBe('a')
+    expect(swapped.kind).toBe('parallel')
+    if (swapped.kind !== 'parallel') return
+    expect(swapped.flipped).toBe(true)
+  })
+})
+
 describe('applyAssemblyMateConstraints', () => {
   const geometryA = quadInPlaneZ(0, true)
   const geometryB = quadInPlaneZ(10, false)
@@ -97,7 +132,7 @@ describe('applyAssemblyMateConstraints', () => {
     expect(result.find((p) => p.id === 'b')?.transform.positionMm[0]).toBe(10)
   })
 
-  it('does not move locked driven part when anchor moves', () => {
+  it('when B is locked, snaps free A onto locked B (swap drive)', () => {
     const parts = [part('a', [0, 0, 0]), part('b', [200, 0, 0])]
     const result = applyAssemblyMateConstraints({
       parts,
@@ -107,11 +142,16 @@ describe('applyAssemblyMateConstraints', () => {
       movedTransform: { positionMm: [50, 0, 0], rotationDeg: [0, 0, 0] },
       lockedPartIds: new Set(['b']),
     })
-    expect(result.find((p) => p.id === 'a')?.transform.positionMm[0]).toBe(50)
+    // B zostaje; A jest dociągane do więzu względem B
     expect(result.find((p) => p.id === 'b')?.transform.positionMm[0]).toBe(200)
+    const partA = result.find((p) => p.id === 'a')!
+    const partB = result.find((p) => p.id === 'b')!
+    expect(
+      mateGapMm(geometryA, partA.transform, geometryB, partB.transform),
+    ).toBeCloseTo(0, 2)
   })
 
-  it('reapplyAllAssemblyMates skips locked driven part', () => {
+  it('reapplyAllAssemblyMates drives free A when B is locked', () => {
     const parts = [part('a', [0, 0, 0]), part('b', [200, 0, 0])]
     const result = reapplyAllAssemblyMates({
       parts,
@@ -120,6 +160,11 @@ describe('applyAssemblyMateConstraints', () => {
       lockedPartIds: new Set(['b']),
     })
     expect(result.find((p) => p.id === 'b')?.transform.positionMm[0]).toBe(200)
+    const partA = result.find((p) => p.id === 'a')!
+    const partB = result.find((p) => p.id === 'b')!
+    expect(
+      mateGapMm(geometryA, partA.transform, geometryB, partB.transform),
+    ).toBeCloseTo(0, 2)
   })
 
   it('moves driven part B when anchor A is translated', () => {

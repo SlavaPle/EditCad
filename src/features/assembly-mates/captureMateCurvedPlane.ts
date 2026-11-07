@@ -21,6 +21,10 @@ export function captureMateCurvedPlane(
   if (!selected) {
     return { ok: false, reason: 'notCurvedPlane' }
   }
+  // Odrzuć redirect z płaskiej pokrywy na walec — seed musi leżeć w paśmie
+  if (!selected.faceIndices.includes(seedFaceIndex)) {
+    return { ok: false, reason: 'notCurvedPlane' }
+  }
   if (!selected.arcB && selected.apexVertexIndex === undefined) {
     return { ok: false, reason: 'notCurvedPlane' }
   }

@@ -115,7 +115,7 @@ import {
   reapplyAllAssemblyMates,
   initialMatesPickSlot,
   mateFacePairToHighlights,
-  nextMatesPickFlowStep,
+  matesPickSlotAfterEntitySet,
   openMateFromFacePair,
   buildMateEntityHighlightsForPopup,
   removeAssemblyMate,
@@ -127,7 +127,6 @@ import {
   type MateFacePair,
   type MatesPickMode,
   type MatesPickSlot,
-  toggleMatesPickSlot,
 } from './features/assembly-mates'
 import {
   DocumentTreeOverlay,
@@ -226,10 +225,22 @@ function App() {
   const [matesPickSlot, setMatesPickSlot] = useState<MatesPickSlot | null>(null)
   const matesPickSlotRef = useRef<MatesPickSlot | null>(null)
   matesPickSlotRef.current = matesPickSlot
+  /** Sync ref — Canvas R3F często dostaje opóźnione props (active=false przy otwartym popup). */
+  const matesPickContextRef = useRef(false)
+  matesPickContextRef.current = matesPopupOpen
+  const matesPickExcludePartIdRef = useRef<string | null>(null)
+  const mateDraftSessionRef = useRef(mateDraftSession)
+  mateDraftSessionRef.current = mateDraftSession
   const applyMatesPickSlot = useCallback((slot: MatesPickSlot | null) => {
     matesPickSlotRef.current = slot
+    // Exclude sync od razu — inaczej Canvas blokuje przewybór na „starym” exclude
+    matesPickExcludePartIdRef.current =
+      matesPickContextRef.current && slot
+        ? matePickExcludedPartId(mateDraftSessionRef.current.draft, slot)
+        : null
     setMatesPickSlot(slot)
   }, [])
+  const mateEntityHighlightsRef = useRef<MateEntityHighlights | null>(null)
   const [mateOffsetInput, setMateOffsetInput] = useState('0')
   const [mateAngleInput, setMateAngleInput] = useState('45')
   const [mateSolverErrorKey, setMateSolverErrorKey] = useState<string | null>(null)
@@ -242,8 +253,6 @@ function App() {
   const [viewerContextMenu, setViewerContextMenu] = useState<ViewerContextMenuState | null>(null)
   /** Inkrement przy clear pustego kliknięcia — drzewo dokumentu resetuje zaznaczenie węzła. */
   const [viewportSelectionClearEpoch, setViewportSelectionClearEpoch] = useState(0)
-  const mateDraftSessionRef = useRef(mateDraftSession)
-  mateDraftSessionRef.current = mateDraftSession
   const commitMateDraftSession = useCallback((next: MateDraftSession) => {
     mateDraftSessionRef.current = next
     setMateDraftSession(next)
@@ -258,6 +267,7 @@ function App() {
   )
   /** Twardy reset UI mates (bez revert preview) — przy zmianie dokumentu. */
   const resetMatesSessionUi = useCallback(() => {
+    matesPickContextRef.current = false
     setMatesPopupOpen(false)
     applyMatesPickSlot(null)
     commitMateDraftSession(createMateDraftSession())
@@ -292,6 +302,7 @@ function App() {
     matesPopupOpen && matesPickSlot
       ? matePickExcludedPartId(mateDraftSession.draft, matesPickSlot)
       : null
+  matesPickExcludePartIdRef.current = matesPickExcludePartId
 
   const mateEntityHighlights = useMemo(() => {
     const popupHighlights = buildMateEntityHighlightsForPopup(
@@ -311,6 +322,7 @@ function App() {
     mateFacePair,
     treeMateHighlights,
   ])
+  mateEntityHighlightsRef.current = mateEntityHighlights
 
   const programPartNameById = useMemo(
     () => buildProgramPartDisplayNameById(programParts),
@@ -1333,7 +1345,6 @@ function App() {
           const prev =
             current[node.partId!] ??
             ({ mode: 'fixed', faceConstraints: [], modelElements: [] } as PreparedElementConstraints)
-          const before = (prev.faceConstraints ?? []).length
           const nextList = filterOut(prev.faceConstraints ?? [])
           return {
             ...current,
@@ -1347,7 +1358,6 @@ function App() {
       }
       setPreparedConstraints(
         (prev) => {
-          const before = (prev.faceConstraints ?? []).length
           const nextList = filterOut(prev.faceConstraints ?? [])
           return {
             ...prev,
@@ -1840,6 +1850,7 @@ function App() {
 
   const closeMatesPopup = useCallback(() => {
     patchMateDraftSession((session) => revertMatePreviewIfNeeded(session))
+    matesPickContextRef.current = false
     setMatesPopupOpen(false)
     applyMatesPickSlot(null)
     setMateSolverErrorKey(null)
@@ -1871,6 +1882,7 @@ function App() {
     applyMatesPickSlot(opened.pickSlot)
     setMateOffsetInput('0')
     setMateSolverErrorKey(null)
+    matesPickContextRef.current = true
     setMatesPopupOpen(true)
     if (opened.openedFromPair) {
       setMateFacePair(clearMateFacePair())
@@ -1892,6 +1904,7 @@ function App() {
     applyMatesPickSlot(initialMatesPickSlot(freshSession))
     setMateOffsetInput('0')
     setMateSolverErrorKey(null)
+    matesPickContextRef.current = true
     setMatesPopupOpen(true)
   }, [applyMatesPickSlot, closeMatesPopup, commitMateDraftSession, matesPopupOpen])
 
@@ -1911,12 +1924,17 @@ function App() {
         setMateSolverErrorKey('mates.errors.samePart')
         return
       }
-      patchMateDraftSession((s) => mateDraftSetEntity(s, slot, entity))
+      // Przy przewyborze po Apply — najpierw revert preview
+      patchMateDraftSession((s) => {
+        const base = revertMatePreviewIfNeeded(s)
+        return mateDraftSetEntity(base, slot, entity)
+      })
       setMateSolverErrorKey(null)
-      const next = nextMatesPickFlowStep(slot)
-      applyMatesPickSlot(next === 'apply' ? null : next)
+      const after = mateDraftSessionRef.current.draft
+      const nextSlot = matesPickSlotAfterEntitySet(after, slot)
+      applyMatesPickSlot(nextSlot)
     },
-    [applyMatesPickSlot, patchMateDraftSession],
+    [applyMatesPickSlot, patchMateDraftSession, revertMatePreviewIfNeeded],
   )
 
   const parsedMateOffsetMm = useMemo(() => {
@@ -1988,7 +2006,10 @@ function App() {
   const mateDisplayErrorKey = mateSolverErrorKey ?? mateValidationErrorKey
 
   const canSaveMate =
-    mateDraftSession.applyState === 'applied' && mateValidation.ok && mateParamsFinite
+    mateDraftSession.applyState === 'applied' &&
+    mateValidation.ok &&
+    mateParamsFinite &&
+    !mateSolverErrorKey
 
   const syncMateLivePreview = useCallback(() => {
     const session = mateDraftSessionRef.current
@@ -2021,12 +2042,18 @@ function App() {
         )
       } else if (result.reason === 'partLocked') {
         setMateSolverErrorKey('mates.errors.partLocked')
+      } else if (result.reason === 'inconsistentWithExisting') {
+        setMateSolverErrorKey('mates.errors.inconsistentWithExisting')
       } else if (result.reason === 'missingGeometry' || result.reason === 'missingPart') {
         setMateSolverErrorKey('mates.errors.missingGeometry')
       }
       return
     }
-    setProgramPartTransformDirect(result.movingPartId, result.transform)
+    // Pełny reapply (existing + draft) — nie tylko transform bieżącego mate.
+    setProgramParts(() => {
+      programPartsRef.current = result.parts
+      return result.parts
+    })
     commitMateDraftSession(result.nextSession)
     setMateSolverErrorKey(null)
   }, [
@@ -2035,7 +2062,6 @@ function App() {
     mateValidation.ok,
     parsedMateAngleDeg,
     parsedMateOffsetMm,
-    setProgramPartTransformDirect,
   ])
 
   useEffect(() => {
@@ -2086,6 +2112,7 @@ function App() {
     resetMateParamInputs()
     applyMatesPickSlot(null)
     setMateSolverErrorKey(null)
+    matesPickContextRef.current = false
     setMatesPopupOpen(false)
   }, [
     applyMatesPickSlot,
@@ -2219,6 +2246,9 @@ function App() {
             matesPickExcludePartId={matesPickExcludePartId}
             mateEntityHighlights={mateEntityHighlights}
             matesPickSlotRef={matesPickSlotRef}
+            matesPickContextRef={matesPickContextRef}
+            matesPickExcludePartIdRef={matesPickExcludePartIdRef}
+            mateEntityHighlightsRef={mateEntityHighlightsRef}
             onMateEntityPicked={handleMateEntityPicked}
             onMateFaceClick={handleMateFaceClick}
             onViewerContextMenu={
@@ -2291,7 +2321,9 @@ function App() {
               patchMateDraftSession((session) => mateDraftUpdateDraft(session, { flipped }))
             }}
             onStartPick={(slot) => {
-              applyMatesPickSlot(toggleMatesPickSlot(matesPickSlotRef.current, slot))
+              // Zawsze włącz slot; po Apply — revert, żeby przewybór nie mieszał preview
+              patchMateDraftSession((session) => revertMatePreviewIfNeeded(session))
+              applyMatesPickSlot(slot)
               setMateSolverErrorKey(null)
             }}
             onSave={handleMateSave}

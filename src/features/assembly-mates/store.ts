@@ -128,19 +128,22 @@ function sameMatePartPair(
   return partIds.has(mate.entityA.partId) && partIds.has(mate.entityB.partId)
 }
 
-function mateEntityRefsOverlap(
+/**
+ * Pełny duplikat pary encji (kolejność slotów nieważna).
+ * Współdzielenie jednej płaszczyzny z innym drugim elementem — dozwolone.
+ */
+function mateEntityPairIsDuplicate(
   entityA: MateEntityRef,
   entityB: MateEntityRef,
   mate: AssemblyMate,
 ): boolean {
-  const refs = [entityA, entityB]
-  const existingRefs = [mate.entityA, mate.entityB]
-  return refs.some((ref) =>
-    existingRefs.some((existing) => mateEntityRefsMatch(ref, existing)),
+  return (
+    (mateEntityRefsMatch(entityA, mate.entityA) && mateEntityRefsMatch(entityB, mate.entityB)) ||
+    (mateEntityRefsMatch(entityA, mate.entityB) && mateEntityRefsMatch(entityB, mate.entityA))
   )
 }
 
-/** Czy nowa przywiązka koliduje z już zapisaną na tej samej parze detali. */
+/** Czy nowa przywiązka jest dokładnym duplikatem już zapisanej na tej samej parze detali. */
 export function mateConflictsWithExisting(
   entityA: MateEntityRef,
   entityB: MateEntityRef,
@@ -149,7 +152,7 @@ export function mateConflictsWithExisting(
   for (const mate of existingMates) {
     if (isMateSuppressed(mate)) continue
     if (!sameMatePartPair(entityA, entityB, mate)) continue
-    if (mateEntityRefsOverlap(entityA, entityB, mate)) {
+    if (mateEntityPairIsDuplicate(entityA, entityB, mate)) {
       return true
     }
   }

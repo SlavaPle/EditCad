@@ -55,17 +55,16 @@ describe('validateParallelMateDraft', () => {
     expect(validateParallelMateDraft(draft, [existingMate(planeA, planeB)])).toEqual({ ok: true })
   })
 
-  it('rejects when the same pair reuses an already constrained plane', () => {
+  it('allows sharing one plane when the other entity differs', () => {
     const draft = {
       ...createEmptyParallelMateDraft(),
       entityA: planeA,
       entityB: planeBOtherFace,
     }
-    const result = validateParallelMateDraft(draft, [existingMate(planeA, planeB)])
-    expect(result).toEqual({ ok: false, reason: 'conflictsWithExisting' })
+    expect(validateParallelMateDraft(draft, [existingMate(planeA, planeB)])).toEqual({ ok: true })
   })
 
-  it('rejects duplicate mate even when roles are reversed', () => {
+  it('rejects exact duplicate mate even when roles are reversed', () => {
     const draft = {
       ...createEmptyParallelMateDraft(),
       entityA: planeB,
@@ -73,6 +72,18 @@ describe('validateParallelMateDraft', () => {
     }
     const result = validateParallelMateDraft(draft, [existingMate(planeA, planeB)])
     expect(result).toEqual({ ok: false, reason: 'conflictsWithExisting' })
+  })
+
+  it('rejects exact duplicate mate with same slot order', () => {
+    const draft = {
+      ...createEmptyParallelMateDraft(),
+      entityA: planeA,
+      entityB: planeB,
+    }
+    expect(validateParallelMateDraft(draft, [existingMate(planeA, planeB)])).toEqual({
+      ok: false,
+      reason: 'conflictsWithExisting',
+    })
   })
 
   it('accepts a mate between unrelated parts', () => {
@@ -141,9 +152,15 @@ describe('parallelMateConflictsWithExisting', () => {
     ).toBe(false)
   })
 
-  it('detects overlap on the same pair', () => {
+  it('allows sharing one plane when the other entity differs', () => {
     expect(
       parallelMateConflictsWithExisting(planeA, planeBOtherFace, [existingMate(planeA, planeB)]),
+    ).toBe(false)
+  })
+
+  it('detects exact duplicate pair', () => {
+    expect(
+      parallelMateConflictsWithExisting(planeA, planeB, [existingMate(planeA, planeB)]),
     ).toBe(true)
   })
 

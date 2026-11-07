@@ -125,7 +125,7 @@ describe('syncProgramPartsAfterMatesChange (global rule)', () => {
     ).toBeCloseTo(0, 2)
   })
 
-  it('does not move locked driven part on unsuppress sync', () => {
+  it('on sync with locked B, keeps B fixed and drives free A', () => {
     const parts = [part('a', [0, 0, 0]), part('b', [200, 0, 0])]
     const afterOn = syncProgramPartsAfterMatesChange({
       parts,
@@ -134,6 +134,14 @@ describe('syncProgramPartsAfterMatesChange (global rule)', () => {
       lockedPartIds: new Set(['b']),
     })
     expect(afterOn.find((p) => p.id === 'b')?.transform.positionMm).toEqual([200, 0, 0])
+    expect(
+      mateGapMm(
+        geometryA,
+        afterOn.find((p) => p.id === 'a')!.transform,
+        geometryB,
+        afterOn.find((p) => p.id === 'b')!.transform,
+      ),
+    ).toBeCloseTo(0, 2)
   })
 
   it('after delete of one mate, remaining active mates still sync', () => {

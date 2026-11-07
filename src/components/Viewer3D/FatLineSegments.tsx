@@ -61,7 +61,11 @@ export function FatLineSegments({
     if (!lineObject) return
     const mat = lineObject.material as LineMaterialInstance
     mat.resolution.set(size.width, size.height)
-  }, [lineObject, size.width, size.height, size])
+    // LineSegments2 ma „gruby” raycast — zawsze wyłączaj po attach (R3F może nadpisać)
+    if (raycastDisabled) {
+      lineObject.raycast = () => {}
+    }
+  }, [lineObject, size.width, size.height, size, raycastDisabled])
 
   useEffect(() => {
     if (!lineObject) return

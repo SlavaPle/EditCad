@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Group } from 'three'
 import type { Dispatch, SetStateAction, RefObject } from 'react'
 import { Bounds, Edges } from '@react-three/drei'
-import { useThree } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import { Box3, BufferGeometry, Mesh, Vector3 } from 'three'
 import type { ThreeEvent } from '@react-three/fiber'
 import { SelectableModel } from '../../../components/Viewer3D/SelectableModel'
@@ -42,6 +42,7 @@ import {
   mateVertexHighlightsForPart,
 } from '../../assembly-mates/matePlaneFaceOverlay'
 import type { MatesPickMode, MatesPickSlot } from '../../assembly-mates/matesPickMode'
+import { inferMatesReselectSlot } from '../../assembly-mates/matesPickFlow'
 import {
   meshBuiltinFacePickOnPointerDown,
   pickMateEntityAtPointer,
@@ -79,6 +80,9 @@ interface InteractiveProgramPartsLayerProps {
   matesPickExcludePartId?: string | null
   mateEntityHighlights?: MateEntityHighlights | null
   matesPickSlotRef?: RefObject<MatesPickSlot | null>
+  matesPickContextRef?: RefObject<boolean>
+  matesPickExcludePartIdRef?: RefObject<string | null>
+  mateEntityHighlightsRef?: RefObject<MateEntityHighlights | null>
   onMateEntityPicked?: (slot: NonNullable<MatesPickMode['slot']>, entity: MateEntityRef) => void
   onMateFaceClick?: (payload: {
     partId: string
@@ -108,10 +112,45 @@ export function InteractiveProgramPartsLayer({
   matesPickExcludePartId = null,
   mateEntityHighlights = null,
   matesPickSlotRef,
+  matesPickContextRef,
+  matesPickExcludePartIdRef,
+  mateEntityHighlightsRef,
   onMateEntityPicked,
   onMateFaceClick,
 }: InteractiveProgramPartsLayerProps) {
   const { invalidate } = useThree()
+  // R3F Canvas bywa ze spóźnionymi props — trzymaj live snapshot z refów
+  const [matesLive, setMatesLive] = useState(() => ({
+    contextActive: Boolean(matesPickContextRef?.current) || matesPickMode.active,
+    slot: (matesPickSlotRef?.current ?? matesPickMode.slot) as MatesPickSlot | null,
+    highlights: (mateEntityHighlightsRef?.current ?? mateEntityHighlights) as MateEntityHighlights | null,
+    excludePartId: matesPickExcludePartIdRef?.current ?? matesPickExcludePartId,
+  }))
+  const matesLiveSigRef = useRef('')
+  useFrame(() => {
+    const contextActive = Boolean(matesPickContextRef?.current) || matesPickMode.active
+    const slot = (matesPickSlotRef?.current ?? matesPickMode.slot) as MatesPickSlot | null
+    const highlights =
+      (mateEntityHighlightsRef?.current ?? mateEntityHighlights) as MateEntityHighlights | null
+    const excludePartId = matesPickExcludePartIdRef?.current ?? matesPickExcludePartId
+    const sig = [
+      contextActive ? '1' : '0',
+      slot ?? '-',
+      excludePartId ?? '-',
+      highlights?.entityA?.partId ?? '-',
+      highlights?.entityB?.partId ?? '-',
+      highlights?.entityA && 'faceIndices' in highlights.entityA
+        ? String(highlights.entityA.faceIndices?.length ?? 0)
+        : '0',
+      highlights?.entityB && 'faceIndices' in highlights.entityB
+        ? String(highlights.entityB.faceIndices?.length ?? 0)
+        : '0',
+    ].join('|')
+    if (sig === matesLiveSigRef.current) return
+    matesLiveSigRef.current = sig
+    setMatesLive({ contextActive, slot, highlights, excludePartId })
+    invalidate()
+  })
   useEffect(() => {
     invalidate()
   }, [
@@ -121,6 +160,9 @@ export function InteractiveProgramPartsLayer({
     matesPickExcludePartId,
     mateEntityHighlights,
     activePartId,
+    matesLive.contextActive,
+    matesLive.slot,
+    matesLive.highlights,
   ])
 
   const [probableFaces, setProbableFaces] = useState<readonly number[]>([])
@@ -169,7 +211,7 @@ export function InteractiveProgramPartsLayer({
     [isPartLocked, onPartTransformChange, setTransform],
   )
 
-  const assemblyInteractionActive = preAssemblyActive || matesPickMode.active
+  const assemblyInteractionActive = preAssemblyActive || matesLive.contextActive
 
   const handleMatePartPointerDown = useCallback(
     (
@@ -177,8 +219,26 @@ export function InteractiveProgramPartsLayer({
       geometry: BufferGeometry,
       event: ThreeEvent<PointerEvent>,
     ) => {
-      if (matesPickExcludePartId && partId === matesPickExcludePartId) return
-      const slot = resolveActiveMatesPickSlot(matesPickSlotRef?.current, matesPickMode.slot)
+      const excludeId = matesPickExcludePartIdRef?.current ?? matesPickExcludePartId
+      const contextLive = Boolean(matesPickContextRef?.current) || matesPickMode.active
+      if (excludeId && partId === excludeId) {
+        return
+      }
+      let slot = resolveActiveMatesPickSlot(matesPickSlotRef?.current, matesPickMode.slot)
+      const highlights =
+        mateEntityHighlightsRef?.current ?? mateEntityHighlights
+      // Popup otwarty, slot pusty — wolny slot albo przewybór po partId
+      if (!slot && contextLive) {
+        if (!highlights?.entityA) slot = 'entityA'
+        else if (!highlights?.entityB) slot = 'entityB'
+        else {
+          slot = inferMatesReselectSlot({
+            partId,
+            entityAPartId: highlights.entityA?.partId,
+            entityBPartId: highlights.entityB?.partId,
+          })
+        }
+      }
       const result = pickMateEntityAtPointer({
         partId,
         geometry,
@@ -199,7 +259,17 @@ export function InteractiveProgramPartsLayer({
       event.stopPropagation()
       onMateEntityPicked?.(result.slot, result.entity)
     },
-    [matesPickExcludePartId, matesPickMode.slot, matesPickSlotRef, onMateEntityPicked],
+    [
+      matesPickExcludePartId,
+      matesPickExcludePartIdRef,
+      matesPickMode.active,
+      matesPickMode.slot,
+      matesPickSlotRef,
+      matesPickContextRef,
+      mateEntityHighlights,
+      mateEntityHighlightsRef,
+      onMateEntityPicked,
+    ],
   )
 
   const partsRootRef = useRef<Group>(null)
@@ -221,10 +291,10 @@ export function InteractiveProgramPartsLayer({
     probableFaces,
     getPrimaryFaces,
     setPrimaryFaces,
-    matesPickActive: (matesPickSlotRef?.current ?? matesPickMode.slot) !== null,
+    matesPickActive: matesLive.contextActive,
     matesPickSlotRef,
     isPartLocked,
-    onMateFaceClick: matesPickMode.active ? undefined : onMateFaceClick,
+    onMateFaceClick: matesLive.contextActive ? undefined : onMateFaceClick,
   })
 
   /** Blokada natywnego menu — otwarcie Add mate robi kontener Viewer3D. */
@@ -253,10 +323,10 @@ export function InteractiveProgramPartsLayer({
             appearance={resolveProgramPartAppearance(part.id, appearances)}
             displayMode={displayMode}
             preAssemblyActive={assemblyInteractionActive}
-            matesPickContextActive={matesPickMode.active}
-            matesPickActive={matesPickMode.active && matesPickMode.slot !== null}
+            matesPickContextActive={matesLive.contextActive}
+            matesPickActive={matesLive.contextActive && matesLive.slot !== null}
             matesPickExcluded={
-              matesPickMode.active && matesPickExcludePartId === part.id
+              matesLive.contextActive && matesLive.excludePartId === part.id
             }
             isActive={isActive}
             selection={partSelection}
@@ -264,12 +334,13 @@ export function InteractiveProgramPartsLayer({
             selectionProximityFilter={selectionProximityFilter}
             onProbableFacesChange={handleProbableFacesChange}
             onPartPointerDown={onPartPointerDown}
-            matesPickSlotRef={matesPickSlotRef}
+            matesPickContextRef={matesPickContextRef}
+            matesPickExcludePartIdRef={matesPickExcludePartIdRef}
             onMatePartPointerDown={handleMatePartPointerDown}
             onMeshContextMenu={
               preAssemblyActive ? suppressNativeContextMenu : undefined
             }
-            mateEntityHighlights={mateEntityHighlights}
+            mateEntityHighlights={matesLive.highlights}
           />
           )
         })}
@@ -294,7 +365,8 @@ function InteractiveProgramPart({
   selectionProximityFilter,
   onProbableFacesChange,
   onPartPointerDown,
-  matesPickSlotRef,
+  matesPickContextRef,
+  matesPickExcludePartIdRef,
   onMatePartPointerDown,
   onMeshContextMenu,
   mateEntityHighlights,
@@ -319,7 +391,8 @@ function InteractiveProgramPart({
     geometry: BufferGeometry | null,
     event: ThreeEvent<PointerEvent>,
   ) => void
-  matesPickSlotRef?: RefObject<MatesPickSlot | null>
+  matesPickContextRef?: RefObject<boolean>
+  matesPickExcludePartIdRef?: RefObject<string | null>
   onMatePartPointerDown: (
     partId: string,
     geometry: BufferGeometry,
@@ -353,11 +426,15 @@ function InteractiveProgramPart({
     : { axisA: null, axisB: null }
 
   const handlePointerDown = (event: ThreeEvent<PointerEvent>) => {
-    if (matesPickExcluded) return
-    // Ref ma pierwszeństwo; props (matesPickActive) jako fallback przy opóźnionym Canvas
-    const slotFromRef = matesPickSlotRef?.current
-    if (geometry && (slotFromRef != null || matesPickActive)) {
+    // Ref ma pierwszeństwo — props Canvas bywają spóźnione względem otwartego popup
+    const mateCtxLive = Boolean(matesPickContextRef?.current) || matesPickContextActive
+    const excludeLive = matesPickExcludePartIdRef?.current ?? (matesPickExcluded ? part.id : null)
+    const isExcluded = excludeLive === part.id
+    if (isExcluded) return
+    // Tylko przy otwartym popup (ref lub props) — nie sam slotRef po zamknięciu
+    if (geometry && mateCtxLive) {
       event.stopPropagation()
+      event.nativeEvent.preventDefault()
       onMatePartPointerDown(part.id, geometry, event)
       return
     }
@@ -380,16 +457,19 @@ function InteractiveProgramPart({
             selectionProximityFilter={selectionProximityFilter}
             onProbableFacesChange={allowFacePick ? onProbableFacesChange : undefined}
             pickOnPointerDown={meshPickOnPointerDown}
-            expandEdgeHoverToEllipse={matesPickContextActive || matesPickActive}
-            raycastDisabled={matesPickExcluded}
-            onMeshPointerDown={
-              matesPickExcluded
-                ? undefined
-                : preAssemblyActive || matesPickContextActive
-                  ? handlePointerDown
-                  : undefined
+            // Zawsze w montażu: łuk→elipsa, ściana→curvedPlane (nie tylko w mates pick)
+            expandEdgeHoverToEllipse={
+              preAssemblyActive || matesPickContextActive || matesPickActive
             }
-            onMeshContextMenu={matesPickExcluded ? undefined : onMeshContextMenu}
+            // Nie wyłączaj raycast przy exclude w mates — Canvas props bywają spóźnione
+            // i blokują Redefine; filtr exclude jest w handleMatePartPointerDown (ref).
+            raycastDisabled={false}
+            onMeshPointerDown={
+              preAssemblyActive || matesPickContextActive || Boolean(matesPickContextRef?.current)
+                ? handlePointerDown
+                : undefined
+            }
+            onMeshContextMenu={onMeshContextMenu}
           />
           <ActiveProgramPartOutline geometry={geometry} visible={isActive} />
           {mateFaces.planeA && (
@@ -489,9 +569,8 @@ function InteractiveProgramPart({
     <mesh
       position={position}
       rotation={rotation}
-      raycast={matesPickExcluded ? () => null : undefined}
-      onPointerDown={matesPickExcluded ? undefined : handlePointerDown}
-      onContextMenu={matesPickExcluded ? undefined : onMeshContextMenu}
+      onPointerDown={handlePointerDown}
+      onContextMenu={onMeshContextMenu}
     >
       <boxGeometry args={[placeholderSize, placeholderSize, placeholderSize]} />
       <meshStandardMaterial color={placeholderColor} wireframe />

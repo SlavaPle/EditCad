@@ -18,6 +18,44 @@ export type ApplyAssemblyMateConstraintsInput = {
   lockedPartIds?: ReadonlySet<string>
 }
 
+/** Kotwica / napędzany z uwzględnieniem lock — gdy B zablokowane, napędzaj A. */
+export function mateDriveRoles(
+  mate: AssemblyMate,
+  lockedPartIds?: ReadonlySet<string>,
+): { anchorId: string; drivenId: string; swapped: boolean } | null {
+  const aId = mate.entityA.partId
+  const bId = mate.entityB.partId
+  const aLocked = lockedPartIds?.has(aId) ?? false
+  const bLocked = lockedPartIds?.has(bId) ?? false
+  if (aLocked && bLocked) return null
+  if (bLocked && !aLocked) {
+    return { anchorId: bId, drivenId: aId, swapped: true }
+  }
+  return { anchorId: aId, drivenId: bId, swapped: false }
+}
+
+/** Mate z zamienionymi entity (i flipped), żeby solver zawsze ruszał „B”. */
+export function mateWithSwappedDrive(mate: AssemblyMate): AssemblyMate {
+  const entityA = mate.entityB
+  const entityB = mate.entityA
+  if (mate.kind === 'parallel') {
+    const next: AssemblyMate = {
+      ...mate,
+      entityA,
+      entityB,
+    }
+    if (mate.flipped) {
+      const { flipped: _removed, ...rest } = next
+      return rest
+    }
+    return { ...next, flipped: true }
+  }
+  if (mate.kind === 'perpendicular') {
+    return { ...mate, entityA, entityB, flipped: !mate.flipped }
+  }
+  return { ...mate, entityA, entityB }
+}
+
 function projectMateForAssembly(
   mate: AssemblyMate,
   partsById: Map<string, PreAssemblyProgramPart>,
@@ -59,7 +97,18 @@ function projectMateForAssembly(
   return projected.ok ? projected.transform : null
 }
 
-/** Po ruchu detalu A lub B — detal B (entityB) zostaje związany z A według zapisanej przywiązki. */
+function projectDrivenTransform(
+  mate: AssemblyMate,
+  swapped: boolean,
+  partsById: Map<string, PreAssemblyProgramPart>,
+  geometries: Readonly<Record<string, BufferGeometry | null | undefined>>,
+  seedDriven?: PhantomTransform,
+): PhantomTransform | null {
+  const projectMate = swapped ? mateWithSwappedDrive(mate) : mate
+  return projectMateForAssembly(projectMate, partsById, geometries, seedDriven)
+}
+
+/** Po ruchu detalu A lub B — detal napędzany zostaje związany z kotwicą. */
 export function applyAssemblyMateConstraints(
   input: ApplyAssemblyMateConstraintsInput,
 ): PreAssemblyProgramPart[] {
@@ -82,20 +131,21 @@ export function applyAssemblyMateConstraints(
 
   for (const mate of input.mates) {
     if (isMateSuppressed(mate)) continue
-    const anchorId = mate.entityA.partId
-    const drivenId = mate.entityB.partId
+    const roles = mateDriveRoles(mate, locked)
+    if (!roles) continue
+    const { anchorId, drivenId, swapped } = roles
     if (input.movedPartId !== anchorId && input.movedPartId !== drivenId) continue
     if (locked?.has(drivenId)) continue
 
     const driven = partsById.get(drivenId)
     if (!driven) continue
 
-    let seedTransformB = driven.transform
+    let seedDriven = driven.transform
     if (input.movedPartId === anchorId) {
       const anchorBefore = partsBefore.get(anchorId)
       const anchorAfter = partsById.get(anchorId)
       if (anchorBefore && anchorAfter) {
-        seedTransformB = applyRigidDeltaToTransform(
+        seedDriven = applyRigidDeltaToTransform(
           partsBefore.get(drivenId)?.transform ?? driven.transform,
           anchorBefore.transform,
           anchorAfter.transform,
@@ -103,10 +153,16 @@ export function applyAssemblyMateConstraints(
       }
     }
 
-    const nextTransformB = projectMateForAssembly(mate, partsById, input.geometries, seedTransformB)
-    if (!nextTransformB) continue
+    const nextTransform = projectDrivenTransform(
+      mate,
+      swapped,
+      partsById,
+      input.geometries,
+      seedDriven,
+    )
+    if (!nextTransform) continue
 
-    partsById.set(drivenId, { ...driven, transform: nextTransformB })
+    partsById.set(drivenId, { ...driven, transform: nextTransform })
   }
 
   return input.parts.map((part) => partsById.get(part.id) ?? part)
@@ -122,8 +178,7 @@ export type ReapplyAllAssemblyMatesInput = {
 
 /**
  * Po mutacji mates (load / unsuppress / delete) — wymusza projekcję każdego
- * aktywnego mate na detal B, nawet gdy A się nie ruszył.
- * (applyAssemblyMateConstraints przy „ruchu” A na tę samą pose zostawia złe seed B.)
+ * aktywnego mate na detal napędzany, nawet gdy kotwica się nie ruszyła.
  */
 export function reapplyAllAssemblyMates(input: ReapplyAllAssemblyMatesInput): PreAssemblyProgramPart[] {
   const locked = input.lockedPartIds
@@ -131,21 +186,24 @@ export function reapplyAllAssemblyMates(input: ReapplyAllAssemblyMatesInput): Pr
   for (const mate of input.mates) {
     if (isMateSuppressed(mate)) continue
 
-    const drivenId = mate.entityB.partId
+    const roles = mateDriveRoles(mate, locked)
+    if (!roles) continue
+    const { drivenId, swapped } = roles
     if (locked?.has(drivenId)) continue
 
     const partsById = new Map(parts.map((part) => [part.id, part]))
     const driven = partsById.get(drivenId)
     if (!driven) continue
 
-    const nextTransformB = projectMateForAssembly(
+    const nextTransform = projectDrivenTransform(
       mate,
+      swapped,
       partsById,
       input.geometries,
       driven.transform,
     )
-    if (!nextTransformB) continue
-    parts = updateProgramPartTransform(parts, drivenId, nextTransformB)
+    if (!nextTransform) continue
+    parts = updateProgramPartTransform(parts, drivenId, nextTransform)
   }
   return parts
 }

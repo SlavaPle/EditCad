@@ -67,6 +67,10 @@ export interface Viewer3DProps {
   matesPickExcludePartId?: string | null
   mateEntityHighlights?: MateEntityHighlights | null
   matesPickSlotRef?: RefObject<MatesPickSlot | null>
+  /** Sync — omija opóźnione props Canvas przy otwartym popup mates. */
+  matesPickContextRef?: RefObject<boolean>
+  matesPickExcludePartIdRef?: RefObject<string | null>
+  mateEntityHighlightsRef?: RefObject<MateEntityHighlights | null>
   onMateEntityPicked?: (slot: NonNullable<MatesPickMode['slot']>, entity: MateEntityRef) => void
   onMateFaceClick?: (payload: {
     partId: string
@@ -107,6 +111,9 @@ export function Viewer3D({
   matesPickExcludePartId = null,
   mateEntityHighlights = null,
   matesPickSlotRef,
+  matesPickContextRef,
+  matesPickExcludePartIdRef,
+  mateEntityHighlightsRef,
   onMateEntityPicked,
   onMateFaceClick,
   onViewerContextMenu,
@@ -175,6 +182,9 @@ export function Viewer3D({
             matesPickExcludePartId={matesPickExcludePartId}
             mateEntityHighlights={mateEntityHighlights}
             matesPickSlotRef={matesPickSlotRef}
+            matesPickContextRef={matesPickContextRef}
+            matesPickExcludePartIdRef={matesPickExcludePartIdRef}
+            mateEntityHighlightsRef={mateEntityHighlightsRef}
             onMateEntityPicked={onMateEntityPicked}
             onMateFaceClick={onMateFaceClick}
           />

@@ -38,6 +38,7 @@ export function MateEllipseOverlay({
 
   const style = MATE_PLANE_OVERLAY[variant]
   const radius = Math.max(1e-4, (geometry.boundingSphere?.radius ?? 1) * 0.018)
+  const noopRaycast = () => {}
 
   return (
     <group>
@@ -49,9 +50,15 @@ export function MateEllipseOverlay({
         opacity={0.95}
         depthTest={false}
         renderOrder={6}
+        raycast={noopRaycast}
       />
       {centerLocal && (
-        <Sphere args={[radius, 12, 12]} position={centerLocal} renderOrder={7}>
+        <Sphere
+          args={[radius, 12, 12]}
+          position={centerLocal}
+          renderOrder={7}
+          raycast={noopRaycast}
+        >
           <meshBasicMaterial color={style.color} transparent opacity={0.95} depthTest={false} />
         </Sphere>
       )}

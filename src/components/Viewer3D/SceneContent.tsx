@@ -63,6 +63,9 @@ interface SceneContentProps {
   matesPickExcludePartId?: string | null
   mateEntityHighlights?: MateEntityHighlights | null
   matesPickSlotRef?: RefObject<MatesPickSlot | null>
+  matesPickContextRef?: RefObject<boolean>
+  matesPickExcludePartIdRef?: RefObject<string | null>
+  mateEntityHighlightsRef?: RefObject<MateEntityHighlights | null>
   onMateEntityPicked?: (slot: NonNullable<MatesPickMode['slot']>, entity: MateEntityRef) => void
   onMateFaceClick?: (payload: {
     partId: string
@@ -101,6 +104,9 @@ export function SceneContent({
   matesPickExcludePartId = null,
   mateEntityHighlights = null,
   matesPickSlotRef,
+  matesPickContextRef,
+  matesPickExcludePartIdRef,
+  mateEntityHighlightsRef,
   onMateEntityPicked,
   onMateFaceClick,
 }: SceneContentProps) {
@@ -131,6 +137,9 @@ export function SceneContent({
           matesPickExcludePartId={matesPickExcludePartId}
           mateEntityHighlights={mateEntityHighlights}
           matesPickSlotRef={matesPickSlotRef}
+          matesPickContextRef={matesPickContextRef}
+          matesPickExcludePartIdRef={matesPickExcludePartIdRef}
+          mateEntityHighlightsRef={mateEntityHighlightsRef}
           onMateEntityPicked={onMateEntityPicked}
           onMateFaceClick={onMateFaceClick}
         />
