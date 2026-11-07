@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { BufferGeometry } from 'three'
+import { Analytics } from '@vercel/analytics/react'
 import { Toolbar } from './components/Toolbar'
 import { Viewer3D } from './components/Viewer3D'
 import { LeftPanel } from './components/LeftPanel'
@@ -475,6 +476,7 @@ function App() {
           onApplyModelRotation={handleApplyModelRotation}
         />
       </div>
+      <Analytics />
     </div>
   )
 }
